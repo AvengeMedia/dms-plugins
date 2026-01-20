@@ -1,0 +1,15 @@
+{
+    "id": "dankNotepadMarkdown",
+    "name": "Notepad Markdown & Syntax",
+    "description": "Add markdown preview and syntax highlighting to DMS Notepad",
+    "version": "1.0.0",
+    "license": "MIT",
+    "author": "Avenge Media",
+    "icon": "code",
+    "type": "daemon",
+    "firstParty": true,
+    "component": "./DankNotepadMarkdown.qml",
+    "settings": "./DankNotepadMarkdownSettings.qml",
+    "requires_dms": ">=1.4.0",
+    "permissions": ["settings_read", "settings_write"]
+}
