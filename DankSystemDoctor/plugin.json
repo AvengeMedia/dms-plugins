@@ -1,0 +1,31 @@
+{
+    "$schema": "https://github.com/AvengeMedia/DankMaterialShell/raw/refs/heads/master/PLUGINS/plugin-schema.json",
+    "id": "dankSystemDoctor",
+    "name": "Dank System Doctor",
+    "description": "AI-powered system health monitor. Tracks CPU, RAM, disk & temp. Diagnoses issues and suggests one-click fixes via Ollama.",
+    "version": "1.0.0",
+    "author": "noxius",
+    "icon": "monitor_heart",
+    "type": "widget",
+    "capabilities": [
+        "system-monitor",
+        "ai-diagnostics",
+        "log-viewer",
+        "process-manager"
+    ],
+    "component": "./DankSystemDoctor.qml",
+    "settings": "./DankSystemDoctorSettings.qml",
+    "requires_dms": ">=1.4.0",
+    "requires": [
+        "bash",
+        "journalctl",
+        "ps",
+        "free",
+        "df"
+    ],
+    "permissions": [
+        "settings_read",
+        "settings_write",
+        "process"
+    ]
+}
