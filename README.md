@@ -29,3 +29,9 @@ Trigger scripts based on various system events, such as `onWallpaperChanged`, `o
 Trigger notifications when battery reaches low charge levels.
 
 <img width="497" height="710" alt="image" src="https://github.com/user-attachments/assets/4302d886-eb87-41d4-a9a4-1eeaadd787c6" />
+
+### [Dank Cleaner](./DankCleaner)
+
+One-click safe cleaner with junk cleanup, large-file discovery, and disk analyzer visuals.
+
+Default scope is user-space only (`~/.cache`, trash, optional old `/tmp` entries owned by current user).

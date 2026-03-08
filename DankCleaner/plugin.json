@@ -1,0 +1,30 @@
+{
+    "$schema": "https://github.com/AvengeMedia/DankMaterialShell/raw/refs/heads/master/PLUGINS/plugin-schema.json",
+    "id": "dankCleaner",
+    "name": "Dank Cleaner",
+    "description": "One-click safe cleaner with junk scan and large file discovery.",
+    "version": "1.0.0",
+    "author": "noxius",
+    "icon": "cleaning_services",
+    "type": "widget",
+    "capabilities": [
+        "safe-cleanup",
+        "large-file-scan",
+        "disk-analyzer"
+    ],
+    "component": "./DankCleaner.qml",
+    "settings": "./DankCleanerSettings.qml",
+    "requires_dms": ">=1.4.0",
+    "requires": [
+        "bash",
+        "find",
+        "du",
+        "awk",
+        "tail",
+        "rm"
+    ],
+    "permissions": [
+        "settings_read",
+        "settings_write"
+    ]
+}
