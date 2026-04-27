@@ -267,7 +267,7 @@ PluginComponent {
     function formatTime(seconds, isVertical = false) {
         const mins = Math.floor(seconds / 60)
         const secs = seconds % 60
-        return isVertical ? mins + "\n" + (secs < 10 ? "0" : "") + secs : mins + " " + (secs < 10 ? "0" : "") + secs
+        return isVertical ? mins + "\n" + (secs < 10 ? "0" : "") + secs : mins + ":" + (secs < 10 ? "0" : "") + secs
     }
 
     function getStateColor() {
@@ -281,6 +281,8 @@ PluginComponent {
     function getStateIcon() {
         if (globalTimerState.value === "work")
             return "work"
+        if (globalTimerState.value === "longBreak")
+            return "weekend"
         return "coffee"
     }
 
