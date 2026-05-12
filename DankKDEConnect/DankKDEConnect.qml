@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import qs.Common
 import qs.Services
@@ -6,11 +7,13 @@ import qs.Widgets
 import qs.Modules.Plugins
 import "./components"
 import "./services"
+import Qt5Compat.GraphicalEffects
 
 PluginComponent {
     id: root
 
     property string selectedDeviceId: pluginData.selectedDeviceId || ""
+    property string customPhoneImage: pluginData.customPhoneImage || ""
     property bool showShareDialog: false
     property string shareDeviceId: ""
 
@@ -41,12 +44,15 @@ PluginComponent {
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
 
-    ccDetailHeight: 350
+    ccDetailHeight: 380
     onCcWidgetExpanded: PhoneConnectService.detectBackend()
 
     ccDetailContent: Component {
         KDEConnectDetailContent {
             listHeight: 300
+            selectedDeviceId: root.selectedDeviceId
+            customPhoneImage: root.customPhoneImage
+            onDeviceSelected: deviceId => root.selectDevice(deviceId)
         }
     }
 
@@ -56,6 +62,16 @@ PluginComponent {
         const savedId = pluginService.loadPluginData("dankKDEConnect", "selectedDeviceId", "");
         if (savedId)
             selectedDeviceId = savedId;
+            
+        const savedImage = pluginService.loadPluginData("dankKDEConnect", "customPhoneImage", "");
+        if (savedImage)
+            customPhoneImage = savedImage;
+    }
+
+    onPluginDataChanged: {
+        if (pluginData && pluginData.customPhoneImage !== undefined) {
+            root.customPhoneImage = pluginData.customPhoneImage;
+        }
     }
 
     Connections {
@@ -281,27 +297,124 @@ PluginComponent {
     popoutContent: Component {
         PopoutComponent {
             id: popout
+            property bool switcherVisible: false
 
             Component.onCompleted: PhoneConnectService.detectBackend()
 
-            headerText: root.serviceName
-            detailsText: PhoneConnectService.connectedCount + " connected • " + PhoneConnectService.pairedCount + " paired"
-            showCloseButton: true
-            headerActions: Component {
-                DankActionButton {
-                    iconName: PhoneConnectService.isRefreshing ? "sync" : "refresh"
-                    iconColor: Theme.surfaceVariantText
-                    buttonSize: 28
-                    enabled: !PhoneConnectService.isRefreshing
-                    tooltipText: I18n.tr("Refresh", "Phone Connect refresh tooltip")
-                    tooltipSide: "bottom"
-                    onClicked: PhoneConnectService.refreshDevices()
-                }
-            }
+            showCloseButton: false
+            headerText: ""
 
             Column {
                 width: parent.width
                 spacing: Theme.spacingM
+
+                // Header card
+                StyledRect {
+                    width: parent.width
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    height: 72
+                    radius: Theme.cornerRadius
+                    color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
+                    border.width: 1
+                    border.color: Theme.withAlpha(Theme.primary, 0.15)
+
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        transparentBorder: true
+                        horizontalOffset: 0
+                        verticalOffset: 3
+                        radius: 12.0
+                        samples: 24
+                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        spacing: Theme.spacingM
+
+                        Rectangle {
+                            width: 42
+                            height: 42
+                            radius: 21
+                            color: Theme.withAlpha(Theme.primary, 0.2)
+                            
+                            DankIcon {
+                                name: "smartphone"
+                                size: 22
+                                color: Theme.primary
+                                anchors.centerIn: parent
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+                            
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: root.serviceName
+                                font.bold: true
+                                font.pixelSize: Theme.fontSizeLarge
+                                color: Theme.surfaceText
+                                elide: Text.ElideRight
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: PhoneConnectService.connectedCount + " connected • " + PhoneConnectService.pairedCount + " paired"
+                                font.pixelSize: Theme.fontSizeSmall - 1
+                                color: Theme.primary
+                                opacity: 0.8
+                            }
+                        }
+
+                        Item {
+                            width: 38
+                            height: 38
+                            Layout.alignment: Qt.AlignVCenter
+
+                            MouseArea {
+                                id: refreshArea
+                                anchors.fill: parent
+                                hoverEnabled: !PhoneConnectService.isRefreshing
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: PhoneConnectService.refreshDevices()
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.cornerRadius
+                                color: refreshArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                                border.width: 1
+                                border.color: Theme.withAlpha(Theme.primary, refreshArea.containsMouse ? 0.3 : 0.15)
+                                
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                            }
+
+                            DankIcon {
+                                name: PhoneConnectService.isRefreshing ? "sync" : "refresh"
+                                size: 20
+                                color: Theme.primary
+                                anchors.centerIn: parent
+                                scale: refreshArea.containsMouse ? 1.15 : 1.0
+                                rotation: (refreshArea.containsMouse && !PhoneConnectService.isRefreshing) ? 180 : 0
+
+                                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+
+                                RotationAnimation on rotation {
+                                    from: 0
+                                    to: 360
+                                    duration: 1000
+                                    loops: Animation.Infinite
+                                    running: PhoneConnectService.isRefreshing
+                                }
+                            }
+                        }
+                    }
+                }
 
                 UnavailableMessage {
                     visible: !PhoneConnectService.available
@@ -313,23 +426,166 @@ PluginComponent {
                     width: parent.width
                 }
 
-                Repeater {
-                    model: PhoneConnectService.deviceIds
+                // Main Container
+                StyledRect {
+                    width: parent.width
+                    height: innerLayout.implicitHeight + Theme.spacingM * 2
 
-                    DeviceCard {
-                        required property string modelData
+                    Behavior on height {
+                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                    }
+                    visible: root.hasDevice || PhoneConnectService.deviceIds.length > 0
+                    clip: true
+                    radius: Theme.cornerRadius
+                    color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
+                    border.width: 1
+                    border.color: Theme.withAlpha(Theme.primary, 0.15)
+
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        transparentBorder: true
+                        horizontalOffset: 0
+                        verticalOffset: 3
+                        radius: 12.0
+                        samples: 24
+                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
+                    }
+
+                    Column {
+                        id: innerLayout
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        spacing: Theme.spacingL
+
+                        RowLayout {
                         width: parent.width
-                        deviceId: modelData
-                        device: PhoneConnectService.getDevice(modelData)
-                        selectable: PhoneConnectService.deviceIds.length > 1
-                        isSelected: root.selectedDeviceId === modelData
-                        onClicked: root.selectDevice(modelData)
-                        onAction: action => root.handleAction(modelData, action)
+                        spacing: Theme.spacingL
+
+                        // Phone Mockup
+                        Item {
+                            width: 115
+                            height: 235
+                            Layout.alignment: Qt.AlignVCenter
+
+                            PhoneDisplay {
+                                anchors.centerIn: parent
+                                backgroundImage: root.customPhoneImage
+                                isReachable: root.selectedDevice?.isReachable ?? false
+                                onClicked: root.handleAction(root.selectedDeviceId, "ping")
+                            }
+                        }
+
+                        // Stats Grid
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 1
+                            rowSpacing: Theme.spacingM
+                            Layout.alignment: Qt.AlignTop
+
+                            // Device Name & Actions
+                            ColumnLayout {
+                                spacing: 2
+                                Layout.fillWidth: true
+
+                                StyledText {
+                                    text: root.selectedDevice?.name || ""
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.weight: Font.Bold
+                                    color: Theme.surfaceText
+                                    Layout.fillWidth: true
+                                }
+
+                                RowLayout {
+                                    spacing: Theme.spacingS
+                                    DankActionButton {
+                                        iconName: "phone_in_talk"
+                                        iconColor: Theme.primary
+                                        buttonSize: 32
+                                        tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
+                                        onClicked: root.handleAction(root.selectedDeviceId, "ring")
+                                    }
+                                    DankActionButton {
+                                        iconName: "folder"
+                                        iconColor: Theme.primary
+                                        buttonSize: 32
+                                        tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
+                                        onClicked: root.handleAction(root.selectedDeviceId, "browse")
+                                    }
+                                    DankActionButton {
+                                        iconName: "share"
+                                        iconColor: Theme.primary
+                                        buttonSize: 32
+                                        tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
+                                        onClicked: root.handleAction(root.selectedDeviceId, "share")
+                                    }
+                                    DankActionButton {
+                                        visible: PhoneConnectService.deviceIds.length > 1
+                                        iconName: "swap_horiz"
+                                        iconColor: Theme.secondary
+                                        buttonSize: 32
+                                        tooltipText: I18n.tr("Switch Device", "KDE Connect switch device tooltip")
+                                        onClicked: popout.switcherVisible = !popout.switcherVisible
+                                    }
+                                }
+                            }
+
+                            // Info Rows
+                            InfoRow {
+                                icon: PhoneConnectService.getBatteryIcon(root.selectedDevice)
+                                label: I18n.tr("Battery", "KDE Connect battery label")
+                                value: (root.selectedDevice?.batteryCharge ?? -1) >= 0 ? (root.selectedDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
+                                valueColor: root.selectedDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
+                            }
+
+                            InfoRow {
+                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "network_check"
+                                label: I18n.tr("Network", "KDE Connect network label")
+                                value: root.selectedDevice?.networkType || I18n.tr("Unknown", "Status")
+                            }
+
+                            InfoRow {
+                                icon: "notifications"
+                                label: I18n.tr("Notifications", "KDE Connect notifications label")
+                                value: root.selectedDevice?.notificationCount ?? 0
+                            }
+                        }
+                    }
+
+                    // Device Switcher List (shown when toggled)
+                    Column {
+                        id: deviceSwitcher
+                        width: parent.width
+                        spacing: Theme.spacingS
+                        visible: !root.hasDevice || popout.switcherVisible
+
+                        Rectangle {
+                            height: 1
+                            width: parent.width
+                            color: Theme.withAlpha(Theme.outline, 0.1)
+                        }
+
+                        Repeater {
+                            model: PhoneConnectService.deviceIds
+                            DeviceCard {
+                                required property string modelData
+                                width: parent.width
+                                deviceId: modelData
+                                device: PhoneConnectService.getDevice(modelData)
+                                selectable: true
+                                isSelected: root.selectedDeviceId === modelData
+                                onClicked: {
+                                    root.selectDevice(modelData)
+                                    popout.switcherVisible = false
+                                }
+                                onAction: action => root.handleAction(modelData, action)
+                            }
+                        }
+                    }
                     }
                 }
 
                 ShareDialog {
-                    visible: root.showShareDialog
+                    isOpen: root.showShareDialog
                     width: parent.width
                     deviceId: root.shareDeviceId
                     parentPopout: popout.parentPopout
