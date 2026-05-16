@@ -16,9 +16,9 @@ StyledRect {
 
     height: contentColumn.implicitHeight + Theme.spacingM * 2
     radius: Theme.cornerRadius
-    color: isSelected ? Theme.withAlpha(Theme.primary, 0.12) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.surfaceContainerHighest, 0.8) : Theme.withAlpha(Theme.surfaceContainerHighest, 0.4))
-    border.width: isSelected ? 1 : 0
-    border.color: Theme.primary
+    color: cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.08) : Theme.withAlpha(Theme.surfaceContainerHighest, Theme.popupTransparency)
+    border.width: 0
+    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.12)
 
     MouseArea {
         id: cardMouseArea

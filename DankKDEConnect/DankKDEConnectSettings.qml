@@ -2,9 +2,6 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
-import qs.Modals.FileBrowser
-import QtQuick.Layouts
-import qs.Services
 import "./services"
 
 PluginSettings {
@@ -189,63 +186,6 @@ PluginSettings {
         color: Theme.surfaceVariantText
         width: parent.width
         wrapMode: Text.WordWrap
-    }
-
-    StyledRect {
-        width: parent.width
-        height: 1
-        color: Theme.surfaceVariant
-    }
-
-    StyledText {
-        text: "Appearance"
-        font.pixelSize: Theme.fontSizeMedium
-        font.weight: Font.DemiBold
-        color: Theme.surfaceText
-    }
-
-    RowLayout {
-        width: parent.width
-        spacing: Theme.spacingM
-
-        StyledText {
-            text: "Custom Phone Image:"
-            font.pixelSize: Theme.fontSizeSmall
-            color: Theme.surfaceVariantText
-            Layout.alignment: Qt.AlignVCenter
-        }
-
-        DankTextField {
-            id: customImageField
-            Layout.fillWidth: true
-            placeholderText: "Absolute path or URL"
-            text: pluginService.loadPluginData("dankKDEConnect", "customPhoneImage", "")
-            onTextChanged: {
-                pluginService.savePluginData("dankKDEConnect", "customPhoneImage", text)
-                PluginService.setGlobalVar("dankKDEConnect", "customPhoneImage", text)
-            }
-        }
-
-        DankButton {
-            iconName: "folder"
-            text: "Browse"
-            onClicked: imageBrowser.open()
-            Layout.alignment: Qt.AlignVCenter
-        }
-    }
-
-    FileBrowserSurfaceModal {
-        id: imageBrowser
-        browserTitle: "Select Custom Phone Image"
-        browserIcon: "image"
-        browserType: "generic"
-        showHiddenFiles: false
-        fileExtensions: ["*.png", "*.jpg", "*.jpeg", "*.webp"]
-        
-        onFileSelected: path => {
-            customImageField.text = "file://" + path
-            close()
-        }
     }
 
     StyledRect {

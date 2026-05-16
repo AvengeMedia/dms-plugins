@@ -11,11 +11,6 @@ Rectangle {
     property var parentPopout: null
     property int listHeight: 280
     property string shareDeviceId: ""
-    property string selectedDeviceId: ""
-    property string customPhoneImage: ""
-    readonly property var selectedDevice: selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null
-    
-    signal deviceSelected(string deviceId)
 
     implicitHeight: contentColumn.implicitHeight + Theme.spacingM * 2
     radius: Theme.cornerRadius
@@ -27,7 +22,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: Theme.spacingM
-        spacing: Theme.spacingL
+        spacing: Theme.spacingS
 
         RowLayout {
             spacing: Theme.spacingS
@@ -37,211 +32,402 @@ Rectangle {
                 text: {
                     const count = PhoneConnectService.connectedCount;
                     if (count === 0)
-                        return I18n.tr("No devices connected", "Status");
+                        return I18n.tr("No devices connected", "KDE Connect status");
                     if (count === 1)
-                        return I18n.tr("1 device connected", "Status");
-                    return count + " " + I18n.tr("devices connected", "Status");
+                        return I18n.tr("1 device connected", "KDE Connect status single device");
+                    return count + " " + I18n.tr("devices connected", "KDE Connect status multiple devices");
                 }
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
+                font.pixelSize: Theme.fontSizeMedium
+                color: Theme.surfaceText
+                font.weight: Font.Medium
+                elide: Text.ElideRight
+                wrapMode: Text.NoWrap
                 Layout.fillWidth: true
             }
 
-            DankActionButton {
-                iconName: PhoneConnectService.isRefreshing ? "sync" : "refresh"
-                buttonSize: 24
-                onClicked: PhoneConnectService.refreshDevices()
-                enabled: !PhoneConnectService.isRefreshing
+            Rectangle {
+                width: 28
+                height: 28
+                radius: 14
+                color: refreshArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.08) : "transparent"
+                Layout.alignment: Qt.AlignVCenter
+                opacity: PhoneConnectService.isRefreshing ? 0.5 : 1.0
+
+                DankIcon {
+                    anchors.centerIn: parent
+                    name: PhoneConnectService.isRefreshing ? "sync" : "refresh"
+                    size: Theme.iconSize - 4
+                    color: Theme.primary
+                }
+
+                MouseArea {
+                    id: refreshArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: PhoneConnectService.isRefreshing ? Qt.BusyCursor : Qt.PointingHandCursor
+                    enabled: !PhoneConnectService.isRefreshing
+                    onClicked: PhoneConnectService.refreshDevices()
+                }
             }
         }
 
-        // Selected Device View
-        Column {
+        Rectangle {
+            height: 1
             width: parent.width
-            spacing: Theme.spacingM
-            visible: root.selectedDevice !== null
+            color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.12)
+        }
 
-            RowLayout {
-                width: parent.width
-                spacing: Theme.spacingM
+        Item {
+            width: parent.width
+            height: root.listHeight
 
-                PhoneDisplay {
-                    height: 160
-                    backgroundImage: root.customPhoneImage
-                    isReachable: root.selectedDevice?.isReachable ?? false
-                    onClicked: PhoneConnectService.sendPing(root.selectedDeviceId, "", () => {})
-                }
-
-                GridLayout {
-                    Layout.fillWidth: true
-                    columns: 1
-                    rowSpacing: Theme.spacingS
-
-                    ColumnLayout {
-                        spacing: 0
-                        Layout.fillWidth: true
-                        StyledText {
-                            text: root.selectedDevice?.name || ""
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.weight: Font.Bold
-                            color: Theme.surfaceText
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                        StyledText {
-                            text: root.selectedDevice?.isReachable ? I18n.tr("Online", "Status") : I18n.tr("Offline", "Status")
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: root.selectedDevice?.isReachable ? Theme.primary : Theme.surfaceVariantText
-                        }
-                    }
-
-                    InfoRow {
-                        icon: PhoneConnectService.getBatteryIcon(root.selectedDevice)
-                        label: I18n.tr("Battery", "Label")
-                        value: (root.selectedDevice?.batteryCharge ?? -1) >= 0 ? (root.selectedDevice.batteryCharge + "%") : "N/A"
-                        valueColor: root.selectedDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
-                    }
-
-                    InfoRow {
-                        icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "network_check"
-                        label: I18n.tr("Network", "Label")
-                        value: root.selectedDevice?.networkType || "N/A"
-                    }
-                }
-            }
-
-            RowLayout {
-                width: parent.width
+            Column {
+                anchors.centerIn: parent
                 spacing: Theme.spacingS
-                
-                DankActionButton {
-                    iconName: "phone_in_talk"
-                    iconColor: Theme.primary
-                    buttonSize: 32
-                    onClicked: PhoneConnectService.ringDevice(root.selectedDeviceId, () => {})
-                }
-                DankActionButton {
-                    iconName: "folder"
-                    iconColor: Theme.primary
-                    buttonSize: 32
-                    onClicked: {
-                        PopoutService.closeControlCenter();
-                        PhoneConnectService.startBrowsing(root.selectedDeviceId, () => {})
-                    }
-                }
-                DankActionButton {
-                    iconName: "share"
-                    iconColor: Theme.primary
-                    buttonSize: 32
-                    onClicked: {
-                        if (root.shareDeviceId === root.selectedDeviceId)
-                            root.shareDeviceId = "";
-                        else
-                            root.shareDeviceId = root.selectedDeviceId;
-                    }
-                }
-                
-                Item { Layout.fillWidth: true }
-                
-                DankActionButton {
-                    visible: PhoneConnectService.deviceIds.length > 1
-                    iconName: "swap_horiz"
-                    iconColor: Theme.secondary
-                    buttonSize: 32
-                    onClicked: deviceSwitcherCol.visible = !deviceSwitcherCol.visible
-                }
-            }
+                visible: !PhoneConnectService.available
 
-            ShareDialog {
-                visible: root.shareDeviceId === root.selectedDeviceId
-                width: parent.width
-                deviceId: root.selectedDeviceId
-                parentPopout: root.parentPopout
-                onClose: root.shareDeviceId = ""
-                onShare: (content, isUrl) => {
-                    if (isUrl)
-                        PhoneConnectService.shareUrl(root.selectedDeviceId, content, () => {});
-                    else
-                        PhoneConnectService.shareText(root.selectedDeviceId, content, () => {});
-                    root.shareDeviceId = "";
+                DankIcon {
+                    name: "phonelink_off"
+                    size: 36
+                    color: Theme.surfaceVariantText
+                    anchors.horizontalCenter: parent.horizontalCenter
                 }
-                onShareFile: path => {
-                    PhoneConnectService.shareUrl(root.selectedDeviceId, "file://" + path, () => {});
-                    root.shareDeviceId = "";
+
+                StyledText {
+                    text: I18n.tr("Phone Connect unavailable", "Phone Connect service unavailable message")
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.surfaceVariantText
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                StyledText {
+                    text: I18n.tr("Start KDE Connect or Valent", "Phone Connect start daemon hint")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    anchors.horizontalCenter: parent.horizontalCenter
                 }
             }
 
             Column {
-                id: deviceSwitcherCol
-                width: parent.width
+                anchors.centerIn: parent
                 spacing: Theme.spacingS
-                visible: false
+                visible: PhoneConnectService.available && PhoneConnectService.deviceIds.length === 0
 
-                Rectangle {
-                    height: 1
-                    width: parent.width
-                    color: Theme.withAlpha(Theme.outline, 0.1)
+                DankIcon {
+                    name: "devices"
+                    size: 36
+                    color: Theme.surfaceVariantText
+                    anchors.horizontalCenter: parent.horizontalCenter
                 }
 
-                Repeater {
-                    model: PhoneConnectService.deviceIds
-                    delegate: Rectangle {
-                        required property string modelData
-                        width: parent.width
-                        height: 40
-                        radius: Theme.cornerRadius
-                        color: switchMouse.containsMouse ? Theme.withAlpha(Theme.primary, 0.08) : "transparent"
-                        
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: Theme.spacingS
-                            spacing: Theme.spacingS
+                StyledText {
+                    text: I18n.tr("No devices found", "KDE Connect no devices message")
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.surfaceVariantText
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                StyledText {
+                    text: I18n.tr("Open KDE Connect on your phone", "KDE Connect open app hint")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+            }
+
+            DankListView {
+                id: deviceListView
+                anchors.fill: parent
+                visible: PhoneConnectService.available && PhoneConnectService.deviceIds.length > 0
+                spacing: 8
+                clip: true
+
+                model: PhoneConnectService.deviceIds
+
+                delegate: Rectangle {
+                    id: deviceDelegate
+                    required property string modelData
+
+                    property var device: PhoneConnectService.getDevice(modelData)
+                    property bool canControl: device?.isReachable && device?.isPaired
+                    property bool isShareTarget: root.shareDeviceId === modelData
+
+                    width: deviceListView.width
+                    height: contentCol.implicitHeight + Theme.spacingM * 2
+                    radius: Theme.cornerRadius
+                    color: Theme.withAlpha(Theme.surfaceContainerHighest, Theme.popupTransparency)
+
+                    Column {
+                        id: contentCol
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: Theme.spacingM
+                        spacing: Theme.spacingS
+
+                        Row {
+                            width: parent.width
+                            spacing: Theme.spacingM
 
                             DankIcon {
-                                name: PhoneConnectService.getDeviceIcon(PhoneConnectService.getDevice(modelData))
-                                size: 20
-                                color: Theme.primary
+                                name: PhoneConnectService.getDeviceIcon(device)
+                                size: Theme.iconSize + 4
+                                color: device?.isReachable ? Theme.primary : Theme.surfaceVariantText
+                                anchors.verticalCenter: parent.verticalCenter
                             }
 
-                            StyledText {
-                                text: PhoneConnectService.getDevice(modelData)?.name || modelData
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.surfaceText
-                                Layout.fillWidth: true
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 2
+                                width: parent.width - Theme.iconSize - Theme.spacingM * 2 - statusRow.width - 8
+
+                                StyledText {
+                                    text: device?.name || modelData
+                                    font.pixelSize: Theme.fontSizeMedium
+                                    font.weight: Font.Medium
+                                    color: Theme.surfaceText
+                                    elide: Text.ElideRight
+                                    width: parent.width
+                                }
+
+                                StyledText {
+                                    text: getStatusText()
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: getStatusColor()
+                                    visible: text.length > 0
+
+                                    function getStatusText() {
+                                        if (!device)
+                                            return I18n.tr("Unknown", "KDE Connect unknown device status");
+                                        if (device.isPairRequestedByPeer)
+                                            return I18n.tr("Pairing requested", "KDE Connect pairing requested status");
+                                        if (device.isPairRequested)
+                                            return I18n.tr("Pairing", "KDE Connect pairing in progress status") + "...";
+                                        if (!device.isPaired)
+                                            return I18n.tr("Not paired", "KDE Connect not paired status");
+                                        if (!device.isReachable)
+                                            return I18n.tr("Offline", "KDE Connect offline status");
+                                        return "";
+                                    }
+
+                                    function getStatusColor() {
+                                        if (!device)
+                                            return Theme.surfaceVariantText;
+                                        if (device.isPairRequestedByPeer)
+                                            return Theme.warning;
+                                        if (device.isPairRequested)
+                                            return Theme.warning;
+                                        return Theme.surfaceVariantText;
+                                    }
+                                }
+                            }
+
+                            Row {
+                                id: statusRow
+                                spacing: Theme.spacingS
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                Row {
+                                    visible: device && device.batteryCharge >= 0
+                                    spacing: 4
+
+                                    DankIcon {
+                                        name: PhoneConnectService.getBatteryIcon(device)
+                                        size: Theme.iconSize - 4
+                                        color: device?.batteryCharging ? Theme.primary : Theme.surfaceVariantText
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    StyledText {
+                                        text: (device?.batteryCharge ?? 0) + "%"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: Theme.surfaceVariantText
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+
+                                DankIcon {
+                                    visible: PhoneConnectService.getNetworkIcon(device) !== ""
+                                    name: PhoneConnectService.getNetworkIcon(device)
+                                    size: Theme.iconSize - 4
+                                    color: Theme.surfaceVariantText
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
                         }
 
-                        MouseArea {
-                            id: switchMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: {
-                                root.deviceSelected(modelData)
-                                deviceSwitcherCol.visible = false
+                        Row {
+                            visible: canControl
+                            spacing: Theme.spacingXS
+
+                            DankActionButton {
+                                iconName: "phone_in_talk"
+                                iconColor: Theme.primary
+                                buttonSize: 36
+                                tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
+                                onClicked: {
+                                    PhoneConnectService.ringDevice(modelData, response => {
+                                        if (response.error)
+                                            return;
+                                        ToastService.showInfo(I18n.tr("Ringing", "KDE Connect ring action") + " " + (device?.name || I18n.tr("device", "Generic device name")));
+                                    });
+                                }
+                            }
+
+                            DankActionButton {
+                                iconName: "notifications_active"
+                                iconColor: Theme.primary
+                                buttonSize: 36
+                                tooltipText: I18n.tr("Ping", "KDE Connect ping tooltip")
+                                onClicked: {
+                                    PhoneConnectService.sendPing(modelData, "", response => {
+                                        if (response.error)
+                                            return;
+                                        ToastService.showInfo(I18n.tr("Ping sent", "KDE Connect ping action"));
+                                    });
+                                }
+                            }
+
+                            DankActionButton {
+                                iconName: "content_paste"
+                                iconColor: Theme.primary
+                                buttonSize: 36
+                                tooltipText: I18n.tr("Send Clipboard", "KDE Connect clipboard tooltip")
+                                onClicked: {
+                                    PhoneConnectService.sendClipboard(modelData, response => {
+                                        if (response.error)
+                                            return;
+                                        ToastService.showInfo(I18n.tr("Clipboard sent", "KDE Connect clipboard action"));
+                                    });
+                                }
+                            }
+
+                            DankActionButton {
+                                iconName: "share"
+                                iconColor: Theme.primary
+                                buttonSize: 36
+                                tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
+                                onClicked: {
+                                    if (deviceDelegate.isShareTarget)
+                                        root.shareDeviceId = "";
+                                    else
+                                        root.shareDeviceId = modelData;
+                                }
+                            }
+
+                            DankActionButton {
+                                iconName: "folder"
+                                iconColor: Theme.primary
+                                buttonSize: 36
+                                tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
+                                onClicked: {
+                                    PopoutService.closeControlCenter();
+                                    PhoneConnectService.startBrowsing(modelData, response => {
+                                        if (response.error)
+                                            return;
+                                        ToastService.showInfo(I18n.tr("Opening files", "KDE Connect browse action") + "...");
+                                    });
+                                }
+                            }
+
+                            DankActionButton {
+                                visible: PhoneConnectService.supportsSms
+                                iconName: "sms"
+                                iconColor: Theme.primary
+                                buttonSize: 36
+                                tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
+                                onClicked: {
+                                    PopoutService.closeControlCenter();
+                                    PhoneConnectService.launchSmsApp(modelData, response => {
+                                        if (response.error)
+                                            return;
+                                        ToastService.showInfo(I18n.tr("Opening SMS", "KDE Connect SMS action") + "...");
+                                    });
+                                }
+                            }
+
+                            DankActionButton {
+                                visible: device?.isPaired
+                                iconName: "link_off"
+                                iconColor: Theme.primary
+                                buttonSize: 36
+                                tooltipText: I18n.tr("Unpair", "KDE Connect unpair tooltip")
+                                onClicked: {
+                                    PhoneConnectService.unpair(modelData, response => {
+                                        if (response.error)
+                                            return;
+                                        ToastService.showInfo(I18n.tr("Device unpaired", "KDE Connect unpair action"));
+                                    });
+                                }
+                            }
+                        }
+
+                        Row {
+                            visible: device?.isPairRequestedByPeer
+                            spacing: Theme.spacingS
+
+                            DankButton {
+                                text: I18n.tr("Accept", "KDE Connect accept pairing button")
+                                iconName: "check"
+                                buttonHeight: 32
+                                onClicked: PhoneConnectService.acceptPairing(modelData)
+                            }
+
+                            DankButton {
+                                text: I18n.tr("Reject", "KDE Connect reject pairing button")
+                                iconName: "close"
+                                buttonHeight: 32
+                                backgroundColor: Theme.error
+                                textColor: Theme.primaryText
+                                onClicked: PhoneConnectService.cancelPairing(modelData)
+                            }
+                        }
+
+                        Row {
+                            visible: device?.isReachable && !device?.isPaired && !device?.isPairRequestedByPeer
+                            spacing: Theme.spacingS
+
+                            DankButton {
+                                text: I18n.tr("Pair", "KDE Connect pair button")
+                                iconName: "link"
+                                buttonHeight: 32
+                                onClicked: PhoneConnectService.requestPairing(modelData)
+                            }
+                        }
+
+                        ShareDialog {
+                            visible: deviceDelegate.isShareTarget
+                            width: parent.width
+                            deviceId: modelData
+                            parentPopout: root.parentPopout
+                            onClose: root.shareDeviceId = ""
+                            onShare: (content, isUrl) => {
+                                function handleResponse(response) {
+                                    if (response.error) {
+                                        ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
+                                        return;
+                                    }
+                                    ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
+                                }
+                                if (isUrl)
+                                    PhoneConnectService.shareUrl(modelData, content, handleResponse);
+                                else
+                                    PhoneConnectService.shareText(modelData, content, handleResponse);
+                                root.shareDeviceId = "";
+                            }
+                            onShareFile: path => {
+                                PhoneConnectService.shareUrl(modelData, "file://" + path, response => {
+                                    if (response.error) {
+                                        ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
+                                        return;
+                                    }
+                                    ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + path.split("/").pop() + "...");
+                                });
+                                root.shareDeviceId = "";
                             }
                         }
                     }
                 }
-            }
-        }
-
-        Column {
-            width: parent.width
-            spacing: Theme.spacingM
-            visible: root.selectedDevice === null
-
-            DankIcon {
-                name: "phonelink_off"
-                size: 48
-                color: Theme.surfaceVariantText
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-
-            StyledText {
-                text: I18n.tr("No devices found", "Status")
-                font.pixelSize: Theme.fontSizeMedium
-                color: Theme.surfaceVariantText
-                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
     }
