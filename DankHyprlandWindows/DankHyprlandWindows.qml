@@ -127,7 +127,11 @@ QtObject {
         if (!address)
             return;
 
-        Hyprland.dispatch(`focuswindow address:${address}`);
+        if (Hyprland.usingLua) {
+            Hyprland.dispatch(`hl.dsp.focus({window = "address:${address}"})`);
+        } else {
+            Hyprland.dispatch(`focuswindow address:${address}`);
+        }
     }
 
     function getContextMenuActions(item) {
@@ -140,7 +144,11 @@ QtObject {
                 icon: "close",
                 text: I18n.tr("Close Window"),
                 action: () => {
-                    Hyprland.dispatch(`closewindow address:${address}`);
+                    if (Hyprland.usingLua) {
+                        Hyprland.dispatch(`hl.dsp.window.close({window = "address:${address}"})`);
+                    } else {
+                        Hyprland.dispatch(`closewindow address:${address}`);
+                    }
                 }
             }
         ];
