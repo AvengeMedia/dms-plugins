@@ -32,9 +32,8 @@ QtObject {
     }
 
     Component.onCompleted: {
-        if (!pluginService)
-            return;
-        trigger = pluginService.loadPluginData(pluginId, "trigger", "!");
+        if (pluginService)
+            trigger = pluginService.loadPluginData(pluginId, "trigger", "!");
     }
 
     onTriggerChanged: {
@@ -45,6 +44,35 @@ QtObject {
 
     function getToplevelById(id) {
         return toplevelRegistry[id] || null;
+    }
+
+    function windowSelector(address) {
+        if (!address)
+            return "";
+        const normalized = address.toString().startsWith("0x") ? address.toString() : `0x${address}`;
+        return `address:${normalized}`;
+    }
+
+    function focusWindow(address) {
+        const selector = windowSelector(address);
+        if (!selector)
+            return;
+
+        if (Hyprland.usingLua === false)
+            Hyprland.dispatch(`focuswindow ${selector}`);
+        else
+            Hyprland.dispatch(`hl.dsp.focus({ window = "${selector}" })`);
+    }
+
+    function closeWindow(address) {
+        const selector = windowSelector(address);
+        if (!selector)
+            return;
+
+        if (Hyprland.usingLua === false)
+            Hyprland.dispatch(`closewindow ${selector}`);
+        else
+            Hyprland.dispatch(`hl.dsp.window.close("${selector}")`);
     }
 
     function getItems(query) {
@@ -127,7 +155,7 @@ QtObject {
         if (!address)
             return;
 
-        Hyprland.dispatch(`focuswindow address:${address}`);
+        focusWindow(address);
     }
 
     function getContextMenuActions(item) {
@@ -140,7 +168,7 @@ QtObject {
                 icon: "close",
                 text: I18n.tr("Close Window"),
                 action: () => {
-                    Hyprland.dispatch(`closewindow address:${address}`);
+                    closeWindow(address);
                 }
             }
         ];
