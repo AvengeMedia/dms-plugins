@@ -105,7 +105,7 @@ Rectangle {
                     InfoRow {
                         icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "network_check"
                         label: I18n.tr("Network", "Label")
-                        value: root.selectedDevice?.networkType || "N/A"
+                        value: PhoneConnectService.getNetworkTypeLabel(root.selectedDevice)
                     }
                 }
             }

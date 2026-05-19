@@ -21,6 +21,10 @@ PluginComponent {
     readonly property bool hasDevice: selectedDevice !== null
     readonly property string serviceName: PhoneConnectService.backendName
 
+    readonly property bool isDarkTheme: (Theme.surface.r * 0.299 + Theme.surface.g * 0.587 + Theme.surface.b * 0.114) < 0.5
+    readonly property color cardColor: isDarkTheme ? Theme.withAlpha("#ffffff", 0.08) : Theme.withAlpha(Theme.surfaceContainerHigh, 0.6)
+    readonly property color cardBorderColor: isDarkTheme ? Theme.withAlpha("#ffffff", 0.12) : Theme.withAlpha(Theme.primary, 0.15)
+
     ccWidgetIcon: {
         if (!PhoneConnectService.available)
             return "phonelink_off";
@@ -314,18 +318,18 @@ PluginComponent {
                     anchors.horizontalCenter: parent.horizontalCenter
                     height: 72
                     radius: Theme.cornerRadius
-                    color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
+                    color: root.cardColor
                     border.width: 1
-                    border.color: Theme.withAlpha(Theme.primary, 0.15)
+                    border.color: root.cardBorderColor
 
                     layer.enabled: true
                     layer.effect: DropShadow {
                         transparentBorder: true
                         horizontalOffset: 0
-                        verticalOffset: 3
-                        radius: 12.0
-                        samples: 24
-                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
+                        verticalOffset: 4
+                        radius: 16.0
+                        samples: 32
+                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
                     }
 
                     RowLayout {
@@ -427,60 +431,62 @@ PluginComponent {
                 }
 
                 // Main Container
-                StyledRect {
+                RowLayout {
                     width: parent.width
-                    height: innerLayout.implicitHeight + Theme.spacingM * 2
+                    height: 255
+                    spacing: Theme.spacingM
+                    visible: root.hasDevice
 
-                    Behavior on height {
-                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
-                    }
-                    visible: root.hasDevice || PhoneConnectService.deviceIds.length > 0
-                    clip: true
-                    radius: Theme.cornerRadius
-                    color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
-                    border.width: 1
-                    border.color: Theme.withAlpha(Theme.primary, 0.15)
+                    // Container 1: Phone Image
+                    StyledRect {
+                        Layout.preferredWidth: 135
+                        Layout.fillHeight: true
+                        radius: Theme.cornerRadius
+                        color: root.cardColor
+                        border.width: 1
+                        border.color: root.cardBorderColor
 
-                    layer.enabled: true
-                    layer.effect: DropShadow {
-                        transparentBorder: true
-                        horizontalOffset: 0
-                        verticalOffset: 3
-                        radius: 12.0
-                        samples: 24
-                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
-                    }
-
-                    Column {
-                        id: innerLayout
-                        anchors.fill: parent
-                        anchors.margins: Theme.spacingM
-                        spacing: Theme.spacingL
-
-                        RowLayout {
-                        width: parent.width
-                        spacing: Theme.spacingL
-
-                        // Phone Mockup
-                        Item {
-                            width: 115
-                            height: 235
-                            Layout.alignment: Qt.AlignVCenter
-
-                            PhoneDisplay {
-                                anchors.centerIn: parent
-                                backgroundImage: root.customPhoneImage
-                                isReachable: root.selectedDevice?.isReachable ?? false
-                                onClicked: root.handleAction(root.selectedDeviceId, "ping")
-                            }
+                        layer.enabled: true
+                        layer.effect: DropShadow {
+                            transparentBorder: true
+                            horizontalOffset: 0
+                            verticalOffset: 4
+                            radius: 16.0
+                            samples: 32
+                            color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
                         }
 
-                        // Stats Grid
-                        GridLayout {
-                            Layout.fillWidth: true
-                            columns: 1
-                            rowSpacing: Theme.spacingM
-                            Layout.alignment: Qt.AlignTop
+                        PhoneDisplay {
+                            anchors.centerIn: parent
+                            backgroundImage: root.customPhoneImage
+                            isReachable: root.selectedDevice?.isReachable ?? false
+                            onClicked: root.handleAction(root.selectedDeviceId, "ping")
+                        }
+                    }
+
+                    // Container 2: Phone Name & Status
+                    StyledRect {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        radius: Theme.cornerRadius
+                        color: root.cardColor
+                        border.width: 1
+                        border.color: root.cardBorderColor
+
+                        layer.enabled: true
+                        layer.effect: DropShadow {
+                            transparentBorder: true
+                            horizontalOffset: 0
+                            verticalOffset: 4
+                            radius: 16.0
+                            samples: 32
+                            color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                        }
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.spacingM
+                            spacing: Theme.spacingM
 
                             // Device Name & Actions
                             ColumnLayout {
@@ -540,7 +546,7 @@ PluginComponent {
                             InfoRow {
                                 icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "network_check"
                                 label: I18n.tr("Network", "KDE Connect network label")
-                                value: root.selectedDevice?.networkType || I18n.tr("Unknown", "Status")
+                                value: PhoneConnectService.getNetworkTypeLabel(root.selectedDevice)
                             }
 
                             InfoRow {
@@ -550,19 +556,33 @@ PluginComponent {
                             }
                         }
                     }
+                }
 
-                    // Device Switcher List (shown when toggled)
+                // Device Switcher Container
+                StyledRect {
+                    width: parent.width
+                    height: switcherLayout.implicitHeight + Theme.spacingM * 2
+                    visible: (!root.hasDevice || popout.switcherVisible) && PhoneConnectService.deviceIds.length > 0
+                    radius: Theme.cornerRadius
+                    color: root.cardColor
+                    border.width: 1
+                    border.color: root.cardBorderColor
+
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        transparentBorder: true
+                        horizontalOffset: 0
+                        verticalOffset: 4
+                        radius: 16.0
+                        samples: 32
+                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                    }
+
                     Column {
-                        id: deviceSwitcher
-                        width: parent.width
+                        id: switcherLayout
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
                         spacing: Theme.spacingS
-                        visible: !root.hasDevice || popout.switcherVisible
-
-                        Rectangle {
-                            height: 1
-                            width: parent.width
-                            color: Theme.withAlpha(Theme.outline, 0.1)
-                        }
 
                         Repeater {
                             model: PhoneConnectService.deviceIds
@@ -580,7 +600,6 @@ PluginComponent {
                                 onAction: function(action) { root.handleAction(modelData, action); }
                             }
                         }
-                    }
                     }
                 }
 

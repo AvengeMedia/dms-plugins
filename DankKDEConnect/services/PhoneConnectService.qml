@@ -417,4 +417,48 @@ Singleton {
     function getBatteryIcon(device) {
         return _backend?.getBatteryIcon(device) ?? "";
     }
+
+    function getNetworkTypeLabel(device) {
+        if (!device || !device.networkType)
+            return "N/A";
+        
+        const rawType = device.networkType.toString().trim();
+        const type = rawType.toUpperCase();
+        
+        // Map common network types to friendly, standard representations
+        switch (type) {
+        case "NR":
+        case "5G":
+        case "5G_NR":
+        case "5G NR":
+            return "5G";
+        case "LTE":
+        case "4G":
+            return "LTE";
+        case "LTE_CA":
+        case "LTE+":
+        case "4G+":
+        case "4G_CA":
+            return "LTE+";
+        case "HSPA":
+        case "HSDPA":
+        case "HSUPA":
+        case "HSPAP":
+        case "UMTS":
+        case "WCDMA":
+        case "3G":
+            return "3G";
+        case "EDGE":
+        case "GPRS":
+        case "GSM":
+        case "2G":
+            return "2G";
+        default:
+            // Format unknown types nicely (e.g. capitalize first letter)
+            if (rawType.length > 0) {
+                return rawType.charAt(0).toUpperCase() + rawType.slice(1);
+            }
+            return "N/A";
+        }
+    }
 }

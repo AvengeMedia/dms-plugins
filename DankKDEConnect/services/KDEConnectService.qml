@@ -35,6 +35,18 @@ Singleton {
     property string selfId: ""
 
     property bool _subscribed: false
+    property bool _dbusFinished: false
+
+    Timer {
+        id: refreshMinTimer
+        interval: 1000
+        repeat: false
+        onTriggered: {
+            if (root._dbusFinished) {
+                root.isRefreshing = false;
+            }
+        }
+    }
 
     signal devicesListChanged
     signal deviceUpdated(string deviceId)
@@ -240,9 +252,14 @@ Singleton {
         if (!available || isRefreshing)
             return;
         isRefreshing = true;
+        _dbusFinished = false;
+        refreshMinTimer.start();
 
         DMSService.dbusCall("session", service, daemonPath, daemonInterface, "devices", [false, false], function(response) {
-            isRefreshing = false;
+            root._dbusFinished = true;
+            if (!refreshMinTimer.running) {
+                root.isRefreshing = false;
+            }
             if (response.error)
                 return;
             const ids = response.result?.values?.[0] || [];
