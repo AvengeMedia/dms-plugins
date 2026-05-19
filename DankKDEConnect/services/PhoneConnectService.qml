@@ -379,6 +379,21 @@ Singleton {
     }
 
     function sendSms(deviceId, addresses, message, attachmentUrls, callback) {
+        if (activeBackend === PhoneConnectService.Backend.KDEConnect) {
+            const addr = Array.isArray(addresses) ? (addresses[0] || "") : (addresses || "");
+            Quickshell.execDetached([
+                "kdeconnect-cli",
+                "-d",
+                deviceId,
+                "--send-sms",
+                message,
+                "--destination",
+                addr
+            ]);
+            callback?.({ success: true });
+            return;
+        }
+
         if (!_backend) {
             callback?.({
                 error: "No backend"

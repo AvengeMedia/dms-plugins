@@ -20,6 +20,7 @@ PluginComponent {
     property var recentImages: []
     readonly property bool loadingImages: imagesScanner && imagesScanner.running
     property bool showShareDialog: false
+    property bool showSmsDialog: false
     property string shareDeviceId: ""
 
     readonly property var selectedDevice: selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null
@@ -54,8 +55,7 @@ PluginComponent {
         return selectedDevice.name + " (" + I18n.tr("Offline", "Phone Connect offline status") + ")";
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
-
-    ccDetailHeight: 380 + (hasDevice && recentImages.length > 0 ? (recentImagesContainer.height + Theme.spacingM) : 0)
+    ccDetailHeight: hasDevice ? 320 : 160
     onCcWidgetExpanded: PhoneConnectService.detectBackend()
 
     ccDetailContent: Component {
@@ -159,6 +159,7 @@ PluginComponent {
             });
             break;
         case "share":
+            showSmsDialog = false;
             if (showShareDialog && shareDeviceId === deviceId) {
                 showShareDialog = false;
                 shareDeviceId = "";
@@ -168,14 +169,14 @@ PluginComponent {
             }
             break;
         case "sms":
-            closePopout();
-            PhoneConnectService.launchSmsApp(deviceId, function(response) {
-                if (response.error) {
-                    ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
-                    return;
-                }
-                ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
-            });
+            showShareDialog = false;
+            if (showSmsDialog && shareDeviceId === deviceId) {
+                showSmsDialog = false;
+                shareDeviceId = "";
+            } else {
+                shareDeviceId = deviceId;
+                showSmsDialog = true;
+            }
             break;
         case "browse":
             closePopout();
@@ -544,6 +545,13 @@ PluginComponent {
                                         buttonSize: 32
                                         tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
                                         onClicked: root.handleAction(root.selectedDeviceId, "share")
+                                    }
+                                    DankActionButton {
+                                        iconName: "sms"
+                                        iconColor: Theme.primary
+                                        buttonSize: 32
+                                        tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
+                                        onClicked: root.handleAction(root.selectedDeviceId, "sms")
                                     }
                                     DankActionButton {
                                         visible: PhoneConnectService.deviceIds.length > 1
@@ -955,7 +963,7 @@ PluginComponent {
                     deviceId: root.shareDeviceId
                     parentPopout: popout.parentPopout
                     onClose: root.showShareDialog = false
-                    onShare: function(content, isUrl) {
+                    onShare: {
                         if (isUrl) {
                             PhoneConnectService.shareUrl(root.shareDeviceId, content, function(response) {
                                 if (response.error) {
@@ -975,7 +983,7 @@ PluginComponent {
                         }
                         root.showShareDialog = false;
                     }
-                    onShareFile: function(path) {
+                    onShareFile: {
                         const fileUrl = "file://" + path;
                         PhoneConnectService.shareUrl(root.shareDeviceId, fileUrl, function(response) {
                             if (response.error) {
@@ -986,6 +994,34 @@ PluginComponent {
                             ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + filename + "...");
                         });
                         root.showShareDialog = false;
+                    }
+                }
+
+                SmsDialog {
+                    id: popoutSmsDialog
+                    isOpen: root.showSmsDialog && root.shareDeviceId === root.selectedDeviceId
+                    width: parent.width
+                    deviceId: root.shareDeviceId
+                    onClose: root.showSmsDialog = false
+                    onSendSms: {
+                        PhoneConnectService.sendSms(root.shareDeviceId, phoneNumber, message, [], function(response) {
+                            if (response.error) {
+                                ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
+                                return;
+                            }
+                            ToastService.showInfo(I18n.tr("SMS sent successfully", "Phone Connect SMS action"));
+                        });
+                        root.showSmsDialog = false;
+                    }
+                    onLaunchApp: {
+                        PhoneConnectService.launchSmsApp(root.shareDeviceId, function(response) {
+                            if (response.error) {
+                                ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
+                                return;
+                            }
+                            ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
+                        });
+                        root.showSmsDialog = false;
                     }
                 }
             }

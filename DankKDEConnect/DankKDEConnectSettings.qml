@@ -27,26 +27,7 @@ PluginSettings {
             PluginService.setGlobalVar(root.pluginId, key, val);
         }
 
-        // Header Section
-        Column {
-            width: parent.width
-            spacing: Theme.spacingXS
 
-            StyledText {
-                text: serviceName
-                font.pixelSize: Theme.fontSizeLarge
-                font.weight: Font.Bold
-                color: Theme.surfaceText
-            }
-
-            StyledText {
-                text: "Connect your phone and desktop. Share files, clipboard, notifications, and more."
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                width: parent.width
-                wrapMode: Text.WordWrap
-            }
-        }
 
         // 1. Connection Status Card
         Rectangle {
@@ -399,7 +380,7 @@ PluginSettings {
                             value = mainSettingsCol.loadValue(settingKey, defaultValue);
                         }
                         Component.onCompleted: loadValue()
-                        onSliderValueChanged: function(newValue) {
+                        onSliderValueChanged: {
                             value = newValue;
                             mainSettingsCol.saveValue(settingKey, newValue);
                         }

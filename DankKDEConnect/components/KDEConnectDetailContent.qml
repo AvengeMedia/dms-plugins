@@ -11,6 +11,7 @@ Rectangle {
     property var parentPopout: null
     property int listHeight: 280
     property string shareDeviceId: ""
+    property string smsDeviceId: ""
     property string selectedDeviceId: ""
     property string customPhoneImage: ""
     readonly property var selectedDevice: selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null
@@ -118,13 +119,19 @@ Rectangle {
                     iconName: "phone_in_talk"
                     iconColor: Theme.primary
                     buttonSize: 32
-                    onClicked: PhoneConnectService.ringDevice(root.selectedDeviceId, function() {})
+                    onClicked: {
+                        root.shareDeviceId = "";
+                        root.smsDeviceId = "";
+                        PhoneConnectService.ringDevice(root.selectedDeviceId, function() {})
+                    }
                 }
                 DankActionButton {
                     iconName: "folder"
                     iconColor: Theme.primary
                     buttonSize: 32
                     onClicked: {
+                        root.shareDeviceId = "";
+                        root.smsDeviceId = "";
                         PopoutService.closeControlCenter();
                         PhoneConnectService.startBrowsing(root.selectedDeviceId, function() {})
                     }
@@ -134,10 +141,23 @@ Rectangle {
                     iconColor: Theme.primary
                     buttonSize: 32
                     onClicked: {
+                        root.smsDeviceId = "";
                         if (root.shareDeviceId === root.selectedDeviceId)
                             root.shareDeviceId = "";
                         else
                             root.shareDeviceId = root.selectedDeviceId;
+                    }
+                }
+                DankActionButton {
+                    iconName: "sms"
+                    iconColor: Theme.primary
+                    buttonSize: 32
+                    onClicked: {
+                        root.shareDeviceId = "";
+                        if (root.smsDeviceId === root.selectedDeviceId)
+                            root.smsDeviceId = "";
+                        else
+                            root.smsDeviceId = root.selectedDeviceId;
                     }
                 }
                 
@@ -153,21 +173,48 @@ Rectangle {
             }
 
             ShareDialog {
-                visible: root.shareDeviceId === root.selectedDeviceId
+                isOpen: root.shareDeviceId === root.selectedDeviceId
                 width: parent.width
                 deviceId: root.selectedDeviceId
                 parentPopout: root.parentPopout
                 onClose: root.shareDeviceId = ""
-                onShare: function(content, isUrl) {
+                onShare: {
                     if (isUrl)
                         PhoneConnectService.shareUrl(root.selectedDeviceId, content, function() {});
                     else
                         PhoneConnectService.shareText(root.selectedDeviceId, content, function() {});
                     root.shareDeviceId = "";
                 }
-                onShareFile: function(path) {
+                onShareFile: {
                     PhoneConnectService.shareUrl(root.selectedDeviceId, "file://" + path, function() {});
                     root.shareDeviceId = "";
+                }
+            }
+
+            SmsDialog {
+                isOpen: root.smsDeviceId === root.selectedDeviceId
+                width: parent.width
+                deviceId: root.selectedDeviceId
+                onClose: root.smsDeviceId = ""
+                onSendSms: {
+                    PhoneConnectService.sendSms(root.selectedDeviceId, phoneNumber, message, [], function(response) {
+                        if (response.error) {
+                            ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
+                            return;
+                        }
+                        ToastService.showInfo(I18n.tr("SMS sent successfully", "Phone Connect SMS action"));
+                    });
+                    root.smsDeviceId = "";
+                }
+                onLaunchApp: {
+                    PhoneConnectService.launchSmsApp(root.selectedDeviceId, function(response) {
+                        if (response.error) {
+                            ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
+                            return;
+                        }
+                        ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
+                    });
+                    root.smsDeviceId = "";
                 }
             }
 
