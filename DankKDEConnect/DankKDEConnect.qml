@@ -16,6 +16,7 @@ PluginComponent {
     property string selectedDeviceId: pluginData.selectedDeviceId || ""
     property string customPhoneImage: pluginData.customPhoneImage || ""
     property string recentImagesPath: ""
+    property int maxRecentImages: 4
     property var recentImages: []
     readonly property bool loadingImages: imagesScanner && imagesScanner.running
     property bool showShareDialog: false
@@ -80,6 +81,10 @@ PluginComponent {
         const savedImagesPath = pluginService.loadPluginData("dankKDEConnect", "recentImagesPath", "");
         if (savedImagesPath)
             recentImagesPath = savedImagesPath;
+
+        const savedMaxImages = pluginService.loadPluginData("dankKDEConnect", "maxRecentImages", 4);
+        if (savedMaxImages)
+            maxRecentImages = savedMaxImages;
     }
 
     onPluginDataChanged: {
@@ -88,6 +93,9 @@ PluginComponent {
         }
         if (pluginData && pluginData.recentImagesPath !== undefined) {
             root.recentImagesPath = pluginData.recentImagesPath;
+        }
+        if (pluginData && pluginData.maxRecentImages !== undefined) {
+            root.maxRecentImages = pluginData.maxRecentImages;
         }
     }
 
@@ -992,6 +1000,7 @@ PluginComponent {
     }
 
     onRecentImagesPathChanged: refreshImages()
+    onMaxRecentImagesChanged: refreshImages()
 
     Timer {
         id: imageRefreshTimer
@@ -1021,7 +1030,7 @@ PluginComponent {
     Process {
         id: imagesScanner
         running: false
-        command: ["bash", "-c", `d="${root.recentImagesPath}"; d=\${d#file://}; d=\${d#localhost}; d=\${d/#\\~/$HOME}; [ -d "$d" ] && find "$d" -maxdepth 1 -type f -not -name ".*" -not -name "*trashed*" \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \\) -printf '%T@|%p\\n' | sort -rn | head -n 4`]
+        command: ["bash", "-c", `d="${root.recentImagesPath}"; d=\${d#file://}; d=\${d#localhost}; d=\${d/#\\~/$HOME}; [ -d "$d" ] && find "$d" -maxdepth 1 -type f -not -name ".*" -not -name "*trashed*" \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \\) -printf '%T@|%p\\n' | sort -rn | head -n ${root.maxRecentImages}`]
         stdout: StdioCollector {
             onStreamFinished: {
                 let lines = text.trim().split('\n').filter(function(l) { return l !== ""; });
