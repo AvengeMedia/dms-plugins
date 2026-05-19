@@ -91,20 +91,20 @@ Singleton {
         if (_subscribed)
             return;
         _subscribed = true;
-        DMSService.dbusSubscribe("session", service, "", "", "", response => {
+        DMSService.dbusSubscribe("session", service, "", "", "", function(response) {
             if (response.error) {
                 console.warn("[Valent] Subscription failed:", response.error);
                 _subscribed = false;
             }
         });
-        DMSService.dbusSubscribe("session", service, "", propertiesInterface, "PropertiesChanged", response => {
+        DMSService.dbusSubscribe("session", service, "", propertiesInterface, "PropertiesChanged", function(response) {
             if (response.error)
                 console.warn("[Valent] Properties subscription failed:", response.error);
         });
     }
 
     function checkAvailability() {
-        DMSService.dbusListNames("session", response => {
+        DMSService.dbusListNames("session", function(response) {
             if (response.error) {
                 available = false;
                 return;
@@ -126,7 +126,7 @@ Singleton {
     }
 
     function activateService() {
-        DMSService.dbusCall("session", "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "StartServiceByName", [service, 0], response => {
+        DMSService.dbusCall("session", "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "StartServiceByName", [service, 0], function(response) {
             if (response.error) {
                 console.warn("[Valent] Failed to start service:", response.error);
                 return;
@@ -137,7 +137,7 @@ Singleton {
     function openValentWindow() {
         DMSService.dbusCall("session", service, managerPath, "org.gtk.Actions", "Activate", ["window", ["main"],
             {}
-        ], response => {
+        ], function(response) {
             if (response.error)
                 console.warn("[Valent] Failed to open window:", response.error);
         });
@@ -169,7 +169,7 @@ Singleton {
                 const path = data.body?.[0];
                 const id = extractDeviceIdFromPath(path);
                 if (id) {
-                    deviceIds = deviceIds.filter(d => d !== id);
+                    deviceIds = deviceIds.filter(function(d) { return d !== id; });
                     delete devices[id];
                     devices = Object.assign({}, devices);
                     deviceRemoved(id);
@@ -251,7 +251,7 @@ Singleton {
             return;
         isRefreshing = true;
 
-        DMSService.dbusCall("session", service, managerPath, objectManagerInterface, "GetManagedObjects", [], response => {
+        DMSService.dbusCall("session", service, managerPath, objectManagerInterface, "GetManagedObjects", [], function(response) {
             isRefreshing = false;
             if (response.error) {
                 console.warn("[Valent] GetManagedObjects failed:", response.error);
@@ -287,7 +287,7 @@ Singleton {
     function fetchDeviceInfo(deviceId) {
         const devicePath = getDevicePath(deviceId);
 
-        DMSService.dbusGetAllProperties("session", service, devicePath, deviceInterface, response => {
+        DMSService.dbusGetAllProperties("session", service, devicePath, deviceInterface, function(response) {
             if (response.error)
                 return;
             parseDeviceProperties(deviceId, response.result || {});
@@ -360,7 +360,7 @@ Singleton {
     function fetchBatteryState(deviceId) {
         const devicePath = getDevicePath(deviceId);
 
-        DMSService.dbusCall("session", service, devicePath, actionsInterface, "Describe", ["battery.state"], response => {
+        DMSService.dbusCall("session", service, devicePath, actionsInterface, "Describe", ["battery.state"], function(response) {
             if (response.error)
                 return;
 
@@ -392,7 +392,7 @@ Singleton {
     function fetchConnectivityState(deviceId) {
         const devicePath = getDevicePath(deviceId);
 
-        DMSService.dbusCall("session", service, devicePath, actionsInterface, "Describe", ["connectivity_report.state"], response => {
+        DMSService.dbusCall("session", service, devicePath, actionsInterface, "Describe", ["connectivity_report.state"], function(response) {
             if (response.error)
                 return;
 
@@ -444,7 +444,7 @@ Singleton {
 
         DMSService.dbusCall("session", service, devicePath, actionsInterface, "Activate", [actionName, params,
             {}
-        ], response => {
+        ], function(response) {
             if (callback)
                 callback(response);
         });
@@ -474,7 +474,7 @@ Singleton {
         const devicePath = getDevicePath(deviceId);
         DMSService.dbusCall("session", service, devicePath, actionsInterface, "Activate", ["pair", [],
             {}
-        ], response => {
+        ], function(response) {
             if (callback)
                 callback(response);
         });
@@ -484,7 +484,7 @@ Singleton {
         const devicePath = getDevicePath(deviceId);
         DMSService.dbusCall("session", service, devicePath, actionsInterface, "Activate", ["pair", [],
             {}
-        ], response => {
+        ], function(response) {
             if (callback)
                 callback(response);
             refreshDevices();
@@ -495,7 +495,7 @@ Singleton {
         const devicePath = getDevicePath(deviceId);
         DMSService.dbusCall("session", service, devicePath, actionsInterface, "Activate", ["unpair", [],
             {}
-        ], response => {
+        ], function(response) {
             if (callback)
                 callback(response);
             refreshDevices();
@@ -506,7 +506,7 @@ Singleton {
         const devicePath = getDevicePath(deviceId);
         DMSService.dbusCall("session", service, devicePath, actionsInterface, "Activate", ["unpair", [],
             {}
-        ], response => {
+        ], function(response) {
             if (callback)
                 callback(response);
             refreshDevices();
@@ -515,7 +515,7 @@ Singleton {
 
     function setLocked(deviceId, locked, callback) {
         const devicePath = getDevicePath(deviceId);
-        DMSService.dbusCall("session", service, devicePath, actionsInterface, "SetState", ["lock.state", locked], response => {
+        DMSService.dbusCall("session", service, devicePath, actionsInterface, "SetState", ["lock.state", locked], function(response) {
             if (callback)
                 callback(response);
         });
@@ -558,14 +558,14 @@ Singleton {
     }
 
     function mountAndWait(deviceId, callback) {
-        activateAction(deviceId, "sftp.browse", undefined, response => {
+        activateAction(deviceId, "sftp.browse", undefined, function(response) {
             if (callback)
                 callback(!response.error);
         });
     }
 
     function startBrowsing(deviceId, callback) {
-        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], (stdout, exitCode) => {
+        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], function(stdout, exitCode) {
             const mountPath = stdout.trim();
             if (mountPath) {
                 const storagePath = mountPath + "/storage/emulated/0";
@@ -574,7 +574,7 @@ Singleton {
                     callback({});
                 return;
             }
-            activateAction(deviceId, "sftp.browse", undefined, response => {
+            activateAction(deviceId, "sftp.browse", undefined, function(response) {
                 if (response.error) {
                     if (callback)
                         callback(response);
@@ -594,7 +594,7 @@ Singleton {
             return;
         }
 
-        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], (stdout, exitCode) => {
+        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], function(stdout, exitCode) {
             const mountPath = stdout.trim();
             if (mountPath) {
                 const storagePath = mountPath + "/storage/emulated/0";
@@ -603,7 +603,7 @@ Singleton {
                     callback({});
                 return;
             }
-            Qt.callLater(() => _waitForSftpMount(deviceId, callback, attempt + 1));
+            Qt.callLater(function() { _waitForSftpMount(deviceId, callback, attempt + 1); });
         }, attempt === 0 ? 0 : 300);
     }
 
@@ -612,14 +612,14 @@ Singleton {
     }
 
     function getSftpMountPoint(deviceId, callback) {
-        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], (stdout, exitCode) => {
+        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], function(stdout, exitCode) {
             if (callback)
                 callback(stdout.trim() || "");
         }, 0);
     }
 
     function isSftpMounted(deviceId, callback) {
-        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], (stdout, exitCode) => {
+        Proc.runCommand(null, ["sh", "-c", "ls -d /run/user/$(id -u)/gvfs/sftp:* 2>/dev/null | head -1"], function(stdout, exitCode) {
             if (callback)
                 callback(!!stdout.trim());
         }, 0);
@@ -640,7 +640,7 @@ Singleton {
     }
 
     function launchSmsApp(deviceId, callback) {
-        Proc.runCommand(null, ["gapplication", "action", "ca.andyholmes.Valent", "messages-window"], (stdout, exitCode) => {
+        Proc.runCommand(null, ["gapplication", "action", "ca.andyholmes.Valent", "messages-window"], function(stdout, exitCode) {
             if (callback)
                 callback(exitCode === 0 ? {} : {
                     error: "Failed to launch"

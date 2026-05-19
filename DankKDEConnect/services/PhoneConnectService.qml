@@ -124,7 +124,7 @@ Singleton {
         if (!DMSService.isConnected)
             return;
 
-        DMSService.dbusListNames("session", response => {
+        DMSService.dbusListNames("session", function(response) {
             if (response.error)
                 return;
 

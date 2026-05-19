@@ -242,7 +242,7 @@ PluginSettings {
         showHiddenFiles: false
         fileExtensions: ["*.png", "*.jpg", "*.jpeg", "*.webp"]
         
-        onFileSelected: path => {
+        onFileSelected: function(path) {
             customImageField.text = "file://" + path
             close()
         }

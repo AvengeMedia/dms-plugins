@@ -52,7 +52,7 @@ PluginComponent {
             listHeight: 300
             selectedDeviceId: root.selectedDeviceId
             customPhoneImage: root.customPhoneImage
-            onDeviceSelected: deviceId => root.selectDevice(deviceId)
+            onDeviceSelected: function(deviceId) { root.selectDevice(deviceId); }
         }
     }
 
@@ -107,7 +107,7 @@ PluginComponent {
         const deviceName = device?.name || I18n.tr("device", "Generic device name fallback");
         switch (action) {
         case "ring":
-            PhoneConnectService.ringDevice(deviceId, response => {
+            PhoneConnectService.ringDevice(deviceId, function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Failed to ring device", "Phone Connect error"), response.error);
                     return;
@@ -116,7 +116,7 @@ PluginComponent {
             });
             break;
         case "ping":
-            PhoneConnectService.sendPing(deviceId, "", response => {
+            PhoneConnectService.sendPing(deviceId, "", function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Failed to send ping", "Phone Connect error"), response.error);
                     return;
@@ -125,7 +125,7 @@ PluginComponent {
             });
             break;
         case "clipboard":
-            PhoneConnectService.sendClipboard(deviceId, response => {
+            PhoneConnectService.sendClipboard(deviceId, function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Failed to send clipboard", "Phone Connect error"), response.error);
                     return;
@@ -144,7 +144,7 @@ PluginComponent {
             break;
         case "sms":
             closePopout();
-            PhoneConnectService.launchSmsApp(deviceId, response => {
+            PhoneConnectService.launchSmsApp(deviceId, function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
                     return;
@@ -154,7 +154,7 @@ PluginComponent {
             break;
         case "browse":
             closePopout();
-            PhoneConnectService.startBrowsing(deviceId, response => {
+            PhoneConnectService.startBrowsing(deviceId, function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Failed to browse device", "Phone Connect error"), response.error);
                     return;
@@ -163,7 +163,7 @@ PluginComponent {
             });
             break;
         case "pair":
-            PhoneConnectService.requestPairing(deviceId, response => {
+            PhoneConnectService.requestPairing(deviceId, function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Pairing failed", "Phone Connect error"), response.error);
                     return;
@@ -172,7 +172,7 @@ PluginComponent {
             });
             break;
         case "acceptPair":
-            PhoneConnectService.acceptPairing(deviceId, response => {
+            PhoneConnectService.acceptPairing(deviceId, function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Failed to accept pairing", "Phone Connect error"), response.error);
                     return;
@@ -181,13 +181,13 @@ PluginComponent {
             });
             break;
         case "rejectPair":
-            PhoneConnectService.cancelPairing(deviceId, response => {
+            PhoneConnectService.cancelPairing(deviceId, function(response) {
                 if (response.error)
                     ToastService.showError(I18n.tr("Failed to reject pairing", "Phone Connect error"), response.error);
             });
             break;
         case "unpair":
-            PhoneConnectService.unpair(deviceId, response => {
+            PhoneConnectService.unpair(deviceId, function(response) {
                 if (response.error) {
                     ToastService.showError(I18n.tr("Unpair failed", "Phone Connect error"), response.error);
                     return;
@@ -577,7 +577,7 @@ PluginComponent {
                                     root.selectDevice(modelData)
                                     popout.switcherVisible = false
                                 }
-                                onAction: action => root.handleAction(modelData, action)
+                                onAction: function(action) { root.handleAction(modelData, action); }
                             }
                         }
                     }
@@ -590,9 +590,9 @@ PluginComponent {
                     deviceId: root.shareDeviceId
                     parentPopout: popout.parentPopout
                     onClose: root.showShareDialog = false
-                    onShare: (content, isUrl) => {
+                    onShare: function(content, isUrl) {
                         if (isUrl) {
-                            PhoneConnectService.shareUrl(root.shareDeviceId, content, response => {
+                            PhoneConnectService.shareUrl(root.shareDeviceId, content, function(response) {
                                 if (response.error) {
                                     ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
                                     return;
@@ -600,7 +600,7 @@ PluginComponent {
                                 ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
                             });
                         } else {
-                            PhoneConnectService.shareText(root.shareDeviceId, content, response => {
+                            PhoneConnectService.shareText(root.shareDeviceId, content, function(response) {
                                 if (response.error) {
                                     ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
                                     return;
@@ -610,9 +610,9 @@ PluginComponent {
                         }
                         root.showShareDialog = false;
                     }
-                    onShareFile: path => {
+                    onShareFile: function(path) {
                         const fileUrl = "file://" + path;
-                        PhoneConnectService.shareUrl(root.shareDeviceId, fileUrl, response => {
+                        PhoneConnectService.shareUrl(root.shareDeviceId, fileUrl, function(response) {
                             if (response.error) {
                                 ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
                                 return;

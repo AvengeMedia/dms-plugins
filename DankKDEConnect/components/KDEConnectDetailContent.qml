@@ -69,7 +69,7 @@ Rectangle {
                     height: 160
                     backgroundImage: root.customPhoneImage
                     isReachable: root.selectedDevice?.isReachable ?? false
-                    onClicked: PhoneConnectService.sendPing(root.selectedDeviceId, "", () => {})
+                    onClicked: PhoneConnectService.sendPing(root.selectedDeviceId, "", function() {})
                 }
 
                 GridLayout {
@@ -118,7 +118,7 @@ Rectangle {
                     iconName: "phone_in_talk"
                     iconColor: Theme.primary
                     buttonSize: 32
-                    onClicked: PhoneConnectService.ringDevice(root.selectedDeviceId, () => {})
+                    onClicked: PhoneConnectService.ringDevice(root.selectedDeviceId, function() {})
                 }
                 DankActionButton {
                     iconName: "folder"
@@ -126,7 +126,7 @@ Rectangle {
                     buttonSize: 32
                     onClicked: {
                         PopoutService.closeControlCenter();
-                        PhoneConnectService.startBrowsing(root.selectedDeviceId, () => {})
+                        PhoneConnectService.startBrowsing(root.selectedDeviceId, function() {})
                     }
                 }
                 DankActionButton {
@@ -158,15 +158,15 @@ Rectangle {
                 deviceId: root.selectedDeviceId
                 parentPopout: root.parentPopout
                 onClose: root.shareDeviceId = ""
-                onShare: (content, isUrl) => {
+                onShare: function(content, isUrl) {
                     if (isUrl)
-                        PhoneConnectService.shareUrl(root.selectedDeviceId, content, () => {});
+                        PhoneConnectService.shareUrl(root.selectedDeviceId, content, function() {});
                     else
-                        PhoneConnectService.shareText(root.selectedDeviceId, content, () => {});
+                        PhoneConnectService.shareText(root.selectedDeviceId, content, function() {});
                     root.shareDeviceId = "";
                 }
-                onShareFile: path => {
-                    PhoneConnectService.shareUrl(root.selectedDeviceId, "file://" + path, () => {});
+                onShareFile: function(path) {
+                    PhoneConnectService.shareUrl(root.selectedDeviceId, "file://" + path, function() {});
                     root.shareDeviceId = "";
                 }
             }
