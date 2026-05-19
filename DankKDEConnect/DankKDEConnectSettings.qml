@@ -234,6 +234,36 @@ PluginSettings {
         }
     }
 
+    RowLayout {
+        width: parent.width
+        spacing: Theme.spacingM
+
+        StyledText {
+            text: "Recent Images Path:"
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.surfaceVariantText
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        DankTextField {
+            id: recentImagesPathField
+            Layout.fillWidth: true
+            placeholderText: "e.g. ~/Pictures or ~/Screenshots"
+            text: pluginService.loadPluginData("dankKDEConnect", "recentImagesPath", "")
+            onTextChanged: {
+                pluginService.savePluginData("dankKDEConnect", "recentImagesPath", text)
+                PluginService.setGlobalVar("dankKDEConnect", "recentImagesPath", text)
+            }
+        }
+
+        DankButton {
+            iconName: "folder"
+            text: "Browse"
+            onClicked: recentImagesBrowser.open()
+            Layout.alignment: Qt.AlignVCenter
+        }
+    }
+
     FileBrowserSurfaceModal {
         id: imageBrowser
         browserTitle: "Select Custom Phone Image"
@@ -244,6 +274,19 @@ PluginSettings {
         
         onFileSelected: function(path) {
             customImageField.text = "file://" + path
+            close()
+        }
+    }
+
+    FileBrowserSurfaceModal {
+        id: recentImagesBrowser
+        browserTitle: "Select Recent Images Folder"
+        browserIcon: "folder"
+        browserType: "folder"
+        showHiddenFiles: false
+        
+        onFileSelected: function(path) {
+            recentImagesPathField.text = path
             close()
         }
     }

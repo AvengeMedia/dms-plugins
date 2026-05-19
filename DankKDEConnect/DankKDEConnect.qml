@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import qs.Common
 import qs.Services
 import qs.Widgets
@@ -14,6 +15,9 @@ PluginComponent {
 
     property string selectedDeviceId: pluginData.selectedDeviceId || ""
     property string customPhoneImage: pluginData.customPhoneImage || ""
+    property string recentImagesPath: ""
+    property var recentImages: []
+    readonly property bool loadingImages: imagesScanner && imagesScanner.running
     property bool showShareDialog: false
     property string shareDeviceId: ""
 
@@ -28,6 +32,8 @@ PluginComponent {
     ccWidgetIcon: {
         if (!PhoneConnectService.available)
             return "phonelink_off";
+        if (hasDevice && selectedDevice.isReachable)
+            return "phonelink";
         if (hasDevice && selectedDevice.isReachable)
             return "phonelink";
         return "phonelink_off";
@@ -48,7 +54,7 @@ PluginComponent {
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
 
-    ccDetailHeight: 380
+    ccDetailHeight: 380 + (hasDevice && recentImages.length > 0 ? (recentImagesContainer.height + Theme.spacingM) : 0)
     onCcWidgetExpanded: PhoneConnectService.detectBackend()
 
     ccDetailContent: Component {
@@ -70,11 +76,18 @@ PluginComponent {
         const savedImage = pluginService.loadPluginData("dankKDEConnect", "customPhoneImage", "");
         if (savedImage)
             customPhoneImage = savedImage;
+
+        const savedImagesPath = pluginService.loadPluginData("dankKDEConnect", "recentImagesPath", "");
+        if (savedImagesPath)
+            recentImagesPath = savedImagesPath;
     }
 
     onPluginDataChanged: {
         if (pluginData && pluginData.customPhoneImage !== undefined) {
             root.customPhoneImage = pluginData.customPhoneImage;
+        }
+        if (pluginData && pluginData.recentImagesPath !== undefined) {
+            root.recentImagesPath = pluginData.recentImagesPath;
         }
     }
 
@@ -603,7 +616,332 @@ PluginComponent {
                     }
                 }
 
+                // Recent Images Section
+                StyledRect {
+                    id: recentImagesContainer
+                    width: parent.width
+                    height: recentImagesCol.implicitHeight + Theme.spacingM * 2
+                    visible: root.hasDevice && root.recentImages.length > 0
+                    radius: Theme.cornerRadius
+                    color: root.cardColor
+                    border.width: 1
+                    border.color: root.cardBorderColor
+
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        transparentBorder: true
+                        horizontalOffset: 0
+                        verticalOffset: 4
+                        radius: 16.0
+                        samples: 32
+                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                    }
+
+                    Column {
+                        id: recentImagesCol
+                        width: parent.width - Theme.spacingM * 2
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        anchors.topMargin: Theme.spacingM
+                        spacing: Theme.spacingS
+
+                        RowLayout {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 4
+                            anchors.rightMargin: 4
+                            spacing: Theme.spacingXS
+                            width: parent.width
+
+                            DankIcon {
+                                name: "image"
+                                size: 16
+                                color: Theme.surfaceText
+                            }
+
+                            StyledText {
+                                text: I18n.tr("Recent Images", "Recent Images title")
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.Bold
+                                color: Theme.surfaceText
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Flow {
+                            id: imagesGrid
+                            width: parent.width
+                            spacing: 4
+                            property int columns: {
+                                let count = root.recentImages.length;
+                                if (count <= 0) return 0;
+                                if (count <= 2) return count;
+                                return Math.ceil(count / 2);
+                            }
+
+                            property int itemWidth: (width - (columns > 1 ? (columns - 1) * spacing : 0)) / Math.max(1, columns)
+                            property int itemHeight: root.recentImages.length <= 2 ? Math.min(160, itemWidth * 0.625) : 72
+
+                            Repeater {
+                                model: root.recentImages
+
+                                Item {
+                                    id: imageItem
+                                    property bool isOddLayout: root.recentImages.length % 2 === 1 && root.recentImages.length > 1
+                                    property bool isSpan2: isOddLayout && index === 0
+                                    
+                                    width: isSpan2 ? (imagesGrid.itemWidth * 2 + imagesGrid.spacing) : imagesGrid.itemWidth
+                                    height: imagesGrid.itemHeight
+                                    property bool isDragging: false
+                                    Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+                                    Behavior on height { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+                                    property bool hovered: imageMouseArea.containsMouse || sendBtnMa.containsMouse
+
+                                    // Dynamic Corner Logic
+                                    property real innerRadius: 6
+                                    property real outerRadius: 12
+                                    
+                                    property int virtualIndex: isOddLayout ? (index === 0 ? 0 : index + 1) : index
+                                    
+                                    property bool isFirstRow: virtualIndex < Math.max(1, imagesGrid.columns)
+                                    property bool isLastRow: {
+                                        let totalVirtual = isOddLayout ? root.recentImages.length + 1 : root.recentImages.length;
+                                        let cols = Math.max(1, imagesGrid.columns);
+                                        return virtualIndex >= (Math.floor((totalVirtual - 1) / cols) * cols);
+                                    }
+                                    property bool isLeftCol: virtualIndex % Math.max(1, imagesGrid.columns) === 0
+                                    property bool isRightCol: {
+                                        let cols = Math.max(1, imagesGrid.columns);
+                                        let endVirtual = isSpan2 ? 1 : virtualIndex;
+                                        let totalVirtual = isOddLayout ? root.recentImages.length + 1 : root.recentImages.length;
+                                        return (endVirtual % cols) === (cols - 1) || virtualIndex === (totalVirtual - 1);
+                                    }
+
+                                    property real tlr: (isFirstRow && isLeftCol) ? outerRadius : innerRadius
+                                    property real trr: (isFirstRow && isRightCol) ? outerRadius : innerRadius
+                                    property real blr: (isLastRow && isLeftCol) ? outerRadius : innerRadius
+                                    property real brr: (isLastRow && isRightCol) ? outerRadius : innerRadius
+
+                                    opacity: isDragging ? 0.45 : 1.0
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                                    MouseArea {
+                                        id: imageMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+
+                                        property real pressX: 0
+                                        property real pressY: 0
+                                        property bool dragLaunched: false
+
+                                        onPressed: function(m) {
+                                            pressX = m.x;
+                                            pressY = m.y;
+                                            dragLaunched = false;
+                                            imageRipple.trigger(m.x, m.y);
+                                        }
+
+                                        onPositionChanged: function(m) {
+                                            if (!dragLaunched && pressed) {
+                                                let dx = m.x - pressX;
+                                                let dy = m.y - pressY;
+                                                if (Math.sqrt(dx*dx + dy*dy) > 12) {
+                                                    dragLaunched = true;
+                                                    imageItem.isDragging = true;
+                                                    root.startSystemDrag(modelData.path);
+                                                    root.closePopout();
+                                                }
+                                            }
+                                        }
+
+                                        onReleased: {
+                                            imageItem.isDragging = false;
+                                            dragLaunched = false;
+                                        }
+
+                                        onClicked: {
+                                            if (!dragLaunched) {
+                                                Quickshell.execDetached(["xdg-open", modelData.path]);
+                                                root.closePopout();
+                                            }
+                                        }
+                                    }
+
+                                    // Mask for the Image
+                                    Canvas {
+                                        id: imageMask
+                                        anchors.fill: parent
+                                        visible: false
+                                        antialiasing: true
+                                        onPaint: {
+                                            var ctx = getContext("2d");
+                                            ctx.reset();
+                                            ctx.beginPath();
+                                            ctx.moveTo(imageItem.tlr, 0);
+                                            ctx.lineTo(width - imageItem.trr, 0);
+                                            ctx.arcTo(width, 0, width, imageItem.trr, imageItem.trr);
+                                            ctx.lineTo(width, height - imageItem.brr);
+                                            ctx.arcTo(width, height, width - imageItem.brr, height, imageItem.brr);
+                                            ctx.lineTo(imageItem.blr, height);
+                                            ctx.arcTo(0, height, 0, height - imageItem.blr, imageItem.blr);
+                                            ctx.lineTo(0, imageItem.tlr);
+                                            ctx.arcTo(0, 0, imageItem.tlr, 0, imageItem.tlr);
+                                            ctx.closePath();
+                                            ctx.fillStyle = "black";
+                                            ctx.fill();
+                                        }
+                                        function refresh() { requestPaint(); }
+                                        Connections {
+                                            target: imageItem
+                                            function onTlrChanged() { imageMask.refresh(); }
+                                            function onTrrChanged() { imageMask.refresh(); }
+                                            function onBlrChanged() { imageMask.refresh(); }
+                                            function onBrrChanged() { imageMask.refresh(); }
+                                        }
+                                        onWidthChanged: refresh()
+                                        onHeightChanged: refresh()
+                                    }
+
+                                    Item {
+                                        id: imageThumbCont
+                                        anchors.fill: parent
+                                        layer.enabled: true
+                                        layer.effect: OpacityMask { maskSource: imageMask }
+                                        
+                                        Rectangle { anchors.fill: parent; color: Theme.surfaceContainer }
+                                        Image {
+                                            anchors.fill: parent
+                                            source: "file://" + modelData.path
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            mipmap: true
+                                            cache: true
+                                        }
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: Theme.primary
+                                            opacity: imageMouseArea.containsMouse ? 0.2 : 0
+                                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                                        }
+                                    }
+
+                                    // Border and Shadow Canvas
+                                    Canvas {
+                                        id: imageBorder
+                                        anchors.fill: parent
+                                        antialiasing: true
+                                        property color borderColor: imageMouseArea.containsMouse ? Theme.primary : Qt.rgba(Theme.secondary.r, Theme.secondary.g, Theme.secondary.b, 0.2)
+                                        onPaint: {
+                                            var ctx = getContext("2d");
+                                            ctx.reset();
+                                            ctx.beginPath();
+                                            ctx.moveTo(imageItem.tlr, 0);
+                                            ctx.lineTo(width - imageItem.trr, 0);
+                                            ctx.arcTo(width, 0, width, imageItem.trr, imageItem.trr);
+                                            ctx.lineTo(width, height - imageItem.brr);
+                                            ctx.arcTo(width, height, width - imageItem.brr, height, imageItem.brr);
+                                            ctx.lineTo(imageItem.blr, height);
+                                            ctx.arcTo(0, height, 0, height - imageItem.blr, imageItem.blr);
+                                            ctx.lineTo(0, imageItem.tlr);
+                                            ctx.arcTo(0, 0, imageItem.tlr, 0, imageItem.tlr);
+                                            ctx.closePath();
+                                            ctx.strokeStyle = borderColor;
+                                            ctx.lineWidth = 1.5;
+                                            ctx.stroke();
+                                        }
+                                        onBorderColorChanged: requestPaint()
+                                        function refresh() { requestPaint(); }
+                                        Connections {
+                                            target: imageItem
+                                            function onTlrChanged() { imageBorder.refresh(); }
+                                            function onTrrChanged() { imageBorder.refresh(); }
+                                            function onBlrChanged() { imageBorder.refresh(); }
+                                            function onBrrChanged() { imageBorder.refresh(); }
+                                        }
+                                        onWidthChanged: refresh()
+                                        onHeightChanged: refresh()
+                                        
+                                        layer.enabled: true
+                                        layer.effect: DropShadow {
+                                            transparentBorder: true
+                                            radius: 8
+                                            samples: 16
+                                            color: Theme.withAlpha(Theme.shadowColor || "#000000", imageMouseArea.containsMouse ? 0.3 : 0.15)
+                                            Behavior on color { ColorAnimation { duration: 250 } }
+                                        }
+                                    }
+
+                                    DankRipple { id: imageRipple; anchors.fill: parent; cornerRadius: imageItem.tlr; rippleColor: Theme.primary }
+
+                                    // Share/Send Button in the Corner (similar to the Pin button in QuickTote)
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        anchors.top: parent.top
+                                        anchors.right: parent.right
+                                        anchors.topMargin: -6
+                                        anchors.rightMargin: -6
+                                        scale: (imageItem.hovered) ? 1.0 : 0.0
+                                        Behavior on scale { 
+                                            SequentialAnimation {
+                                                PauseAnimation { duration: 150 }
+                                                NumberAnimation { duration: 500; easing.type: Easing.OutBack } 
+                                            }
+                                        }
+                                        
+                                        Rectangle {
+                                            id: sendBtnBg
+                                            anchors.centerIn: parent
+                                            width: 24
+                                            height: 24
+                                            radius: 6
+                                            color: Theme.withAlpha(Theme.surfaceContainerHighest, 0.85)
+                                            border.width: 1
+                                            border.color: Theme.withAlpha(Theme.outline, 0.2)
+                                            
+                                            layer.enabled: true
+                                            layer.effect: DropShadow {
+                                                transparentBorder: true
+                                                radius: 6
+                                                samples: 12
+                                                color: Theme.withAlpha(Theme.shadowColor || "#000000", sendBtnMa.containsMouse ? 0.35 : 0)
+                                                Behavior on color { ColorAnimation { duration: 200 } }
+                                            }
+                                        }
+
+                                        DankIcon {
+                                            name: "send"
+                                            size: 14
+                                            anchors.centerIn: parent
+                                            color: sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
+                                            Behavior on color { ColorAnimation { duration: 200 } }
+                                        }
+
+                                        MouseArea {
+                                            id: sendBtnMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: {
+                                                Quickshell.execDetached([
+                                                    "sh",
+                                                    "-c",
+                                                    "gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Share.Share \"\" \"Share Image\" {} \"file://$1\" >/dev/null 2>&1 || dms open \"$1\"",
+                                                    "--",
+                                                    modelData.path
+                                                ]);
+                                                root.closePopout();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 ShareDialog {
+                    id: popoutShareDialog
                     isOpen: root.showShareDialog
                     width: parent.width
                     deviceId: root.shareDeviceId
@@ -644,5 +982,70 @@ PluginComponent {
                 }
             }
         }
+    }
+
+    function refreshImages() {
+        if (imagesScanner) {
+            imagesScanner.running = false;
+            imagesScanner.running = true;
+        }
+    }
+
+    onRecentImagesPathChanged: refreshImages()
+
+    Timer {
+        id: imageRefreshTimer
+        interval: 10000; running: true; repeat: true; triggeredOnStart: true
+        onTriggered: root.refreshImages()
+    }
+
+    function getFileInfo(line) {
+        let path = line.trim();
+        if (!path || path.length < 3) return null;
+        if (path.indexOf('|') !== -1) {
+            path = path.split('|')[1];
+        }
+        try {
+            path = path.replace(/^[a-z]+:\/\/\/?/i, "/");
+            path = decodeURIComponent(path);
+        } catch(e) {}
+        path = path.split('"')[0].split("'")[0].split("<")[0];
+        if (!path || path.length < 2) return null;
+        return {
+            path: path,
+            name: path.split('/').pop(),
+            time: Date.now()
+        };
+    }
+
+    Process {
+        id: imagesScanner
+        running: false
+        command: ["bash", "-c", `d="${root.recentImagesPath}"; d=\${d#file://}; d=\${d#localhost}; d=\${d/#\\~/$HOME}; [ -d "$d" ] && find "$d" -maxdepth 1 -type f -not -name ".*" -not -name "*trashed*" \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \\) -printf '%T@|%p\\n' | sort -rn | head -n 4`]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let lines = text.trim().split('\n').filter(function(l) { return l !== ""; });
+                root.recentImages = lines.map(root.getFileInfo).filter(function(f) { return f !== null; });
+            }
+        }
+    }
+
+    // --- System Drag (works from layer shell via ripdrag/xdragon) ---
+    function startSystemDrag(path) {
+        fileDragger.running = false; // Reset the process object
+        fileDragger.command = [
+            "bash", "-c",
+            "pkill -x ripdrag; pkill -x xdragon; pkill -x dragon; " +
+            "f=" + JSON.stringify(path) + "; " +
+            "if command -v ripdrag >/dev/null 2>&1; then ripdrag --and-exit --icons-only --icon-size 64 --content-width 90 --content-height 64 \"$f\"; " +
+            "elif command -v xdragon >/dev/null 2>&1; then xdragon --and-exit --small \"$f\"; " +
+            "elif command -v dragon >/dev/null 2>&1; then dragon --and-exit --small \"$f\"; fi"
+        ];
+        fileDragger.running = true;
+    }
+
+    Process {
+        id: fileDragger
+        running: false
     }
 }

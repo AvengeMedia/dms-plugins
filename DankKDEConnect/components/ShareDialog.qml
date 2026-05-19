@@ -10,6 +10,7 @@ StyledRect {
 
     property string deviceId: ""
     property var parentPopout: null
+    property alias shareText: shareInput.text
 
     signal close
     signal share(string content, bool isUrl)
