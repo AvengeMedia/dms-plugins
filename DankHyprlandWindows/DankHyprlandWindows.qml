@@ -72,7 +72,7 @@ QtObject {
         if (Hyprland.usingLua === false)
             Hyprland.dispatch(`closewindow ${selector}`);
         else
-            Hyprland.dispatch(`hl.dsp.window.close("${selector}")`);
+            Hyprland.dispatch(`hl.dsp.window.close({window = "${selector}"})`);
     }
 
     function getItems(query) {
