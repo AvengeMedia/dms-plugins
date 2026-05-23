@@ -496,9 +496,8 @@ Singleton {
         case "5G":
             return "5g";
         case "LTE":
-            return "lte_mobiledata";
         case "LTE+":
-            return "lte_plus_mobiledata";
+            return "4g_mobiledata";
         case "3G":
             return "3g_mobiledata";
         case "2G":

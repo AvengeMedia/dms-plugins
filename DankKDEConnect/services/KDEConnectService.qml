@@ -626,14 +626,14 @@ Singleton {
             return "";
         const strength = device.networkStrength;
         if (strength >= 4)
-            return "signal_cellular_4_bar";
+            return "signal_cellular_alt";
         if (strength >= 3)
-            return "signal_cellular_3_bar";
+            return "signal_cellular_alt_2_bar"; // 3 bars usually translates to 2 out of 3, or just signal_cellular_alt_2_bar
         if (strength >= 2)
-            return "signal_cellular_2_bar";
+            return "signal_cellular_alt_2_bar";
         if (strength >= 1)
-            return "signal_cellular_1_bar";
-        return "signal_cellular_0_bar";
+            return "signal_cellular_alt_1_bar";
+        return "signal_cellular_null";
     }
 
     function getBatteryIcon(device) {

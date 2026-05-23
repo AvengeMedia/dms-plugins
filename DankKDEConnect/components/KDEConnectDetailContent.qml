@@ -239,11 +239,13 @@ Item {
                                     font.weight: Font.Bold
                                     color: Theme.surfaceText
                                     Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignHCenter
                                     elide: Text.ElideRight
                                 }
 
                                 RowLayout {
                                     spacing: Theme.spacingS
+                                    Layout.alignment: Qt.AlignHCenter
                                     DankActionButton {
                                         iconName: "phone_in_talk"
                                         iconColor: Theme.primary
@@ -307,7 +309,7 @@ Item {
                             }
 
                             InfoRow {
-                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "signal_cellular_0_bar"
+                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "signal_cellular_null"
                                 label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
                                 value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.selectedDevice), "Network signal strength status")
                             }
@@ -319,7 +321,7 @@ Item {
                             }
 
                             InfoRow {
-                                icon: "notifications"
+                                icon: "notifications_none"
                                 label: I18n.tr("Notifications", "KDE Connect notifications label")
                                 value: root.selectedDevice?.notificationCount ?? 0
                             }
