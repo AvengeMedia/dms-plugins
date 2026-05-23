@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Common
@@ -13,15 +14,38 @@ import Qt5Compat.GraphicalEffects
 PluginComponent {
     id: root
 
-    property string selectedDeviceId: pluginData.selectedDeviceId || ""
-    property string customPhoneImage: pluginData.customPhoneImage || ""
-    property string recentImagesPath: ""
-    property int maxRecentImages: 4
+    property string selectedDeviceId: SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.selectedDeviceId || ""
+    property string customPhoneImage: {
+        const savedVal = customPhoneImageVar.value;
+        if (savedVal !== undefined) return savedVal;
+        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        return data?.customPhoneImage || "";
+    }
+    property string recentImagesPath: {
+        const savedVal = recentImagesPathVar.value;
+        if (savedVal !== undefined) return savedVal;
+        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        return data?.recentImagesPath || "";
+    }
+    property int maxRecentImages: {
+        const savedVal = maxRecentImagesVar.value;
+        if (savedVal !== undefined) return savedVal;
+        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        return data?.maxRecentImages || 4;
+    }
     property var recentImages: []
     readonly property bool loadingImages: imagesScanner && imagesScanner.running
     property bool showShareDialog: false
     property bool showSmsDialog: false
     property string shareDeviceId: ""
+
+    onCustomPhoneImageChanged: {
+        console.log("[DMS DEBUG DankKDEConnect] customPhoneImage changed to:", customPhoneImage)
+    }
+
+    onSelectedDeviceIdChanged: {
+        console.log("[DMS DEBUG DankKDEConnect] selectedDeviceId changed to:", selectedDeviceId)
+    }
 
     readonly property var selectedDevice: selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null
     readonly property bool hasDevice: selectedDevice !== null
@@ -55,15 +79,25 @@ PluginComponent {
         return selectedDevice.name + " (" + I18n.tr("Offline", "Phone Connect offline status") + ")";
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
-    ccDetailHeight: hasDevice ? 320 : 160
+    ccDetailHeight: 380
     onCcWidgetExpanded: PhoneConnectService.detectBackend()
 
     ccDetailContent: Component {
-        KDEConnectDetailContent {
-            listHeight: 300
-            selectedDeviceId: root.selectedDeviceId
-            customPhoneImage: root.customPhoneImage
-            onDeviceSelected: function(deviceId) { root.selectDevice(deviceId); }
+        ScrollView {
+            anchors.fill: parent
+            clip: false
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+
+            KDEConnectDetailContent {
+                width: parent.width
+                selectedDeviceId: root.selectedDeviceId
+                customPhoneImage: root.customPhoneImage
+                recentImages: root.recentImages
+                recentImagesPath: root.recentImagesPath
+                pluginRoot: root
+                onDeviceSelected: function(deviceId) { root.selectDevice(deviceId); }
+            }
         }
     }
 
@@ -73,30 +107,21 @@ PluginComponent {
         const savedId = pluginService.loadPluginData("dankKDEConnect", "selectedDeviceId", "");
         if (savedId)
             selectedDeviceId = savedId;
-            
-        const savedImage = pluginService.loadPluginData("dankKDEConnect", "customPhoneImage", "");
-        if (savedImage)
-            customPhoneImage = savedImage;
-
-        const savedImagesPath = pluginService.loadPluginData("dankKDEConnect", "recentImagesPath", "");
-        if (savedImagesPath)
-            recentImagesPath = savedImagesPath;
-
-        const savedMaxImages = pluginService.loadPluginData("dankKDEConnect", "maxRecentImages", 4);
-        if (savedMaxImages)
-            maxRecentImages = savedMaxImages;
     }
 
-    onPluginDataChanged: {
-        if (pluginData && pluginData.customPhoneImage !== undefined) {
-            root.customPhoneImage = pluginData.customPhoneImage;
-        }
-        if (pluginData && pluginData.recentImagesPath !== undefined) {
-            root.recentImagesPath = pluginData.recentImagesPath;
-        }
-        if (pluginData && pluginData.maxRecentImages !== undefined) {
-            root.maxRecentImages = pluginData.maxRecentImages;
-        }
+    PluginGlobalVar {
+        id: customPhoneImageVar
+        varName: "customPhoneImage"
+    }
+
+    PluginGlobalVar {
+        id: recentImagesPathVar
+        varName: "recentImagesPath"
+    }
+
+    PluginGlobalVar {
+        id: maxRecentImagesVar
+        varName: "maxRecentImages"
     }
 
     Connections {

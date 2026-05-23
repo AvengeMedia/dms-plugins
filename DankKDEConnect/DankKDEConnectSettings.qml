@@ -204,7 +204,7 @@ PluginSettings {
                             width: parent.width - 22 - Theme.spacingM
                             spacing: Theme.spacingXXS
                             StyledText { text: "Custom Phone Image"; font.weight: Font.Medium; color: Theme.surfaceText }
-                            StyledText { text: "Custom image to display for the phone model in CC."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
+                            StyledText { text: "Custom image to display for the phone model in Control Center & Widget Pop-Up."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
                         }
                     }
 
