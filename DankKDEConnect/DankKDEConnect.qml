@@ -80,7 +80,6 @@ PluginComponent {
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
     ccDetailHeight: 380
-    onCcWidgetExpanded: PhoneConnectService.detectBackend()
 
     ccDetailContent: Component {
         ScrollView {
@@ -350,8 +349,6 @@ PluginComponent {
             id: popout
             property bool switcherVisible: false
 
-            Component.onCompleted: PhoneConnectService.detectBackend()
-
             showCloseButton: false
             headerText: ""
 
@@ -598,8 +595,14 @@ PluginComponent {
                             }
 
                             InfoRow {
-                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "network_check"
-                                label: I18n.tr("Network", "KDE Connect network label")
+                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "signal_cellular_0_bar"
+                                label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
+                                value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.selectedDevice), "Network signal strength status")
+                            }
+
+                            InfoRow {
+                                icon: PhoneConnectService.getNetworkTypeIcon(root.selectedDevice)
+                                label: I18n.tr("Network Type", "KDE Connect network type label")
                                 value: PhoneConnectService.getNetworkTypeLabel(root.selectedDevice)
                             }
 

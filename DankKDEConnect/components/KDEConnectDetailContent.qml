@@ -307,8 +307,14 @@ Item {
                             }
 
                             InfoRow {
-                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "network_check"
-                                label: I18n.tr("Network", "KDE Connect network label")
+                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "signal_cellular_0_bar"
+                                label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
+                                value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.selectedDevice), "Network signal strength status")
+                            }
+
+                            InfoRow {
+                                icon: PhoneConnectService.getNetworkTypeIcon(root.selectedDevice)
+                                label: I18n.tr("Network Type", "KDE Connect network type label")
                                 value: PhoneConnectService.getNetworkTypeLabel(root.selectedDevice)
                             }
 
@@ -568,15 +574,6 @@ Item {
                                         }
                                         onWidthChanged: refresh()
                                         onHeightChanged: refresh()
-                                        
-                                        layer.enabled: true
-                                        layer.effect: DropShadow {
-                                            transparentBorder: true
-                                            radius: 8
-                                            samples: 16
-                                            color: Theme.withAlpha(Theme.shadowColor || "#000000", imageMouseArea.containsMouse ? 0.3 : 0.15)
-                                            Behavior on color { ColorAnimation { duration: 250 } }
-                                        }
                                     }
 
                                     DankRipple { id: imageRipple; anchors.fill: parent; cornerRadius: imageItem.tlr; rippleColor: Theme.primary }

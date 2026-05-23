@@ -32,14 +32,6 @@ Rectangle {
     Behavior on shadowVerticalOffset { NumberAnimation { duration: 100 } }
   }
 
-  DropShadow {
-    anchors.fill: phoneRect
-    radius: 8
-    samples: 16
-    color: "#30000000"
-    source: phoneRect
-  }
-
   // Bezel/frame
   Rectangle {
     id: phoneRect

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import qs.Common
 import qs.Modals.FileBrowser
 import qs.Widgets
@@ -24,24 +25,22 @@ StyledRect {
 
     height: isOpen ? (contentColumn.implicitHeight + Theme.spacingM * 2) : 0
     opacity: isOpen ? 1.0 : 0.0
-    visible: isOpen || opacity > 0
+    visible: isOpen || opacity > 0 || height > 0
     radius: Theme.cornerRadius
     color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
     border.width: 1
     border.color: Theme.withAlpha(Theme.primary, 0.15)
-    clip: true
 
     layer.enabled: true
-    layer.effect: DropShadow {
-        transparentBorder: true
-        horizontalOffset: 0
-        verticalOffset: 3
-        radius: 12.0
-        samples: 24
-        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
+    layer.effect: MultiEffect {
+        shadowEnabled: true
+        shadowBlur: 0.4
+        shadowVerticalOffset: 3
+        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
     }
 
-    Behavior on opacity { NumberAnimation { duration: 200 } }
+    Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+    Behavior on opacity { NumberAnimation { duration: 250 } }
 
     Column {
         id: contentColumn
@@ -77,23 +76,23 @@ StyledRect {
                 height: 32
                 radius: Theme.cornerRadius
                 Layout.alignment: Qt.AlignVCenter
-                color: closeArea.containsMouse ? Theme.withAlpha(Theme.error, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                color: closeArea.containsMouse ? Theme.withAlpha(Theme.error, 0.4) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
                 border.width: 1
-                border.color: Theme.withAlpha(Theme.error, closeArea.containsMouse ? 0.3 : 0.15)
+                border.color: Theme.withAlpha(Theme.error, closeArea.containsMouse ? 0.4 : 0.15)
+                scale: closeArea.containsMouse ? 1.08 : 1.0
 
                 Behavior on color { ColorAnimation { duration: 200 } }
                 Behavior on border.color { ColorAnimation { duration: 200 } }
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
 
                 DankIcon {
                     anchors.centerIn: parent
                     name: "close"
                     size: 16
-                    color: closeArea.containsMouse ? Theme.error : Theme.surfaceVariantText
-                    scale: closeArea.containsMouse ? 1.15 : 1.0
+                    color: closeArea.containsMouse ? (Theme.isLightMode ? "#000000" : Theme.error) : Theme.surfaceVariantText
                     rotation: closeArea.containsMouse ? 90 : 0
                     
                     Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                     Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                 }
 

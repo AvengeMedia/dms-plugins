@@ -476,4 +476,35 @@ Singleton {
             return "N/A";
         }
     }
+
+    function getNetworkStrengthLabel(device) {
+        if (!device || device.networkStrength === undefined || device.networkStrength < 0)
+            return "Unknown";
+        const strength = device.networkStrength;
+        if (strength >= 4) return "Excellent";
+        if (strength === 3) return "Good";
+        if (strength === 2) return "Fair";
+        if (strength === 1) return "Weak";
+        return "No Signal";
+    }
+
+    function getNetworkTypeIcon(device) {
+        if (!device || !device.networkType)
+            return "signal_cellular_nodata";
+        const label = getNetworkTypeLabel(device);
+        switch (label) {
+        case "5G":
+            return "5g";
+        case "LTE":
+            return "lte_mobiledata";
+        case "LTE+":
+            return "lte_plus_mobiledata";
+        case "3G":
+            return "3g_mobiledata";
+        case "2G":
+            return "2g_mobiledata";
+        default:
+            return "signal_cellular_alt";
+        }
+    }
 }
