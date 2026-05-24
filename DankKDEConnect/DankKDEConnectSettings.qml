@@ -277,7 +277,7 @@ PluginSettings {
             }
         }
 
-        // 3. Limits & Recent Images Customization Card
+        // 3. Limits & Appearance Card
         Rectangle {
             id: limitRect
             width: parent.width
@@ -293,6 +293,31 @@ PluginSettings {
                 anchors.fill: parent
                 anchors.margins: Theme.spacingM
                 spacing: Theme.spacingM
+
+                Column {
+                    width: parent.width
+                    spacing: Theme.spacingS
+
+                    DankToggle {
+                        id: chargingAnimToggle
+                        width: parent.width
+                        text: "Show Charging Animation"
+                        description: "Display a wavy green/yellow animation on the panel pill when the device is charging."
+                        Component.onCompleted: {
+                            checked = mainSettingsCol.loadValue("enableChargingAnimation", true);
+                        }
+                        onToggled: function(newChecked) {
+                            checked = newChecked;
+                            mainSettingsCol.saveValue("enableChargingAnimation", newChecked);
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: Theme.outline
+                }
 
                 Column {
                     width: parent.width

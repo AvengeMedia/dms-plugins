@@ -19,6 +19,22 @@ StyledRect {
     height: isOpen ? (contentColumn.implicitHeight + Theme.spacingM * 2) : 0
     opacity: isOpen ? 1.0 : 0.0
     visible: isOpen || opacity > 0 || height > 0
+    clip: true
+
+    Behavior on height {
+        NumberAnimation {
+            duration: 150
+            easing.type: Easing.OutQuad
+        }
+    }
+
+    Behavior on opacity {
+        NumberAnimation {
+            duration: 120
+            easing.type: Easing.OutQuad
+        }
+    }
+
     radius: Theme.cornerRadius
     color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
     border.width: 1
@@ -32,8 +48,7 @@ StyledRect {
         shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
     }
 
-    Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-    Behavior on opacity { NumberAnimation { duration: 250 } }
+
 
     Column {
         id: contentColumn

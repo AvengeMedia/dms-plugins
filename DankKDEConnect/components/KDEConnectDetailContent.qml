@@ -321,11 +321,127 @@ Item {
                             }
 
                             InfoRow {
-                                icon: "notifications_none"
+                                icon: "sms"
                                 label: I18n.tr("Notifications", "KDE Connect notifications label")
                                 value: root.selectedDevice?.notificationCount ?? 0
                             }
                         }
+                    }
+                }
+
+                // Device Switcher Container
+                StyledRect {
+                    width: parent.width
+                    height: switcherLayout.implicitHeight + Theme.spacingM * 2
+                    visible: (!root.hasDevice || root.switcherVisible) && PhoneConnectService.deviceIds.length > 0
+                    radius: Theme.cornerRadius
+                    color: root.cardColor
+                    border.width: 1
+                    border.color: root.cardBorderColor
+
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        transparentBorder: true
+                        horizontalOffset: 0
+                        verticalOffset: 4
+                        radius: 16.0
+                        samples: 32
+                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                    }
+
+                    Column {
+                        id: switcherLayout
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        spacing: Theme.spacingS
+
+                        Repeater {
+                            model: PhoneConnectService.deviceIds
+                            delegate: DeviceCard {
+                                required property string modelData
+                                width: parent.width
+                                deviceId: modelData
+                                device: PhoneConnectService.getDevice(modelData)
+                                selectable: true
+                                isSelected: root.effectiveDeviceId === modelData
+                                onClicked: {
+                                    root.deviceSelected(modelData)
+                                    root.switcherVisible = false
+                                }
+                                onAction: function(action) {
+                                    if (action === "ring") {
+                                        PhoneConnectService.ringDevice(modelData, function() {});
+                                    } else if (action === "ping") {
+                                        PhoneConnectService.sendPing(modelData, "", function() {});
+                                    } else if (action === "clipboard") {
+                                        PhoneConnectService.sendClipboard(modelData, function() {});
+                                    } else if (action === "share") {
+                                        root.shareDeviceId = modelData;
+                                    } else if (action === "sms") {
+                                        root.smsDeviceId = modelData;
+                                    } else if (action === "browse") {
+                                        PopoutService.closeControlCenter();
+                                        PhoneConnectService.startBrowsing(modelData, function() {});
+                                    } else if (action === "pair") {
+                                        PhoneConnectService.requestPairing(modelData, function() {});
+                                    } else if (action === "acceptPair") {
+                                        PhoneConnectService.acceptPairing(modelData, function() {});
+                                    } else if (action === "rejectPair") {
+                                        PhoneConnectService.cancelPairing(modelData, function() {});
+                                    } else if (action === "unpair") {
+                                        PhoneConnectService.unpair(modelData, function() {});
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Share dialog
+                ShareDialog {
+                    isOpen: root.shareDeviceId === root.effectiveDeviceId
+                    width: parent.width
+                    deviceId: root.effectiveDeviceId
+                    parentPopout: root.parentPopout
+                    onClose: root.shareDeviceId = ""
+                    onShare: {
+                        if (isUrl)
+                            PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
+                        else
+                            PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
+                        root.shareDeviceId = "";
+                    }
+                    onShareFile: {
+                        PhoneConnectService.shareUrl(root.effectiveDeviceId, "file://" + path, function() {});
+                        root.shareDeviceId = "";
+                    }
+                }
+
+                // SMS dialog
+                SmsDialog {
+                    isOpen: root.smsDeviceId === root.effectiveDeviceId
+                    width: parent.width
+                    deviceId: root.effectiveDeviceId
+                    onClose: root.smsDeviceId = ""
+                    onSendSms: {
+                        PhoneConnectService.sendSms(root.effectiveDeviceId, phoneNumber, message, [], function(response) {
+                            if (response.error) {
+                                ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
+                                return;
+                            }
+                            ToastService.showInfo(I18n.tr("SMS sent successfully", "Phone Connect SMS action"));
+                        });
+                        root.smsDeviceId = "";
+                    }
+                    onLaunchApp: {
+                        PhoneConnectService.launchSmsApp(root.effectiveDeviceId, function(response) {
+                            if (response.error) {
+                                ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
+                                return;
+                            }
+                            ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
+                        });
+                        root.smsDeviceId = "";
                     }
                 }
 
@@ -646,120 +762,5 @@ Item {
                     }
                 }
 
-                // Device Switcher Container
-                StyledRect {
-                    width: parent.width
-                    height: switcherLayout.implicitHeight + Theme.spacingM * 2
-                    visible: (!root.hasDevice || root.switcherVisible) && PhoneConnectService.deviceIds.length > 0
-                    radius: Theme.cornerRadius
-                    color: root.cardColor
-                    border.width: 1
-                    border.color: root.cardBorderColor
-
-                    layer.enabled: true
-                    layer.effect: DropShadow {
-                        transparentBorder: true
-                        horizontalOffset: 0
-                        verticalOffset: 4
-                        radius: 16.0
-                        samples: 32
-                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
-
-                    Column {
-                        id: switcherLayout
-                        anchors.fill: parent
-                        anchors.margins: Theme.spacingM
-                        spacing: Theme.spacingS
-
-                        Repeater {
-                            model: PhoneConnectService.deviceIds
-                            delegate: DeviceCard {
-                                required property string modelData
-                                width: parent.width
-                                deviceId: modelData
-                                device: PhoneConnectService.getDevice(modelData)
-                                selectable: true
-                                isSelected: root.effectiveDeviceId === modelData
-                                onClicked: {
-                                    root.deviceSelected(modelData)
-                                    root.switcherVisible = false
-                                }
-                                onAction: function(action) {
-                                    if (action === "ring") {
-                                        PhoneConnectService.ringDevice(modelData, function() {});
-                                    } else if (action === "ping") {
-                                        PhoneConnectService.sendPing(modelData, "", function() {});
-                                    } else if (action === "clipboard") {
-                                        PhoneConnectService.sendClipboard(modelData, function() {});
-                                    } else if (action === "share") {
-                                        root.shareDeviceId = modelData;
-                                    } else if (action === "sms") {
-                                        root.smsDeviceId = modelData;
-                                    } else if (action === "browse") {
-                                        PopoutService.closeControlCenter();
-                                        PhoneConnectService.startBrowsing(modelData, function() {});
-                                    } else if (action === "pair") {
-                                        PhoneConnectService.requestPairing(modelData, function() {});
-                                    } else if (action === "acceptPair") {
-                                        PhoneConnectService.acceptPairing(modelData, function() {});
-                                    } else if (action === "rejectPair") {
-                                        PhoneConnectService.cancelPairing(modelData, function() {});
-                                    } else if (action === "unpair") {
-                                        PhoneConnectService.unpair(modelData, function() {});
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Share dialog
-                ShareDialog {
-                    isOpen: root.shareDeviceId === root.effectiveDeviceId
-                    width: parent.width
-                    deviceId: root.effectiveDeviceId
-                    parentPopout: root.parentPopout
-                    onClose: root.shareDeviceId = ""
-                    onShare: {
-                        if (isUrl)
-                            PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
-                        else
-                            PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
-                        root.shareDeviceId = "";
-                    }
-                    onShareFile: {
-                        PhoneConnectService.shareUrl(root.effectiveDeviceId, "file://" + path, function() {});
-                        root.shareDeviceId = "";
-                    }
-                }
-
-                // SMS dialog
-                SmsDialog {
-                    isOpen: root.smsDeviceId === root.effectiveDeviceId
-                    width: parent.width
-                    deviceId: root.effectiveDeviceId
-                    onClose: root.smsDeviceId = ""
-                    onSendSms: {
-                        PhoneConnectService.sendSms(root.effectiveDeviceId, phoneNumber, message, [], function(response) {
-                            if (response.error) {
-                                ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
-                                return;
-                            }
-                            ToastService.showInfo(I18n.tr("SMS sent successfully", "Phone Connect SMS action"));
-                        });
-                        root.smsDeviceId = "";
-                    }
-                    onLaunchApp: {
-                        PhoneConnectService.launchSmsApp(root.effectiveDeviceId, function(response) {
-                            if (response.error) {
-                                ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
-                                return;
-                            }
-                            ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
-                        });
-                        root.smsDeviceId = "";
-                    }
-                }
             }
         }

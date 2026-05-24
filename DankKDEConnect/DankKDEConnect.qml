@@ -10,6 +10,7 @@ import qs.Modules.Plugins
 import "./components"
 import "./services"
 import Qt5Compat.GraphicalEffects
+import QtQuick.Shapes
 
 PluginComponent {
     id: root
@@ -249,97 +250,295 @@ PluginComponent {
     }
 
     horizontalBarPill: Component {
-        Row {
-            spacing: (root.barConfig?.noBackground ?? false) ? 1 : 2
+        Item {
+            id: horizWrapper
+            implicitWidth: horizRow.implicitWidth
+            implicitHeight: horizRow.implicitHeight
 
             Item {
-                width: phoneIcon.width
-                height: phoneIcon.height
-                anchors.verticalCenter: parent.verticalCenter
+                id: hWaveContainer
+                readonly property var basePill: {
+                    let p = parent;
+                    while (p && p.visualWidth === undefined) {
+                        p = p.parent;
+                    }
+                    return p;
+                }
+                width: basePill ? basePill.visualWidth : 0
+                height: basePill ? basePill.visualHeight : 0
+                anchors.centerIn: parent
+                visible: (SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.enableChargingAnimation ?? true) &&
+                         root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
 
-                DankIcon {
-                    id: phoneIcon
-                    name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
-                    size: Theme.barIconSize(root.barThickness, -4)
-                    color: {
-                        if (!PhoneConnectService.available)
+                Rectangle {
+                    id: hWaveMask
+                    anchors.fill: parent
+                    radius: (root.barConfig?.noBackground ?? false) ? 0 : Theme.cornerRadius
+                    visible: false
+                }
+
+                Shape {
+                    id: hWaveShape
+                    anchors.fill: parent
+                    
+                    property real value: (root.selectedDevice?.batteryCharge ?? 0) / 100.0
+                    property real phase: 0
+                    property real amp: 3
+                    property color fillColor: {
+                        const charge = root.selectedDevice?.batteryCharge ?? 0;
+                        if (charge <= 20) return Theme.withAlpha(Theme.error, 0.3);
+                        if (charge <= 50) return Theme.withAlpha(Theme.warning, 0.3);
+                        return Theme.withAlpha(Theme.success, 0.3);
+                    }
+
+                    FrameAnimation {
+                        running: hWaveContainer.visible
+                        onTriggered: hWaveShape.phase += 0.08 * frameTime * 60
+                    }
+
+                    ShapePath {
+                        fillColor: hWaveShape.fillColor
+                        strokeColor: "transparent"
+                        
+                        PathMove { x: 0; y: 0 }
+                        PathLine {
+                            x: {
+                                let targetX = hWaveShape.width * hWaveShape.value;
+                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase);
+                            }
+                            y: 0
+                        }
+                        PathLine {
+                            x: {
+                                let targetX = hWaveShape.width * hWaveShape.value;
+                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 1.5);
+                            }
+                            y: hWaveShape.height * 0.25
+                        }
+                        PathLine {
+                            x: {
+                                let targetX = hWaveShape.width * hWaveShape.value;
+                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 3.0);
+                            }
+                            y: hWaveShape.height * 0.5
+                        }
+                        PathLine {
+                            x: {
+                                let targetX = hWaveShape.width * hWaveShape.value;
+                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 4.5);
+                            }
+                            y: hWaveShape.height * 0.75
+                        }
+                        PathLine {
+                            x: {
+                                let targetX = hWaveShape.width * hWaveShape.value;
+                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 6.0);
+                            }
+                            y: hWaveShape.height
+                        }
+                        PathLine { x: 0; y: hWaveShape.height }
+                    }
+
+                    layer.enabled: true
+                    layer.effect: OpacityMask {
+                        maskSource: hWaveMask
+                    }
+                }
+            }
+
+            Row {
+                id: horizRow
+                anchors.centerIn: parent
+                spacing: (root.barConfig?.noBackground ?? false) ? 1 : 2
+
+                Item {
+                    width: phoneIcon.width
+                    height: phoneIcon.height
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    DankIcon {
+                        id: phoneIcon
+                        name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
+                        size: Theme.barIconSize(root.barThickness, -4)
+                        color: {
+                            if (!PhoneConnectService.available)
+                                return Theme.widgetIconColor;
+                            if (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging)
+                                return Theme.primary;
                             return Theme.widgetIconColor;
-                        if (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging)
-                            return Theme.primary;
-                        return Theme.widgetIconColor;
+                        }
+                    }
+
+                    DankIcon {
+                        visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
+                        name: "bolt"
+                        size: phoneIcon.size * 0.45
+                        color: Theme.primary
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.rightMargin: -2
+                        anchors.bottomMargin: -1
                     }
                 }
 
-                DankIcon {
-                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
-                    name: "bolt"
-                    size: phoneIcon.size * 0.45
-                    color: Theme.primary
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.rightMargin: -2
-                    anchors.bottomMargin: -1
+                StyledText {
+                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
+                    text: (root.selectedDevice?.batteryCharge ?? 0) + "%"
+                    font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
+                    color: Theme.widgetTextColor
+                    anchors.verticalCenter: parent.verticalCenter
                 }
-            }
 
-            StyledText {
-                visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
-                text: (root.selectedDevice?.batteryCharge ?? 0) + "%"
-                font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
-                color: Theme.widgetTextColor
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            StyledText {
-                visible: !PhoneConnectService.available
-                text: "N/A"
-                font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
-                color: Theme.widgetTextColor
-                anchors.verticalCenter: parent.verticalCenter
+                StyledText {
+                    visible: !PhoneConnectService.available
+                    text: "N/A"
+                    font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
+                    color: Theme.widgetTextColor
+                    anchors.verticalCenter: parent.verticalCenter
+                }
             }
         }
     }
 
     verticalBarPill: Component {
-        Column {
-            spacing: 1
+        Item {
+            id: vertWrapper
+            implicitWidth: vertCol.implicitWidth
+            implicitHeight: vertCol.implicitHeight
 
             Item {
-                width: phoneIconV.width
-                height: phoneIconV.height
-                anchors.horizontalCenter: parent.horizontalCenter
-
-                DankIcon {
-                    id: phoneIconV
-                    name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
-                    size: Theme.barIconSize(root.barThickness)
-                    color: {
-                        if (!PhoneConnectService.available)
-                            return Theme.widgetIconColor;
-                        if (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging)
-                            return Theme.primary;
-                        return Theme.widgetIconColor;
+                id: vWaveContainer
+                readonly property var basePill: {
+                    let p = parent;
+                    while (p && p.visualWidth === undefined) {
+                        p = p.parent;
                     }
+                    return p;
+                }
+                width: basePill ? basePill.visualWidth : 0
+                height: basePill ? basePill.visualHeight : 0
+                anchors.centerIn: parent
+                visible: (SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.enableChargingAnimation ?? true) &&
+                         root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
+
+                Rectangle {
+                    id: vWaveMask
+                    anchors.fill: parent
+                    radius: (root.barConfig?.noBackground ?? false) ? 0 : Theme.cornerRadius
+                    visible: false
                 }
 
-                DankIcon {
-                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
-                    name: "bolt"
-                    size: phoneIconV.size * 0.45
-                    color: Theme.primary
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.rightMargin: -2
-                    anchors.bottomMargin: -1
+                Shape {
+                    id: vWaveShape
+                    anchors.fill: parent
+                    
+                    property real value: (root.selectedDevice?.batteryCharge ?? 0) / 100.0
+                    property real phase: 0
+                    property real amp: 3
+                    property color fillColor: {
+                        const charge = root.selectedDevice?.batteryCharge ?? 0;
+                        if (charge <= 20) return Theme.withAlpha(Theme.error, 0.3);
+                        if (charge <= 50) return Theme.withAlpha(Theme.warning, 0.3);
+                        return Theme.withAlpha(Theme.success, 0.3);
+                    }
+
+                    FrameAnimation {
+                        running: vWaveContainer.visible
+                        onTriggered: vWaveShape.phase += 0.08 * frameTime * 60
+                    }
+
+                    ShapePath {
+                        fillColor: vWaveShape.fillColor
+                        strokeColor: "transparent"
+                        
+                        PathMove { x: 0; y: vWaveShape.height }
+                        PathLine {
+                            x: 0
+                            y: {
+                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
+                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase);
+                            }
+                        }
+                        PathLine {
+                            x: vWaveShape.width * 0.25
+                            y: {
+                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
+                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 1.5);
+                            }
+                        }
+                        PathLine {
+                            x: vWaveShape.width * 0.5
+                            y: {
+                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
+                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 3.0);
+                            }
+                        }
+                        PathLine {
+                            x: vWaveShape.width * 0.75
+                            y: {
+                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
+                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 4.5);
+                            }
+                        }
+                        PathLine {
+                            x: vWaveShape.width
+                            y: {
+                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
+                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 6.0);
+                            }
+                        }
+                        PathLine { x: vWaveShape.width; y: vWaveShape.height }
+                    }
+
+                    layer.enabled: true
+                    layer.effect: OpacityMask {
+                        maskSource: vWaveMask
+                    }
                 }
             }
 
-            StyledText {
-                visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
-                text: (root.selectedDevice?.batteryCharge ?? 0).toString()
-                font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
-                color: Theme.widgetTextColor
-                anchors.horizontalCenter: parent.horizontalCenter
+            Column {
+                id: vertCol
+                anchors.centerIn: parent
+                spacing: 1
+
+                Item {
+                    width: phoneIconV.width
+                    height: phoneIconV.height
+                    anchors.horizontalCenter: parent.horizontalCenter
+
+                    DankIcon {
+                        id: phoneIconV
+                        name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
+                        size: Theme.barIconSize(root.barThickness)
+                        color: {
+                            if (!PhoneConnectService.available)
+                                return Theme.widgetIconColor;
+                            if (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging)
+                                return Theme.primary;
+                            return Theme.widgetIconColor;
+                        }
+                    }
+
+                    DankIcon {
+                        visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
+                        name: "bolt"
+                        size: phoneIconV.size * 0.45
+                        color: Theme.primary
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.rightMargin: -2
+                        anchors.bottomMargin: -1
+                    }
+                }
+
+                StyledText {
+                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
+                    text: (root.selectedDevice?.batteryCharge ?? 0).toString()
+                    font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
+                    color: Theme.widgetTextColor
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
             }
         }
     }
@@ -609,7 +808,7 @@ PluginComponent {
                             }
 
                             InfoRow {
-                                icon: "notifications_none"
+                                icon: "sms"
                                 label: I18n.tr("Notifications", "KDE Connect notifications label")
                                 value: root.selectedDevice?.notificationCount ?? 0
                             }
@@ -659,6 +858,75 @@ PluginComponent {
                                 onAction: function(action) { root.handleAction(modelData, action); }
                             }
                         }
+                    }
+                }
+
+                ShareDialog {
+                    id: popoutShareDialog
+                    isOpen: root.showShareDialog
+                    width: parent.width
+                    deviceId: root.shareDeviceId
+                    parentPopout: popout.parentPopout
+                    onClose: root.showShareDialog = false
+                    onShare: {
+                        if (isUrl) {
+                            PhoneConnectService.shareUrl(root.shareDeviceId, content, function(response) {
+                                if (response.error) {
+                                    ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
+                                    return;
+                                }
+                                ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
+                            });
+                        } else {
+                            PhoneConnectService.shareText(root.shareDeviceId, content, function(response) {
+                                if (response.error) {
+                                    ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
+                                    return;
+                                }
+                                ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
+                            });
+                        }
+                        root.showShareDialog = false;
+                    }
+                    onShareFile: {
+                        const fileUrl = "file://" + path;
+                        PhoneConnectService.shareUrl(root.shareDeviceId, fileUrl, function(response) {
+                            if (response.error) {
+                                ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
+                                return;
+                            }
+                            const filename = path.split("/").pop();
+                            ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + filename + "...");
+                        });
+                        root.showShareDialog = false;
+                    }
+                }
+
+                SmsDialog {
+                    id: popoutSmsDialog
+                    isOpen: root.showSmsDialog && root.shareDeviceId === root.selectedDeviceId
+                    width: parent.width
+                    deviceId: root.shareDeviceId
+                    onClose: root.showSmsDialog = false
+                    onSendSms: {
+                        PhoneConnectService.sendSms(root.shareDeviceId, phoneNumber, message, [], function(response) {
+                            if (response.error) {
+                                ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
+                                return;
+                            }
+                            ToastService.showInfo(I18n.tr("SMS sent successfully", "Phone Connect SMS action"));
+                        });
+                        root.showSmsDialog = false;
+                    }
+                    onLaunchApp: {
+                        PhoneConnectService.launchSmsApp(root.shareDeviceId, function(response) {
+                            if (response.error) {
+                                ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
+                                return;
+                            }
+                            ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
+                        });
+                        root.showSmsDialog = false;
                     }
                 }
 
@@ -986,74 +1254,6 @@ PluginComponent {
                     }
                 }
 
-                ShareDialog {
-                    id: popoutShareDialog
-                    isOpen: root.showShareDialog
-                    width: parent.width
-                    deviceId: root.shareDeviceId
-                    parentPopout: popout.parentPopout
-                    onClose: root.showShareDialog = false
-                    onShare: {
-                        if (isUrl) {
-                            PhoneConnectService.shareUrl(root.shareDeviceId, content, function(response) {
-                                if (response.error) {
-                                    ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
-                                    return;
-                                }
-                                ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
-                            });
-                        } else {
-                            PhoneConnectService.shareText(root.shareDeviceId, content, function(response) {
-                                if (response.error) {
-                                    ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
-                                    return;
-                                }
-                                ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
-                            });
-                        }
-                        root.showShareDialog = false;
-                    }
-                    onShareFile: {
-                        const fileUrl = "file://" + path;
-                        PhoneConnectService.shareUrl(root.shareDeviceId, fileUrl, function(response) {
-                            if (response.error) {
-                                ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
-                                return;
-                            }
-                            const filename = path.split("/").pop();
-                            ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + filename + "...");
-                        });
-                        root.showShareDialog = false;
-                    }
-                }
-
-                SmsDialog {
-                    id: popoutSmsDialog
-                    isOpen: root.showSmsDialog && root.shareDeviceId === root.selectedDeviceId
-                    width: parent.width
-                    deviceId: root.shareDeviceId
-                    onClose: root.showSmsDialog = false
-                    onSendSms: {
-                        PhoneConnectService.sendSms(root.shareDeviceId, phoneNumber, message, [], function(response) {
-                            if (response.error) {
-                                ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
-                                return;
-                            }
-                            ToastService.showInfo(I18n.tr("SMS sent successfully", "Phone Connect SMS action"));
-                        });
-                        root.showSmsDialog = false;
-                    }
-                    onLaunchApp: {
-                        PhoneConnectService.launchSmsApp(root.shareDeviceId, function(response) {
-                            if (response.error) {
-                                ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
-                                return;
-                            }
-                            ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
-                        });
-                        root.showSmsDialog = false;
-                    }
-                }
             }
         }
     }
