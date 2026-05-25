@@ -16,24 +16,8 @@ StyledRect {
 
     property bool isOpen: false
 
-    height: isOpen ? (contentColumn.implicitHeight + Theme.spacingM * 2) : 0
-    opacity: isOpen ? 1.0 : 0.0
-    visible: isOpen || opacity > 0 || height > 0
-    clip: true
-
-    Behavior on height {
-        NumberAnimation {
-            duration: 150
-            easing.type: Easing.OutQuad
-        }
-    }
-
-    Behavior on opacity {
-        NumberAnimation {
-            duration: 120
-            easing.type: Easing.OutQuad
-        }
-    }
+    height: 0
+    visible: false
 
     radius: Theme.cornerRadius
     color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
@@ -48,13 +32,87 @@ StyledRect {
         shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
     }
 
+    states: [
+        State {
+            name: "open"
+            when: root.isOpen
+            PropertyChanges {
+                target: root
+                height: contentColumn.implicitHeight + Theme.spacingM * 2
+                visible: true
+            }
+            PropertyChanges {
+                target: clipContainer
+                opacity: 1.0
+            }
+        },
+        State {
+            name: "closed"
+            when: !root.isOpen
+            PropertyChanges {
+                target: root
+                height: 0
+                visible: false
+            }
+            PropertyChanges {
+                target: clipContainer
+                opacity: 0.0
+            }
+        }
+    ]
 
+    transitions: [
+        Transition {
+            from: "closed"; to: "open"
+            SequentialAnimation {
+                PropertyAction { target: root; property: "visible"; value: true }
+                NumberAnimation {
+                    target: root
+                    property: "height"
+                    duration: 180
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: clipContainer
+                    property: "opacity"
+                    duration: 150
+                    easing.type: Easing.OutQuad
+                }
+            }
+        },
+        Transition {
+            from: "open"; to: "closed"
+            SequentialAnimation {
+                NumberAnimation {
+                    target: clipContainer
+                    property: "opacity"
+                    duration: 120
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: root
+                    property: "height"
+                    duration: 150
+                    easing.type: Easing.OutQuad
+                }
+                PropertyAction { target: root; property: "visible"; value: false }
+            }
+        }
+    ]
 
-    Column {
-        id: contentColumn
+    Item {
+        id: clipContainer
         anchors.fill: parent
-        anchors.margins: Theme.spacingM
-        spacing: Theme.spacingS
+        clip: true
+        opacity: 0.0
+
+        Column {
+            id: contentColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Theme.spacingM
+            spacing: Theme.spacingS
 
         RowLayout {
             width: parent.width
@@ -335,5 +393,6 @@ StyledRect {
                 }
             }
         }
+    }
     }
 }

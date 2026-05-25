@@ -351,7 +351,9 @@ Item {
 
                     Column {
                         id: switcherLayout
-                        anchors.fill: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
                         anchors.margins: Theme.spacingM
                         spacing: Theme.spacingS
 
