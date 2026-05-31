@@ -170,6 +170,14 @@ Singleton {
         return _backend?.getDevice(deviceId) ?? null;
     }
 
+    function hasPlugin(deviceId, pluginName) {
+        const dev = getDevice(deviceId);
+        if (!dev || !dev.supportedPlugins) return false;
+        
+        return dev.supportedPlugins.includes(pluginName) || 
+               dev.supportedPlugins.includes("kdeconnect_" + pluginName);
+    }
+
     function ringDevice(deviceId, callback) {
         if (!_backend) {
             callback?.({

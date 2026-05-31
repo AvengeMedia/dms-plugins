@@ -5,6 +5,8 @@ import qs.Common
 import qs.Modals.FileBrowser
 import qs.Widgets
 import Qt5Compat.GraphicalEffects
+import qs.Services
+
 
 StyledRect {
     id: root
@@ -16,6 +18,7 @@ StyledRect {
     signal close
     signal share(string content, bool isUrl)
     signal shareFile(string path)
+    signal shareClipboard()
 
     function isUrl(text) {
         return text.startsWith("http://") || text.startsWith("https://");
@@ -71,36 +74,38 @@ StyledRect {
     transitions: [
         Transition {
             from: "closed"; to: "open"
-            SequentialAnimation {
+            ParallelAnimation {
                 PropertyAction { target: root; property: "visible"; value: true }
                 NumberAnimation {
                     target: root
                     property: "height"
-                    duration: 180
-                    easing.type: Easing.OutQuad
+                    duration: Theme.shorterDuration
+                    easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     target: clipContainer
                     property: "opacity"
-                    duration: 150
-                    easing.type: Easing.OutQuad
+                    duration: Theme.shorterDuration
+                    easing.type: Easing.OutCubic
                 }
             }
         },
         Transition {
             from: "open"; to: "closed"
             SequentialAnimation {
-                NumberAnimation {
-                    target: clipContainer
-                    property: "opacity"
-                    duration: 120
-                    easing.type: Easing.OutQuad
-                }
-                NumberAnimation {
-                    target: root
-                    property: "height"
-                    duration: 150
-                    easing.type: Easing.OutQuad
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: clipContainer
+                        property: "opacity"
+                        duration: Theme.shorterDuration
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        target: root
+                        property: "height"
+                        duration: Theme.shorterDuration
+                        easing.type: Easing.OutCubic
+                    }
                 }
                 PropertyAction { target: root; property: "visible"; value: false }
             }
@@ -179,10 +184,63 @@ StyledRect {
             }
         }
 
-        DankTextField {
-            id: shareInput
+        RowLayout {
             width: parent.width
-            placeholderText: I18n.tr("Enter URL or text to share", "KDE Connect share input placeholder") + "..."
+            spacing: Theme.spacingS
+
+            DankTextField {
+                id: shareInput
+                Layout.fillWidth: true
+                placeholderText: I18n.tr("Enter URL or text to share", "KDE Connect share input placeholder") + "..."
+            }
+
+            Rectangle {
+                id: quickClipboardBtn
+                width: 36
+                height: shareInput.height
+                radius: Theme.cornerRadius
+                color: quickClipboardBtnArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                border.width: 1
+                border.color: Theme.withAlpha(Theme.primary, quickClipboardBtnArea.containsMouse ? 0.3 : 0.15)
+                
+                DankIcon {
+                    anchors.centerIn: parent
+                    name: "content_paste"
+                    size: 16
+                    color: quickClipboardBtnArea.containsMouse ? Theme.primary : Theme.surfaceVariantText
+                }
+
+                MouseArea {
+                    id: quickClipboardBtnArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (typeof DMSService === "undefined" || !DMSService.isConnected) {
+                            if (typeof ToastService !== "undefined")
+                                ToastService.showError(I18n.tr("DMS Service is not connected"));
+                            return;
+                        }
+                        DMSService.sendRequest("clipboard.paste", null, function(response) {
+                            if (response.error) {
+                                if (typeof ToastService !== "undefined")
+                                    ToastService.showError(I18n.tr("Failed to read clipboard: ") + response.error);
+                                return;
+                            }
+                            let content = response.result?.text || "";
+                            content = content.trim();
+                            if (content.length > 0) {
+                                shareInput.text = content;
+                                root.share(shareInput.text, root.isUrl(shareInput.text));
+                                shareInput.text = "";
+                            } else {
+                                if (typeof ToastService !== "undefined")
+                                    ToastService.showError(I18n.tr("Clipboard is empty."));
+                            }
+                        });
+                    }
+                }
+            }
         }
 
         RowLayout {

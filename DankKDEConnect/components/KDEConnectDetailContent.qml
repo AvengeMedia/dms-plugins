@@ -6,6 +6,7 @@ import qs.Services
 import qs.Widgets
 import "../services"
 import Qt5Compat.GraphicalEffects
+import qs.Modules.Plugins
 
 // Self-contained CC detail content — reads device from PhoneConnectService directly
 // so it works in the CC panel where the plugin instance has no pluginService/pluginData.
@@ -19,6 +20,54 @@ Item {
     property var recentImages: []
     property string recentImagesPath: ""
     property var pluginRoot: null
+    property string pluginId: "dankKDEConnect"
+
+    property bool enableClipboardAction: {
+        let _ = typeof SettingsData !== "undefined" ? SettingsData.pluginSettings : null;
+        return typeof SettingsData !== "undefined" ? SettingsData.getPluginSetting(pluginId, "enableClipboardAction", true) : true;
+    }
+    property bool showOngoingMedia: {
+        let _ = typeof SettingsData !== "undefined" ? SettingsData.pluginSettings : null;
+        return typeof SettingsData !== "undefined" ? SettingsData.getPluginSetting(pluginId, "showOngoingMedia", true) : true;
+    }
+
+    function sendClipboardWayland() {
+        if (typeof DMSService === "undefined" || !DMSService.isConnected) {
+            if (typeof ToastService !== "undefined")
+                ToastService.showError(I18n.tr("DMS Service is not connected"));
+            return;
+        }
+        DMSService.sendRequest("clipboard.paste", null, function(response) {
+            if (response.error) {
+                if (typeof ToastService !== "undefined")
+                    ToastService.showError(I18n.tr("Failed to read clipboard: ") + response.error);
+                return;
+            }
+            let content = response.result?.text || "";
+            content = content.trim();
+            if (content.length > 0) {
+                if (typeof shareDialog !== "undefined" && shareDialog) {
+                    shareDialog.shareText = content;
+                }
+                
+                let isUrl = content.startsWith("http://") || content.startsWith("https://");
+                if (isUrl)
+                    PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
+                else
+                    PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
+                
+                if (typeof shareDialog !== "undefined" && shareDialog) {
+                    shareDialog.shareText = "";
+                }
+                
+                if (typeof ToastService !== "undefined")
+                    ToastService.showInfo(I18n.tr("Clipboard sent"));
+            } else {
+                if (typeof ToastService !== "undefined")
+                    ToastService.showError(I18n.tr("Clipboard is empty."));
+            }
+        });
+    }
 
     // Effective device: injected ID, or first connected device, or first paired device
     readonly property string effectiveDeviceId: {
@@ -29,8 +78,28 @@ Item {
             return ids[0];
         return "";
     }
-    readonly property var selectedDevice: effectiveDeviceId ? PhoneConnectService.devices[effectiveDeviceId] ?? null : null
+    property var selectedDevice: null
     readonly property bool hasDevice: selectedDevice !== null
+
+    Connections {
+        target: PhoneConnectService
+        function onDeviceUpdated(deviceId) {
+            if (deviceId === root.effectiveDeviceId) {
+                root.selectedDevice = PhoneConnectService.devices[deviceId] ?? null;
+            }
+        }
+        function onDevicesListChanged() {
+            root.selectedDevice = root.effectiveDeviceId ? PhoneConnectService.devices[root.effectiveDeviceId] ?? null : null;
+        }
+    }
+
+    onEffectiveDeviceIdChanged: {
+        selectedDevice = effectiveDeviceId ? PhoneConnectService.devices[effectiveDeviceId] ?? null : null;
+    }
+
+    Component.onCompleted: {
+        selectedDevice = effectiveDeviceId ? PhoneConnectService.devices[effectiveDeviceId] ?? null : null;
+    }
 
     property string shareDeviceId: ""
     property string smsDeviceId: ""
@@ -247,22 +316,28 @@ Item {
                                     spacing: Theme.spacingS
                                     Layout.alignment: Qt.AlignHCenter
                                     DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("findmyphone") || root.selectedDevice.supportedPlugins.includes("kdeconnect_findmyphone")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "phone_in_talk"
                                         iconColor: Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
                                         onClicked: {
+                                            if (!enabled) return;
                                             root.shareDeviceId = "";
                                             root.smsDeviceId = "";
                                             PhoneConnectService.ringDevice(root.effectiveDeviceId, function() {})
                                         }
                                     }
                                     DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("sftp") || root.selectedDevice.supportedPlugins.includes("kdeconnect_sftp")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "folder"
                                         iconColor: Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
                                         onClicked: {
+                                            if (!enabled) return;
                                             root.shareDeviceId = "";
                                             root.smsDeviceId = "";
                                             PopoutService.closeControlCenter();
@@ -270,21 +345,40 @@ Item {
                                         }
                                     }
                                     DankActionButton {
+                                        visible: root.enableClipboardAction
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("clipboard") || root.selectedDevice.supportedPlugins.includes("kdeconnect_clipboard")) : false
+                                        opacity: enabled ? 1.0 : 0.4
+                                        iconName: "content_copy"
+                                        iconColor: Theme.primary
+                                        buttonSize: 32
+                                        tooltipText: I18n.tr("Send Clipboard", "KDE Connect send clipboard tooltip")
+                                        onClicked: {
+                                            if (!enabled) return;
+                                            root.sendClipboardWayland()
+                                        }
+                                    }
+                                    DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("share") || root.selectedDevice.supportedPlugins.includes("kdeconnect_share")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "share"
                                         iconColor: root.shareDeviceId === root.effectiveDeviceId ? Theme.secondary : Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
                                         onClicked: {
+                                            if (!enabled) return;
                                             root.smsDeviceId = "";
                                             root.shareDeviceId = (root.shareDeviceId === root.effectiveDeviceId) ? "" : root.effectiveDeviceId;
                                         }
                                     }
                                     DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("sms") || root.selectedDevice.supportedPlugins.includes("kdeconnect_sms")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "sms"
                                         iconColor: root.smsDeviceId === root.effectiveDeviceId ? Theme.secondary : Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
                                         onClicked: {
+                                            if (!enabled) return;
                                             root.shareDeviceId = "";
                                             root.smsDeviceId = (root.smsDeviceId === root.effectiveDeviceId) ? "" : root.effectiveDeviceId;
                                         }
@@ -401,6 +495,7 @@ Item {
 
                 // Share dialog
                 ShareDialog {
+                    id: shareDialog
                     isOpen: root.shareDeviceId === root.effectiveDeviceId
                     width: parent.width
                     deviceId: root.effectiveDeviceId
@@ -415,6 +510,10 @@ Item {
                     }
                     onShareFile: {
                         PhoneConnectService.shareUrl(root.effectiveDeviceId, "file://" + path, function() {});
+                        root.shareDeviceId = "";
+                    }
+                    onShareClipboard: {
+                        root.sendClipboardWayland()
                         root.shareDeviceId = "";
                     }
                 }
@@ -758,6 +857,224 @@ Item {
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Ongoing Media Section
+                StyledRect {
+                    id: mprisContainer
+                    width: parent.width
+                    height: Math.max(80, mprisCol.implicitHeight) + Theme.spacingM * 2
+                    visible: root.hasDevice && root.showOngoingMedia && (root.selectedDevice?.mediaTitle || "") !== ""
+                    radius: Theme.cornerRadius
+                    color: root.cardColor
+                    border.width: 1
+                    border.color: root.cardBorderColor
+
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        transparentBorder: true
+                        horizontalOffset: 0
+                        verticalOffset: 4
+                        radius: 16.0
+                        samples: 32
+                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                    }
+
+                    // --- Ocean Wave Background ---
+                    Canvas {
+                        id: waveCanvas
+                        anchors.fill: parent
+                        z: 1
+                        opacity: root.selectedDevice?.mediaIsPlaying ? 0.35 : 0.1
+                        
+                        property real phase: 0
+                        
+                        Timer {
+                            interval: 16
+                            running: root.selectedDevice?.mediaIsPlaying || false
+                            repeat: true
+                            onTriggered: {
+                                waveCanvas.phase += 0.05;
+                                waveCanvas.requestPaint();
+                            }
+                        }
+
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            ctx.clearRect(0, 0, width, height);
+                            
+                            drawWave(ctx, Theme.withAlpha(Theme.primary, 0.15), 0.5, 12, phase);
+                            drawWave(ctx, Theme.withAlpha(Theme.primary, 0.25), 0.8, 8, phase * 0.7);
+                            drawWave(ctx, Theme.withAlpha(Theme.primary, 0.30), 0.8, 8, phase * 0.9);
+                        }
+
+                        function drawWave(ctx, color, speed, amplitude, currentPhase) {
+                            ctx.beginPath();
+                            ctx.fillStyle = color;
+                            
+                            var waveHeight = height * 0.75;
+                            ctx.moveTo(0, height);
+                            
+                            for (var x = 0; x <= width; x += 5) {
+                                var y = waveHeight + Math.sin(x * 0.025 + currentPhase) * amplitude;
+                                ctx.lineTo(x, y);
+                            }
+                            
+                            ctx.lineTo(width, height);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        spacing: Theme.spacingM
+                        z: 2
+
+                        // Rotating Vinyl Record / CD
+                        Rectangle {
+                            id: thumbnailContainer
+                            width: 80
+                            height: 80
+                            radius: 40
+                            color: Theme.withAlpha(Theme.surfaceContainerHighest || "#000000", 0.4)
+                            border.color: Theme.withAlpha(Theme.primary, 0.2)
+                            border.width: 1
+                            clip: true
+                            Layout.alignment: Qt.AlignVCenter
+
+                            property real albumRotation: 0
+
+                            NumberAnimation {
+                                id: rotationAnimation
+                                target: thumbnailContainer
+                                property: "albumRotation"
+                                from: 0
+                                to: 360
+                                duration: 20000
+                                running: root.selectedDevice?.mediaIsPlaying || false
+                                loops: Animation.Infinite
+                            }
+
+                            Item {
+                                anchors.fill: parent
+                                rotation: thumbnailContainer.albumRotation
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    radius: width / 2
+                                    color: "transparent"
+                                    border.color: Theme.withAlpha(Theme.surfaceText, 0.15)
+                                    border.width: 1
+                                }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: 14
+                                    radius: width / 2
+                                    color: "transparent"
+                                    border.color: Theme.withAlpha(Theme.surfaceText, 0.1)
+                                    border.width: 1
+                                }
+
+                                Rectangle {
+                                    width: 28
+                                    height: 28
+                                    radius: 14
+                                    anchors.centerIn: parent
+                                    color: Theme.primary
+                                    
+                                    DankIcon {
+                                        anchors.centerIn: parent
+                                        name: "music_note"
+                                        size: 16
+                                        color: Theme.surface
+                                    }
+                                }
+                            }
+                        }
+
+                        ColumnLayout {
+                            id: mprisCol
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingXS
+
+                            // Header with Player Name
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingXS
+
+                                DankIcon {
+                                    name: "music_note"
+                                    size: 14
+                                    color: Theme.primary
+                                }
+
+                                StyledText {
+                                    text: root.selectedDevice?.mediaPlayer || I18n.tr("Media Player")
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.weight: Font.DemiBold
+                                    color: Theme.primary
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            // Track details
+                            StyledText {
+                                text: root.selectedDevice?.mediaTitle || ""
+                                font.pixelSize: Theme.fontSizeMedium
+                                font.weight: Font.Bold
+                                color: Theme.surfaceText
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+
+                            StyledText {
+                                text: {
+                                    let artist = root.selectedDevice?.mediaArtist || "";
+                                    let album = root.selectedDevice?.mediaAlbum || "";
+                                    if (artist && album) return artist + " — " + album;
+                                    return artist || album || I18n.tr("Unknown Artist");
+                                }
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+
+                            // Playback Controls
+                            RowLayout {
+                                spacing: Theme.spacingM
+                                Layout.alignment: Qt.AlignLeft
+
+                                DankActionButton {
+                                    iconName: "skip_previous"
+                                    iconColor: Theme.surfaceText
+                                    buttonSize: 28
+                                    tooltipText: I18n.tr("Previous")
+                                    onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "previous", function() {})
+                                }
+
+                                DankActionButton {
+                                    iconName: root.selectedDevice?.mediaIsPlaying ? "pause" : "play_arrow"
+                                    iconColor: Theme.primary
+                                    buttonSize: 32
+                                    tooltipText: root.selectedDevice?.mediaIsPlaying ? I18n.tr("Pause") : I18n.tr("Play")
+                                    onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "playpause", function() {})
+                                }
+
+                                DankActionButton {
+                                    iconName: "skip_next"
+                                    iconColor: Theme.surfaceText
+                                    buttonSize: 28
+                                    tooltipText: I18n.tr("Next")
+                                    onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "next", function() {})
                                 }
                             }
                         }

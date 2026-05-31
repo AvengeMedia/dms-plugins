@@ -44,13 +44,36 @@ PluginComponent {
         console.log("[DMS DEBUG DankKDEConnect] customPhoneImage changed to:", customPhoneImage)
     }
 
-    onSelectedDeviceIdChanged: {
-        console.log("[DMS DEBUG DankKDEConnect] selectedDeviceId changed to:", selectedDeviceId)
-    }
-
-    readonly property var selectedDevice: selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null
+    property var selectedDevice: null
     readonly property bool hasDevice: selectedDevice !== null
     readonly property string serviceName: PhoneConnectService.backendName
+
+    readonly property string pluginId: "dankKDEConnect"
+    property bool enableClipboardAction: {
+        let _ = typeof SettingsData !== "undefined" ? SettingsData.pluginSettings : null;
+        return typeof SettingsData !== "undefined" ? SettingsData.getPluginSetting(pluginId, "enableClipboardAction", true) : true;
+    }
+
+    Connections {
+        target: PhoneConnectService
+        function onDeviceUpdated(deviceId) {
+            if (deviceId === root.selectedDeviceId) {
+                root.selectedDevice = PhoneConnectService.devices[deviceId] ?? null;
+            }
+        }
+        function onDevicesListChanged() {
+            root.selectedDevice = root.selectedDeviceId ? PhoneConnectService.devices[root.selectedDeviceId] ?? null : null;
+        }
+    }
+
+    onSelectedDeviceIdChanged: {
+        console.log("[DMS DEBUG DankKDEConnect] selectedDeviceId changed to:", selectedDeviceId)
+        selectedDevice = selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null;
+    }
+
+    Component.onCompleted: {
+        selectedDevice = selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null;
+    }
 
     readonly property bool isDarkTheme: (Theme.surface.r * 0.299 + Theme.surface.g * 0.587 + Theme.surface.b * 0.114) < 0.5
     readonly property color cardColor: isDarkTheme ? Theme.withAlpha("#ffffff", 0.08) : Theme.withAlpha(Theme.surfaceContainerHigh, 0.6)
@@ -749,32 +772,65 @@ PluginComponent {
                                     spacing: Theme.spacingS
                                     Layout.alignment: Qt.AlignHCenter
                                     DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("findmyphone") || root.selectedDevice.supportedPlugins.includes("kdeconnect_findmyphone")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "phone_in_talk"
                                         iconColor: Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
-                                        onClicked: root.handleAction(root.selectedDeviceId, "ring")
+                                        onClicked: {
+                                            if (!enabled) return;
+                                            root.handleAction(root.selectedDeviceId, "ring")
+                                        }
                                     }
                                     DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("sftp") || root.selectedDevice.supportedPlugins.includes("kdeconnect_sftp")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "folder"
                                         iconColor: Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
-                                        onClicked: root.handleAction(root.selectedDeviceId, "browse")
+                                        onClicked: {
+                                            if (!enabled) return;
+                                            root.handleAction(root.selectedDeviceId, "browse")
+                                        }
                                     }
                                     DankActionButton {
+                                        visible: root.enableClipboardAction
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("clipboard") || root.selectedDevice.supportedPlugins.includes("kdeconnect_clipboard")) : false
+                                        opacity: enabled ? 1.0 : 0.4
+                                        iconName: "content_copy"
+                                        iconColor: Theme.primary
+                                        buttonSize: 32
+                                        tooltipText: I18n.tr("Send Clipboard", "KDE Connect send clipboard tooltip")
+                                        onClicked: {
+                                            if (!enabled) return;
+                                            root.handleAction(root.selectedDeviceId, "clipboard")
+                                        }
+                                    }
+                                    DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("share") || root.selectedDevice.supportedPlugins.includes("kdeconnect_share")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "share"
                                         iconColor: Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
-                                        onClicked: root.handleAction(root.selectedDeviceId, "share")
+                                        onClicked: {
+                                            if (!enabled) return;
+                                            root.handleAction(root.selectedDeviceId, "share")
+                                        }
                                     }
                                     DankActionButton {
+                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("sms") || root.selectedDevice.supportedPlugins.includes("kdeconnect_sms")) : false
+                                        opacity: enabled ? 1.0 : 0.4
                                         iconName: "sms"
                                         iconColor: Theme.primary
                                         buttonSize: 32
                                         tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
-                                        onClicked: root.handleAction(root.selectedDeviceId, "sms")
+                                        onClicked: {
+                                            if (!enabled) return;
+                                            root.handleAction(root.selectedDeviceId, "sms")
+                                        }
                                     }
                                     DankActionButton {
                                         visible: PhoneConnectService.deviceIds.length > 1

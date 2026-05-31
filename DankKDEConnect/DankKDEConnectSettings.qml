@@ -311,6 +311,34 @@ PluginSettings {
                             mainSettingsCol.saveValue("enableChargingAnimation", newChecked);
                         }
                     }
+
+                    DankToggle {
+                        id: clipboardActionToggle
+                        width: parent.width
+                        text: "Show Clipboard Quick Action"
+                        description: "Show a top-level action button next to Ring and Browse for instantly sending the clipboard to your device."
+                        Component.onCompleted: {
+                            checked = mainSettingsCol.loadValue("enableClipboardAction", true);
+                        }
+                        onToggled: function(newChecked) {
+                            checked = newChecked;
+                            mainSettingsCol.saveValue("enableClipboardAction", newChecked);
+                        }
+                    }
+
+                    DankToggle {
+                        id: showOngoingMediaToggle
+                        width: parent.width
+                        text: "Show Ongoing Media"
+                        description: "Show active media playing on your phone in the plugin dashboard."
+                        Component.onCompleted: {
+                            checked = mainSettingsCol.loadValue("showOngoingMedia", true);
+                        }
+                        onToggled: function(newChecked) {
+                            checked = newChecked;
+                            mainSettingsCol.saveValue("showOngoingMedia", newChecked);
+                        }
+                    }
                 }
 
                 Rectangle {

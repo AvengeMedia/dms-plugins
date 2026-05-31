@@ -225,6 +225,9 @@ Singleton {
                 case deviceInterface:
                     fetchDeviceInfo(id);
                     break;
+                case mprisRemoteInterface:
+                    fetchMprisInfo(id);
+                    break;
                 }
                 break;
             }
@@ -314,6 +317,7 @@ Singleton {
             if (dev.isPaired && dev.isReachable) {
                 fetchBatteryInfo(deviceId);
                 fetchConnectivityInfo(deviceId);
+                fetchMprisInfo(deviceId);
             }
         });
     }
@@ -352,6 +356,30 @@ Singleton {
             const dev = Object.assign({}, oldDev);
             dev.networkType = props.cellularNetworkType || "";
             dev.networkStrength = props.cellularNetworkStrength ?? -1;
+
+            devices = Object.assign({}, devices, {
+                [deviceId]: dev
+            });
+            deviceUpdated(deviceId);
+        });
+    }
+
+    function fetchMprisInfo(deviceId) {
+        const path = daemonPath + "/devices/" + deviceId + "/mprisremote";
+
+        DMSService.dbusGetAllProperties("session", service, path, mprisRemoteInterface, function(response) {
+            if (response.error)
+                return;
+            const props = response.result || {};
+            const oldDev = devices[deviceId];
+            if (!oldDev)
+                return;
+            const dev = Object.assign({}, oldDev);
+            dev.mediaTitle = props.title || props.Title || props.nowPlaying || props.NowPlaying || "";
+            dev.mediaArtist = props.artist || props.Artist || "";
+            dev.mediaAlbum = props.album || props.Album || "";
+            dev.mediaIsPlaying = props.isPlaying || props.IsPlaying || props.isplaying || (props.PlaybackStatus === "Playing") || false;
+            dev.mediaPlayer = props.player || props.Player || (props.playerList && props.playerList.length > 0 ? props.playerList[0] : "") || "";
 
             devices = Object.assign({}, devices, {
                 [deviceId]: dev

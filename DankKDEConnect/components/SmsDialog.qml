@@ -64,36 +64,38 @@ StyledRect {
     transitions: [
         Transition {
             from: "closed"; to: "open"
-            SequentialAnimation {
+            ParallelAnimation {
                 PropertyAction { target: root; property: "visible"; value: true }
                 NumberAnimation {
                     target: root
                     property: "height"
-                    duration: 180
-                    easing.type: Easing.OutQuad
+                    duration: Theme.shorterDuration
+                    easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     target: clipContainer
                     property: "opacity"
-                    duration: 150
-                    easing.type: Easing.OutQuad
+                    duration: Theme.shorterDuration
+                    easing.type: Easing.OutCubic
                 }
             }
         },
         Transition {
             from: "open"; to: "closed"
             SequentialAnimation {
-                NumberAnimation {
-                    target: clipContainer
-                    property: "opacity"
-                    duration: 120
-                    easing.type: Easing.OutQuad
-                }
-                NumberAnimation {
-                    target: root
-                    property: "height"
-                    duration: 150
-                    easing.type: Easing.OutQuad
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: clipContainer
+                        property: "opacity"
+                        duration: Theme.shorterDuration
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        target: root
+                        property: "height"
+                        duration: Theme.shorterDuration
+                        easing.type: Easing.OutCubic
+                    }
                 }
                 PropertyAction { target: root; property: "visible"; value: false }
             }
