@@ -24,6 +24,8 @@ Singleton {
     readonly property string pingInterface: "org.kde.kdeconnect.device.ping"
     readonly property string sftpInterface: "org.kde.kdeconnect.device.sftp"
     readonly property string photoInterface: "org.kde.kdeconnect.device.photo"
+    readonly property string propertiesInterface: "org.freedesktop.DBus.Properties"
+    readonly property string notificationsInterface: "org.kde.kdeconnect.device.notifications"
 
     property bool available: false
     property bool initialized: false
@@ -113,6 +115,11 @@ Singleton {
                 _subscribed = false;
             }
         });
+        DMSService.dbusSubscribe("session", service, "", propertiesInterface, "PropertiesChanged", function(response) {
+            if (response.error) {
+                console.warn("[KDEConnect] Properties subscription failed:", response.error);
+            }
+        });
     }
 
     function checkAvailability() {
@@ -154,6 +161,9 @@ Singleton {
     }
 
     function handleDbusSignal(data) {
+        if (data.path && data.path.includes("mpris")) {
+            console.warn("[KDEConnect] MPRIS DBus Signal:", JSON.stringify(data));
+        }
         switch (data.member) {
         case "deviceAdded":
             if (data.body?.[0]) {
@@ -210,6 +220,26 @@ Singleton {
                 fetchConnectivityInfo(id);
                 break;
             }
+        case "notificationPosted":
+        case "notificationRemoved":
+        case "allNotificationsRemoved":
+            {
+                const id = extractDeviceIdFromPath(data.path);
+                if (!id)
+                    break;
+                fetchNotificationsCount(id);
+                break;
+            }
+        case "propertiesChanged":
+            {
+                const id = extractDeviceIdFromPath(data.path);
+                if (!id)
+                    break;
+                if (data.interface === mprisRemoteInterface) {
+                    fetchMprisInfo(id);
+                }
+                break;
+            }
         case "PropertiesChanged":
             {
                 const id = extractDeviceIdFromPath(data.path);
@@ -221,6 +251,9 @@ Singleton {
                     break;
                 case connectivityInterface:
                     fetchConnectivityInfo(id);
+                    break;
+                case notificationsInterface:
+                    fetchNotificationsCount(id);
                     break;
                 case deviceInterface:
                     fetchDeviceInfo(id);
@@ -303,6 +336,7 @@ Singleton {
             dev.isPairRequestedByPeer = props.isPairRequestedByPeer || false;
             dev.statusIconName = props.statusIconName || "smartphone";
             dev.supportedPlugins = props.supportedPlugins || [];
+            console.warn("[KDEConnect] Device info for", deviceId, ": name =", dev.name, ", supportedPlugins =", JSON.stringify(dev.supportedPlugins));
             dev.verificationKey = props.verificationKey || "";
 
             devices = Object.assign({}, devices, {
@@ -317,6 +351,7 @@ Singleton {
             if (dev.isPaired && dev.isReachable) {
                 fetchBatteryInfo(deviceId);
                 fetchConnectivityInfo(deviceId);
+                fetchNotificationsCount(deviceId);
                 fetchMprisInfo(deviceId);
             }
         });
@@ -364,10 +399,42 @@ Singleton {
         });
     }
 
+    function fetchNotificationsCount(deviceId) {
+        const path = daemonPath + "/devices/" + deviceId + "/notifications";
+
+        DMSService.dbusCall("session", service, path, notificationsInterface, "activeNotifications", [], function(response) {
+            console.warn("[KDEConnect] fetchNotificationsCount response for", deviceId, ":", JSON.stringify(response));
+            if (response.error)
+                return;
+            const result = response.result?.values;
+            let list = [];
+            if (result && result.length > 0) {
+                list = result[0];
+                if (!list) {
+                    list = [];
+                } else if (!Array.isArray(list)) {
+                    list = [list];
+                }
+            }
+            
+            const oldDev = devices[deviceId];
+            if (!oldDev)
+                return;
+            const dev = Object.assign({}, oldDev);
+            dev.notificationCount = list.length;
+
+            devices = Object.assign({}, devices, {
+                [deviceId]: dev
+            });
+            deviceUpdated(deviceId);
+        });
+    }
+
     function fetchMprisInfo(deviceId) {
         const path = daemonPath + "/devices/" + deviceId + "/mprisremote";
 
         DMSService.dbusGetAllProperties("session", service, path, mprisRemoteInterface, function(response) {
+            console.warn("[KDEConnect] fetchMprisInfo response for", deviceId, ":", JSON.stringify(response));
             if (response.error)
                 return;
             const props = response.result || {};
@@ -375,9 +442,32 @@ Singleton {
             if (!oldDev)
                 return;
             const dev = Object.assign({}, oldDev);
-            dev.mediaTitle = props.title || props.Title || props.nowPlaying || props.NowPlaying || "";
-            dev.mediaArtist = props.artist || props.Artist || "";
-            dev.mediaAlbum = props.album || props.Album || "";
+            let nowPlaying = props.nowPlaying || props.NowPlaying || "";
+            let title = props.title || props.Title || "";
+            let artist = props.artist || props.Artist || "";
+            let album = props.album || props.Album || "";
+
+            if (!title && nowPlaying) {
+                let parts = [];
+                if (nowPlaying.includes(" - ")) {
+                    parts = nowPlaying.split(" - ");
+                } else if (nowPlaying.includes(" — ")) {
+                    parts = nowPlaying.split(" — ");
+                } else if (nowPlaying.includes(" – ")) {
+                    parts = nowPlaying.split(" – ");
+                }
+                
+                if (parts.length >= 2) {
+                    artist = parts[0].trim();
+                    title = parts.slice(1).join(" - ").trim();
+                } else {
+                    title = nowPlaying;
+                }
+            }
+
+            dev.mediaTitle = title;
+            dev.mediaArtist = artist;
+            dev.mediaAlbum = album;
             dev.mediaIsPlaying = props.isPlaying || props.IsPlaying || props.isplaying || (props.PlaybackStatus === "Playing") || false;
             dev.mediaPlayer = props.player || props.Player || (props.playerList && props.playerList.length > 0 ? props.playerList[0] : "") || "";
 
@@ -639,7 +729,7 @@ Singleton {
         case "tablet":
             return "tablet";
         case "desktop":
-            return "computer";
+            return "desktop_windows";
         case "laptop":
             return "laptop";
         case "tv":

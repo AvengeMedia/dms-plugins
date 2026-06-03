@@ -680,7 +680,7 @@ Singleton {
         case "tablet":
             return "tablet";
         case "desktop":
-            return "computer";
+            return "desktop_windows";
         case "laptop":
             return "laptop";
         case "tv":

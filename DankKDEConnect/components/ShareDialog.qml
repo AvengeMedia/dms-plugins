@@ -4,12 +4,17 @@ import QtQuick.Effects
 import qs.Common
 import qs.Modals.FileBrowser
 import qs.Widgets
-import Qt5Compat.GraphicalEffects
 import qs.Services
 
 
 StyledRect {
     id: root
+
+    focus: true
+    Keys.onEscapePressed: (event) => {
+        root.close();
+        event.accepted = true;
+    }
 
     property string deviceId: ""
     property var parentPopout: null
@@ -25,6 +30,11 @@ StyledRect {
     }
 
     property bool isOpen: false
+    onIsOpenChanged: {
+        if (isOpen) {
+            shareInput.forceActiveFocus();
+        }
+    }
 
     height: 0
     visible: false
@@ -158,6 +168,7 @@ StyledRect {
                 border.width: 1
                 border.color: Theme.withAlpha(Theme.error, closeArea.containsMouse ? 0.4 : 0.15)
                 scale: closeArea.containsMouse ? 1.08 : 1.0
+                activeFocusOnTab: true
 
                 Behavior on color { ColorAnimation { duration: 200 } }
                 Behavior on border.color { ColorAnimation { duration: 200 } }
@@ -181,6 +192,23 @@ StyledRect {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.close()
                 }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    color: "transparent"
+                    border.color: Theme.primary
+                    border.width: 2
+                    radius: Theme.cornerRadius
+                    visible: parent.activeFocus
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                        root.close();
+                        event.accepted = true;
+                    }
+                }
             }
         }
 
@@ -192,6 +220,17 @@ StyledRect {
                 id: shareInput
                 Layout.fillWidth: true
                 placeholderText: I18n.tr("Enter URL or text to share", "KDE Connect share input placeholder") + "..."
+                activeFocusOnTab: true
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                        if (text.trim().length > 0) {
+                            root.share(text, root.isUrl(text));
+                            text = "";
+                            event.accepted = true;
+                        }
+                    }
+                }
             }
 
             Rectangle {
@@ -202,7 +241,23 @@ StyledRect {
                 color: quickClipboardBtnArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
                 border.width: 1
                 border.color: Theme.withAlpha(Theme.primary, quickClipboardBtnArea.containsMouse ? 0.3 : 0.15)
+                activeFocusOnTab: true
                 
+                function triggerClipboardShare() {
+                    Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
+                        let content = stdout || "";
+                        content = content.trim();
+                        if (content.length > 0) {
+                            shareInput.text = content;
+                            root.share(shareInput.text, root.isUrl(shareInput.text));
+                            shareInput.text = "";
+                        } else {
+                            if (typeof ToastService !== "undefined")
+                                ToastService.showError(I18n.tr("Clipboard is empty or wl-paste failed."));
+                        }
+                    });
+                }
+
                 DankIcon {
                     anchors.centerIn: parent
                     name: "content_paste"
@@ -215,29 +270,23 @@ StyledRect {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (typeof DMSService === "undefined" || !DMSService.isConnected) {
-                            if (typeof ToastService !== "undefined")
-                                ToastService.showError(I18n.tr("DMS Service is not connected"));
-                            return;
-                        }
-                        DMSService.sendRequest("clipboard.paste", null, function(response) {
-                            if (response.error) {
-                                if (typeof ToastService !== "undefined")
-                                    ToastService.showError(I18n.tr("Failed to read clipboard: ") + response.error);
-                                return;
-                            }
-                            let content = response.result?.text || "";
-                            content = content.trim();
-                            if (content.length > 0) {
-                                shareInput.text = content;
-                                root.share(shareInput.text, root.isUrl(shareInput.text));
-                                shareInput.text = "";
-                            } else {
-                                if (typeof ToastService !== "undefined")
-                                    ToastService.showError(I18n.tr("Clipboard is empty."));
-                            }
-                        });
+                    onClicked: quickClipboardBtn.triggerClipboardShare()
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    color: "transparent"
+                    border.color: Theme.primary
+                    border.width: 2
+                    radius: Theme.cornerRadius
+                    visible: parent.activeFocus
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                        quickClipboardBtn.triggerClipboardShare();
+                        event.accepted = true;
                     }
                 }
             }
@@ -257,6 +306,7 @@ StyledRect {
                 
                 readonly property bool isEnabled: shareInput.text.length > 0
                 opacity: isEnabled ? 1.0 : 0.4
+                activeFocusOnTab: isEnabled
 
                 Canvas {
                     id: shareTextBtnBg
@@ -351,6 +401,26 @@ StyledRect {
                         }
                     }
                 }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    color: "transparent"
+                    border.color: Theme.primary
+                    border.width: 2
+                    radius: Theme.cornerRadius
+                    visible: parent.activeFocus
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                        if (shareTextBtn.isEnabled) {
+                            root.share(shareInput.text, root.isUrl(shareInput.text));
+                            shareInput.text = "";
+                            event.accepted = true;
+                        }
+                    }
+                }
             }
 
             Rectangle {
@@ -360,6 +430,7 @@ StyledRect {
                 height: 36
                 color: "transparent"
                 border.width: 0
+                activeFocusOnTab: true
 
                 Canvas {
                     id: sendFileBtnBg
@@ -448,6 +519,23 @@ StyledRect {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: fileBrowser.open()
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    color: "transparent"
+                    border.color: Theme.primary
+                    border.width: 2
+                    radius: Theme.cornerRadius
+                    visible: parent.activeFocus
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                        fileBrowser.open();
+                        event.accepted = true;
+                    }
                 }
             }
         }

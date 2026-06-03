@@ -9,24 +9,187 @@ import qs.Widgets
 import qs.Modules.Plugins
 import "./components"
 import "./services"
-import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 import QtQuick.Shapes
 
 PluginComponent {
     id: root
 
-    property string selectedDeviceId: SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.selectedDeviceId || ""
-    property string customPhoneImage: {
-        const savedVal = customPhoneImageVar.value;
-        if (savedVal !== undefined) return savedVal;
-        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
-        return data?.customPhoneImage || "";
+    PluginGlobalVar {
+        id: deviceImageMapVar
+        varName: "deviceImageMap"
     }
-    property string recentImagesPath: {
-        const savedVal = recentImagesPathVar.value;
-        if (savedVal !== undefined) return savedVal;
+
+    PluginGlobalVar {
+        id: deviceRecentImagesPathMapVar
+        varName: "deviceRecentImagesPathMap"
+    }
+
+    PluginGlobalVar {
+        id: deviceTypeMapVar
+        varName: "deviceTypeMap"
+    }
+
+    PluginGlobalVar {
+        id: recentImagesPathVar
+        varName: "recentImagesPath"
+    }
+
+    PluginGlobalVar {
+        id: maxRecentImagesVar
+        varName: "maxRecentImages"
+    }
+
+    PluginGlobalVar {
+        id: enableClipboardActionVar
+        varName: "enableClipboardAction"
+    }
+
+    PluginGlobalVar {
+        id: showOngoingMediaVar
+        varName: "showOngoingMedia"
+    }
+
+    PluginGlobalVar {
+        id: stateUpdateIntervalVar
+        varName: "stateUpdateInterval"
+    }
+
+    PluginGlobalVar {
+        id: enableChargingAnimationVar
+        varName: "enableChargingAnimation"
+    }
+
+    property bool enableChargingAnimation: {
+        const globalVal = enableChargingAnimationVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return (globalVal === true || globalVal === "true");
         const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
-        return data?.recentImagesPath || "";
+        const localVal = data?.enableChargingAnimation;
+        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
+    }
+
+    property string selectedDeviceId: SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.selectedDeviceId || ""
+    // Per-device custom image map: { deviceId: imagePath }
+    property var deviceImageMap: ({})
+
+    // Image for the currently selected device
+    readonly property string customPhoneImage: deviceImageMap[selectedDeviceId] || ""
+
+    property bool popoutOpen: false
+
+    // Animated/active state for smooth device switching transitions (non-reactive initial to prevent instant snapping)
+    property string activeDeviceId: ""
+    readonly property var activeDevice: activeDeviceId ? (PhoneConnectService.devices[activeDeviceId] ?? null) : null
+    readonly property string activeCustomPhoneImage: deviceImageMap[activeDeviceId] || ""
+
+    readonly property real container1Width: {
+        const type = root.activeDevice?.type;
+        if (type === "desktop" || type === "computer" || type === "laptop") {
+            return 240;
+        } else if (type === "tv") {
+            return 260;
+        } else if (type === "tablet") {
+            return 185;
+        }
+        return 135;
+    }
+
+    onActiveDeviceIdChanged: {
+        recentImages = [];
+        if (activeDeviceId && PhoneConnectService.hasPlugin(activeDeviceId, "sftp")) {
+            refreshImages(true);
+        }
+    }
+
+    onSelectedDeviceIdChanged: {
+        if (activeDeviceId === "") {
+            activeDeviceId = selectedDeviceId;
+        } else if (selectedDeviceId !== activeDeviceId) {
+            if (!popoutOpen) {
+                activeDeviceId = selectedDeviceId;
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        if (activeDeviceId === "" && selectedDeviceId !== "") {
+            activeDeviceId = selectedDeviceId;
+        }
+        PhoneConnectService.deviceTypeMap = root.deviceTypeMap;
+    }
+
+    function getDeviceImage(deviceId) {
+        return deviceImageMap[deviceId] || "";
+    }
+
+    function setDeviceImage(deviceId, path) {
+        const updated = Object.assign({}, deviceImageMap);
+        if (path === "" || path === null)
+            delete updated[deviceId];
+        else
+            updated[deviceId] = path;
+        deviceImageMap = updated;
+        deviceImageMapVar.value = JSON.stringify(updated);
+        PluginService.savePluginData("dankKDEConnect", "deviceImageMap", JSON.stringify(updated));
+    }
+
+    // Per-device custom recent images path map: { deviceId: recentImagesPath }
+    property var deviceRecentImagesPathMap: ({})
+
+    function getDeviceRecentImagesPath(deviceId) {
+        return deviceRecentImagesPathMap[deviceId] || "";
+    }
+
+    function setDeviceRecentImagesPath(deviceId, path) {
+        const updated = Object.assign({}, deviceRecentImagesPathMap);
+        if (path === "" || path === null)
+            delete updated[deviceId];
+        else
+            updated[deviceId] = path;
+        deviceRecentImagesPathMap = updated;
+        deviceRecentImagesPathMapVar.value = JSON.stringify(updated);
+        PluginService.savePluginData("dankKDEConnect", "deviceRecentImagesPathMap", JSON.stringify(updated));
+    }
+
+    // Per-device custom type map: { deviceId: type }
+    property var deviceTypeMap: ({})
+
+    onDeviceTypeMapChanged: {
+        PhoneConnectService.deviceTypeMap = deviceTypeMap;
+    }
+
+    function getDeviceType(deviceId) {
+        return deviceTypeMap[deviceId] || "";
+    }
+
+    function setDeviceType(deviceId, type) {
+        const updated = Object.assign({}, deviceTypeMap);
+        if (type === "" || type === null)
+            delete updated[deviceId];
+        else
+            updated[deviceId] = type;
+        deviceTypeMap = updated;
+        deviceTypeMapVar.value = JSON.stringify(updated);
+        PluginService.savePluginData("dankKDEConnect", "deviceTypeMap", JSON.stringify(updated));
+    }
+
+    property string recentImagesPath: {
+        if (activeDeviceId) {
+            if (deviceRecentImagesPathMap[activeDeviceId]) {
+                return deviceRecentImagesPathMap[activeDeviceId];
+            }
+            // Fallback to legacy single path ONLY if it's the first/only device, or if the device ID matches the first device
+            const ids = PhoneConnectService.deviceIds;
+            if (ids && ids.length > 0 && activeDeviceId === ids[0]) {
+                const savedVal = recentImagesPathVar.value;
+                if (savedVal !== undefined && savedVal !== null) return savedVal;
+                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+                return data?.recentImagesPath || "";
+            }
+            return "";
+        }
+        return "";
     }
     property int maxRecentImages: {
         const savedVal = maxRecentImagesVar.value;
@@ -44,35 +207,35 @@ PluginComponent {
         console.log("[DMS DEBUG DankKDEConnect] customPhoneImage changed to:", customPhoneImage)
     }
 
-    property var selectedDevice: null
-    readonly property bool hasDevice: selectedDevice !== null
+    // Reactive binding: always reflects the latest device data from the service
+    readonly property bool hasDevice: selectedDeviceId !== "" && PhoneConnectService.deviceIds.includes(selectedDeviceId)
+    readonly property var selectedDevice: hasDevice ? (PhoneConnectService.devices[selectedDeviceId] ?? null) : null
+    readonly property bool isSelectedDeviceMobile: root.selectedDevice && (root.selectedDevice.type === "phone" || root.selectedDevice.type === "smartphone" || root.selectedDevice.type === "tablet")
     readonly property string serviceName: PhoneConnectService.backendName
 
     readonly property string pluginId: "dankKDEConnect"
     property bool enableClipboardAction: {
-        let _ = typeof SettingsData !== "undefined" ? SettingsData.pluginSettings : null;
-        return typeof SettingsData !== "undefined" ? SettingsData.getPluginSetting(pluginId, "enableClipboardAction", true) : true;
+        const globalVal = enableClipboardActionVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return (globalVal === true || globalVal === "true");
+        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        const localVal = data?.enableClipboardAction;
+        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
     }
-
-    Connections {
-        target: PhoneConnectService
-        function onDeviceUpdated(deviceId) {
-            if (deviceId === root.selectedDeviceId) {
-                root.selectedDevice = PhoneConnectService.devices[deviceId] ?? null;
-            }
-        }
-        function onDevicesListChanged() {
-            root.selectedDevice = root.selectedDeviceId ? PhoneConnectService.devices[root.selectedDeviceId] ?? null : null;
-        }
+    property bool showOngoingMedia: {
+        const globalVal = showOngoingMediaVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return (globalVal === true || globalVal === "true");
+        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        const localVal = data?.showOngoingMedia;
+        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
     }
-
-    onSelectedDeviceIdChanged: {
-        console.log("[DMS DEBUG DankKDEConnect] selectedDeviceId changed to:", selectedDeviceId)
-        selectedDevice = selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null;
-    }
-
-    Component.onCompleted: {
-        selectedDevice = selectedDeviceId ? PhoneConnectService.devices[selectedDeviceId] ?? null : null;
+    property int stateUpdateInterval: {
+        const globalVal = stateUpdateIntervalVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return parseInt(globalVal) || 30;
+        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        return parseInt(data?.stateUpdateInterval) || 30;
     }
 
     readonly property bool isDarkTheme: (Theme.surface.r * 0.299 + Theme.surface.g * 0.587 + Theme.surface.b * 0.114) < 0.5
@@ -103,14 +266,15 @@ PluginComponent {
         return selectedDevice.name + " (" + I18n.tr("Offline", "Phone Connect offline status") + ")";
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
-    ccDetailHeight: 380
+    ccDetailHeight: 460
+    popoutWidth: 400 + (container1Width - 135)
 
     ccDetailContent: Component {
         ScrollView {
             anchors.fill: parent
             clip: false
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             KDEConnectDetailContent {
                 width: parent.width
@@ -130,28 +294,170 @@ PluginComponent {
         const savedId = pluginService.loadPluginData("dankKDEConnect", "selectedDeviceId", "");
         if (savedId)
             selectedDeviceId = savedId;
+
+        // Load map values from persistent store on startup
+        const savedTypeMap = pluginService.loadPluginData("dankKDEConnect", "deviceTypeMap", "");
+        if (savedTypeMap) {
+            try { deviceTypeMap = JSON.parse(savedTypeMap); } catch(e) {}
+        } else {
+            try {
+                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+                if (data?.deviceTypeMap) deviceTypeMap = JSON.parse(data.deviceTypeMap);
+            } catch(e) {}
+        }
+
+        const savedImageMap = pluginService.loadPluginData("dankKDEConnect", "deviceImageMap", "");
+        if (savedImageMap) {
+            try { deviceImageMap = JSON.parse(savedImageMap); } catch(e) {}
+        } else {
+            try {
+                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+                if (data?.deviceImageMap) {
+                    deviceImageMap = JSON.parse(data.deviceImageMap);
+                } else if (data?.customPhoneImage) {
+                    const ids = PhoneConnectService.deviceIds;
+                    if (ids && ids.length > 0) {
+                        const m = {}; m[ids[0]] = data.customPhoneImage;
+                        deviceImageMap = m;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        const savedPathMap = pluginService.loadPluginData("dankKDEConnect", "deviceRecentImagesPathMap", "");
+        if (savedPathMap) {
+            try { deviceRecentImagesPathMap = JSON.parse(savedPathMap); } catch(e) {}
+        } else {
+            try {
+                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+                if (data?.deviceRecentImagesPathMap) deviceRecentImagesPathMap = JSON.parse(data.deviceRecentImagesPathMap);
+            } catch(e) {}
+        }
+        
+        // Push the type map to PhoneConnectService immediately
+        PhoneConnectService.deviceTypeMap = deviceTypeMap;
     }
 
-    PluginGlobalVar {
-        id: customPhoneImageVar
-        varName: "customPhoneImage"
+    Connections {
+        target: deviceTypeMapVar
+        ignoreUnknownSignals: true
+        function onValueChanged() {
+            const val = deviceTypeMapVar.value;
+            if (val !== undefined && val !== null && val !== "") {
+                try {
+                    const newMap = JSON.parse(val);
+                    if (JSON.stringify(deviceTypeMap) !== JSON.stringify(newMap)) {
+                        deviceTypeMap = newMap;
+                    }
+                } catch(e) {}
+            }
+        }
     }
 
-    PluginGlobalVar {
-        id: recentImagesPathVar
-        varName: "recentImagesPath"
+    Connections {
+        target: deviceImageMapVar
+        ignoreUnknownSignals: true
+        function onValueChanged() {
+            const val = deviceImageMapVar.value;
+            if (val !== undefined && val !== null && val !== "") {
+                try {
+                    const newMap = JSON.parse(val);
+                    if (JSON.stringify(deviceImageMap) !== JSON.stringify(newMap)) {
+                        deviceImageMap = newMap;
+                    }
+                } catch(e) {}
+            }
+        }
     }
 
-    PluginGlobalVar {
-        id: maxRecentImagesVar
-        varName: "maxRecentImages"
+    Connections {
+        target: deviceRecentImagesPathMapVar
+        ignoreUnknownSignals: true
+        function onValueChanged() {
+            const val = deviceRecentImagesPathMapVar.value;
+            if (val !== undefined && val !== null && val !== "") {
+                try {
+                    const newMap = JSON.parse(val);
+                    if (JSON.stringify(deviceRecentImagesPathMap) !== JSON.stringify(newMap)) {
+                        deviceRecentImagesPathMap = newMap;
+                    }
+                } catch(e) {}
+            }
+        }
+    }
+
+    Timer {
+        id: autoUpdateTimer
+        interval: root.stateUpdateInterval * 1000
+        running: root.stateUpdateInterval > 0
+        repeat: true
+        triggeredOnStart: false
+        onTriggered: {
+            PhoneConnectService.refreshDevices();
+        }
+    }
+
+
+
+    readonly property bool isTyping: activeFocusItem && (activeFocusItem.toString().includes("TextInput") || activeFocusItem.toString().includes("TextEdit") || activeFocusItem.toString().includes("TextField") || activeFocusItem.toString().includes("TextArea"))
+
+    function switchDeviceNext() {
+        const ids = PhoneConnectService.deviceIds;
+        if (ids.length <= 1) return;
+        let idx = ids.indexOf(root.selectedDeviceId);
+        idx = (idx + 1) % ids.length;
+        root.selectDevice(ids[idx]);
+    }
+
+    function switchDevicePrev() {
+        const ids = PhoneConnectService.deviceIds;
+        if (ids.length <= 1) return;
+        let idx = ids.indexOf(root.selectedDeviceId);
+        idx = (idx - 1 + ids.length) % ids.length;
+        root.selectDevice(ids[idx]);
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Tab"
+        onActivated: root.switchDeviceNext()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Shift+Tab"
+        onActivated: root.switchDevicePrev()
+    }
+
+    Repeater {
+        model: Math.min(PhoneConnectService.deviceIds.length, 9)
+        delegate: Shortcut {
+            sequence: "Alt+" + (index + 1)
+            onActivated: {
+                if (index < PhoneConnectService.deviceIds.length) {
+                    root.selectDevice(PhoneConnectService.deviceIds[index]);
+                }
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "S"
+        enabled: !root.isTyping && !root.showShareDialog && !root.showSmsDialog
+        onActivated: {
+            if (root.selectedDeviceId && root.selectedDevice && root.selectedDevice.isReachable) {
+                root.handleAction(root.selectedDeviceId, "share");
+            }
+        }
     }
 
     Connections {
         target: PhoneConnectService
         function onDevicesListChanged() {
-            if (!selectedDeviceId && PhoneConnectService.deviceIds.length > 0)
-                selectDevice(PhoneConnectService.deviceIds[0]);
+            const ids = PhoneConnectService.deviceIds;
+            if (ids.length === 0) {
+                selectDevice("");
+            } else if (!selectedDeviceId || !ids.includes(selectedDeviceId)) {
+                selectDevice(ids[0]);
+            }
         }
 
         function onPairingRequestReceived(deviceId, verificationKey) {
@@ -173,6 +479,26 @@ PluginComponent {
         selectedDeviceId = deviceId;
         if (pluginService)
             pluginService.savePluginData("dankKDEConnect", "selectedDeviceId", deviceId);
+    }
+
+    function sendClipboardWayland(deviceId) {
+        Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
+            let content = stdout || "";
+            content = content.trim();
+            if (content.length > 0) {
+                let isUrl = content.startsWith("http://") || content.startsWith("https://");
+                if (isUrl)
+                    PhoneConnectService.shareUrl(deviceId, content, function() {});
+                else
+                    PhoneConnectService.shareText(deviceId, content, function() {});
+                
+                if (typeof ToastService !== "undefined")
+                    ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
+            } else {
+                if (typeof ToastService !== "undefined")
+                    ToastService.showError(I18n.tr("Clipboard is empty or wl-paste failed."));
+            }
+        });
     }
 
     function handleAction(deviceId, action) {
@@ -198,13 +524,7 @@ PluginComponent {
             });
             break;
         case "clipboard":
-            PhoneConnectService.sendClipboard(deviceId, function(response) {
-                if (response.error) {
-                    ToastService.showError(I18n.tr("Failed to send clipboard", "Phone Connect error"), response.error);
-                    return;
-                }
-                ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
-            });
+            root.sendClipboardWayland(deviceId);
             break;
         case "share":
             showSmsDialog = false;
@@ -282,15 +602,25 @@ PluginComponent {
                 id: hWaveContainer
                 readonly property var basePill: {
                     let p = parent;
-                    while (p && p.visualWidth === undefined) {
+                    while (p) {
+                        if (p.visualWidth !== undefined && p.visualWidth > 0) {
+                            return p;
+                        }
                         p = p.parent;
                     }
-                    return p;
+                    p = parent;
+                    while (p) {
+                        if (p.width > 0 && p.height > 0 && p !== horizWrapper && p !== horizRow) {
+                            return p;
+                        }
+                        p = p.parent;
+                    }
+                    return parent;
                 }
-                width: basePill ? basePill.visualWidth : 0
-                height: basePill ? basePill.visualHeight : 0
+                width: basePill ? (basePill.visualWidth || basePill.width) : 0
+                height: basePill ? (basePill.visualHeight || basePill.height) : 0
                 anchors.centerIn: parent
-                visible: (SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.enableChargingAnimation ?? true) &&
+                visible: root.enableChargingAnimation &&
                          root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
 
                 Rectangle {
@@ -314,9 +644,12 @@ PluginComponent {
                         return Theme.withAlpha(Theme.success, 0.3);
                     }
 
-                    FrameAnimation {
+                    NumberAnimation on phase {
+                        from: 0
+                        to: Math.PI * 200
+                        duration: 30000
+                        loops: Animation.Infinite
                         running: hWaveContainer.visible
-                        onTriggered: hWaveShape.phase += 0.08 * frameTime * 60
                     }
 
                     ShapePath {
@@ -363,7 +696,8 @@ PluginComponent {
                     }
 
                     layer.enabled: true
-                    layer.effect: OpacityMask {
+                    layer.effect: MultiEffect {
+                        maskEnabled: true
                         maskSource: hWaveMask
                     }
                 }
@@ -433,15 +767,25 @@ PluginComponent {
                 id: vWaveContainer
                 readonly property var basePill: {
                     let p = parent;
-                    while (p && p.visualWidth === undefined) {
+                    while (p) {
+                        if (p.visualWidth !== undefined && p.visualWidth > 0) {
+                            return p;
+                        }
                         p = p.parent;
                     }
-                    return p;
+                    p = parent;
+                    while (p) {
+                        if (p.width > 0 && p.height > 0 && p !== vertWrapper && p !== vertCol) {
+                            return p;
+                        }
+                        p = p.parent;
+                    }
+                    return parent;
                 }
-                width: basePill ? basePill.visualWidth : 0
-                height: basePill ? basePill.visualHeight : 0
+                width: basePill ? (basePill.visualWidth || basePill.width) : 0
+                height: basePill ? (basePill.visualHeight || basePill.height) : 0
                 anchors.centerIn: parent
-                visible: (SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.enableChargingAnimation ?? true) &&
+                visible: root.enableChargingAnimation &&
                          root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
 
                 Rectangle {
@@ -465,9 +809,12 @@ PluginComponent {
                         return Theme.withAlpha(Theme.success, 0.3);
                     }
 
-                    FrameAnimation {
+                    NumberAnimation on phase {
+                        from: 0
+                        to: Math.PI * 200
+                        duration: 30000
+                        loops: Animation.Infinite
                         running: vWaveContainer.visible
-                        onTriggered: vWaveShape.phase += 0.08 * frameTime * 60
                     }
 
                     ShapePath {
@@ -514,7 +861,8 @@ PluginComponent {
                     }
 
                     layer.enabled: true
-                    layer.effect: OpacityMask {
+                    layer.effect: MultiEffect {
+                        maskEnabled: true
                         maskSource: vWaveMask
                     }
                 }
@@ -571,6 +919,64 @@ PluginComponent {
             id: popout
             property bool switcherVisible: false
 
+            Component.onCompleted: root.popoutOpen = true
+            Component.onDestruction: root.popoutOpen = false
+
+            SequentialAnimation {
+                id: deviceChangeAnim
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: mainDeviceContainerRow
+                        property: "opacity"
+                        to: 0
+                        duration: 150
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        target: mainContainerTranslate
+                        property: "x"
+                        to: -15
+                        duration: 150
+                        easing.type: Easing.OutCubic
+                    }
+                }
+                ScriptAction {
+                    script: { root.activeDeviceId = root.selectedDeviceId; }
+                }
+                PropertyAction {
+                    target: mainContainerTranslate
+                    property: "x"
+                    value: 15
+                }
+                ParallelAnimation {
+                    NumberAnimation {
+                        target: mainDeviceContainerRow
+                        property: "opacity"
+                        to: 1
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        target: mainContainerTranslate
+                        property: "x"
+                        to: 0
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
+
+            Connections {
+                target: root
+                function onSelectedDeviceIdChanged() {
+                    if (root.activeDeviceId === "") {
+                        root.activeDeviceId = root.selectedDeviceId;
+                    } else if (root.selectedDeviceId !== root.activeDeviceId) {
+                        deviceChangeAnim.restart();
+                    }
+                }
+            }
+
             showCloseButton: false
             headerText: ""
 
@@ -589,13 +995,12 @@ PluginComponent {
                     border.color: root.cardBorderColor
 
                     layer.enabled: true
-                    layer.effect: DropShadow {
-                        transparentBorder: true
-                        horizontalOffset: 0
-                        verticalOffset: 4
-                        radius: 16.0
-                        samples: 32
-                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowHorizontalOffset: 0
+                        shadowVerticalOffset: 4
+                        shadowBlur: 0.6
+                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
                     }
 
                     RowLayout {
@@ -610,7 +1015,7 @@ PluginComponent {
                             color: Theme.withAlpha(Theme.primary, 0.2)
                             
                             DankIcon {
-                                name: "smartphone"
+                                name: PhoneConnectService.getDeviceIcon(root.activeDevice) || "smartphone"
                                 size: 22
                                 color: Theme.primary
                                 anchors.centerIn: parent
@@ -636,6 +1041,45 @@ PluginComponent {
                                 font.pixelSize: Theme.fontSizeSmall - 1
                                 color: Theme.primary
                                 opacity: 0.8
+                            }
+                        }
+
+                        // Switch Device button (only when multiple devices available)
+                        Item {
+                            width: 38
+                            height: 38
+                            Layout.alignment: Qt.AlignVCenter
+                            visible: PhoneConnectService.deviceIds.length > 1
+
+                            MouseArea {
+                                id: switcherArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: popout.switcherVisible = !popout.switcherVisible
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.cornerRadius
+                                color: popout.switcherVisible
+                                    ? Theme.withAlpha(Theme.secondary, 0.2)
+                                    : (switcherArea.containsMouse ? Theme.withAlpha(Theme.secondary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4))
+                                border.width: 1
+                                border.color: Theme.withAlpha(Theme.secondary, popout.switcherVisible || switcherArea.containsMouse ? 0.4 : 0.15)
+
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                            }
+
+                            DankIcon {
+                                name: "swap_horiz"
+                                size: 20
+                                color: Theme.secondary
+                                anchors.centerIn: parent
+                                scale: switcherArea.containsMouse ? 1.15 : 1.0
+
+                                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                             }
                         }
 
@@ -686,210 +1130,42 @@ PluginComponent {
                     }
                 }
 
-                UnavailableMessage {
-                    visible: !PhoneConnectService.available
-                    width: parent.width
-                }
-
-                EmptyState {
-                    visible: PhoneConnectService.available && PhoneConnectService.deviceIds.length === 0
-                    width: parent.width
-                }
-
-                // Main Container
-                RowLayout {
-                    width: parent.width
-                    height: 255
-                    spacing: Theme.spacingM
-                    visible: root.hasDevice
-
-                    // Container 1: Phone Image
-                    StyledRect {
-                        Layout.preferredWidth: 135
-                        Layout.fillHeight: true
-                        radius: Theme.cornerRadius
-                        color: root.cardColor
-                        border.width: 1
-                        border.color: root.cardBorderColor
-
-                        layer.enabled: true
-                        layer.effect: DropShadow {
-                            transparentBorder: true
-                            horizontalOffset: 0
-                            verticalOffset: 4
-                            radius: 16.0
-                            samples: 32
-                            color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                        }
-
-                        PhoneDisplay {
-                            anchors.centerIn: parent
-                            backgroundImage: root.customPhoneImage
-                            isReachable: root.selectedDevice?.isReachable ?? false
-                            onClicked: root.handleAction(root.selectedDeviceId, "ping")
-                        }
-                    }
-
-                    // Container 2: Phone Name & Status
-                    StyledRect {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        radius: Theme.cornerRadius
-                        color: root.cardColor
-                        border.width: 1
-                        border.color: root.cardBorderColor
-
-                        layer.enabled: true
-                        layer.effect: DropShadow {
-                            transparentBorder: true
-                            horizontalOffset: 0
-                            verticalOffset: 4
-                            radius: 16.0
-                            samples: 32
-                            color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                        }
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: Theme.spacingM
-                            spacing: Theme.spacingM
-
-                            // Device Name & Actions
-                            ColumnLayout {
-                                spacing: 2
-                                Layout.fillWidth: true
-
-                                StyledText {
-                                    text: root.selectedDevice?.name || ""
-                                    font.pixelSize: Theme.fontSizeLarge
-                                    font.weight: Font.Bold
-                                    color: Theme.surfaceText
-                                    Layout.fillWidth: true
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-
-                                RowLayout {
-                                    spacing: Theme.spacingS
-                                    Layout.alignment: Qt.AlignHCenter
-                                    DankActionButton {
-                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("findmyphone") || root.selectedDevice.supportedPlugins.includes("kdeconnect_findmyphone")) : false
-                                        opacity: enabled ? 1.0 : 0.4
-                                        iconName: "phone_in_talk"
-                                        iconColor: Theme.primary
-                                        buttonSize: 32
-                                        tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
-                                        onClicked: {
-                                            if (!enabled) return;
-                                            root.handleAction(root.selectedDeviceId, "ring")
-                                        }
-                                    }
-                                    DankActionButton {
-                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("sftp") || root.selectedDevice.supportedPlugins.includes("kdeconnect_sftp")) : false
-                                        opacity: enabled ? 1.0 : 0.4
-                                        iconName: "folder"
-                                        iconColor: Theme.primary
-                                        buttonSize: 32
-                                        tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
-                                        onClicked: {
-                                            if (!enabled) return;
-                                            root.handleAction(root.selectedDeviceId, "browse")
-                                        }
-                                    }
-                                    DankActionButton {
-                                        visible: root.enableClipboardAction
-                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("clipboard") || root.selectedDevice.supportedPlugins.includes("kdeconnect_clipboard")) : false
-                                        opacity: enabled ? 1.0 : 0.4
-                                        iconName: "content_copy"
-                                        iconColor: Theme.primary
-                                        buttonSize: 32
-                                        tooltipText: I18n.tr("Send Clipboard", "KDE Connect send clipboard tooltip")
-                                        onClicked: {
-                                            if (!enabled) return;
-                                            root.handleAction(root.selectedDeviceId, "clipboard")
-                                        }
-                                    }
-                                    DankActionButton {
-                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("share") || root.selectedDevice.supportedPlugins.includes("kdeconnect_share")) : false
-                                        opacity: enabled ? 1.0 : 0.4
-                                        iconName: "share"
-                                        iconColor: Theme.primary
-                                        buttonSize: 32
-                                        tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
-                                        onClicked: {
-                                            if (!enabled) return;
-                                            root.handleAction(root.selectedDeviceId, "share")
-                                        }
-                                    }
-                                    DankActionButton {
-                                        enabled: root.selectedDevice && root.selectedDevice.supportedPlugins ? (root.selectedDevice.supportedPlugins.includes("sms") || root.selectedDevice.supportedPlugins.includes("kdeconnect_sms")) : false
-                                        opacity: enabled ? 1.0 : 0.4
-                                        iconName: "sms"
-                                        iconColor: Theme.primary
-                                        buttonSize: 32
-                                        tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
-                                        onClicked: {
-                                            if (!enabled) return;
-                                            root.handleAction(root.selectedDeviceId, "sms")
-                                        }
-                                    }
-                                    DankActionButton {
-                                        visible: PhoneConnectService.deviceIds.length > 1
-                                        iconName: "swap_horiz"
-                                        iconColor: Theme.secondary
-                                        buttonSize: 32
-                                        tooltipText: I18n.tr("Switch Device", "KDE Connect switch device tooltip")
-                                        onClicked: popout.switcherVisible = !popout.switcherVisible
-                                    }
-                                }
-                            }
-
-                            // Info Rows
-                            InfoRow {
-                                icon: PhoneConnectService.getBatteryIcon(root.selectedDevice)
-                                label: I18n.tr("Battery", "KDE Connect battery label")
-                                value: (root.selectedDevice?.batteryCharge ?? -1) >= 0 ? (root.selectedDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
-                                valueColor: root.selectedDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
-                            }
-
-                            InfoRow {
-                                icon: PhoneConnectService.getNetworkIcon(root.selectedDevice) || "signal_cellular_null"
-                                label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
-                                value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.selectedDevice), "Network signal strength status")
-                            }
-
-                            InfoRow {
-                                icon: PhoneConnectService.getNetworkTypeIcon(root.selectedDevice)
-                                label: I18n.tr("Network Type", "KDE Connect network type label")
-                                value: PhoneConnectService.getNetworkTypeLabel(root.selectedDevice)
-                            }
-
-                            InfoRow {
-                                icon: "sms"
-                                label: I18n.tr("Notifications", "KDE Connect notifications label")
-                                value: root.selectedDevice?.notificationCount ?? 0
-                            }
-                        }
-                    }
-                }
-
                 // Device Switcher Container
                 StyledRect {
+                    id: switcherContainer
                     width: parent.width
-                    height: switcherLayout.implicitHeight + Theme.spacingM * 2
-                    visible: (!root.hasDevice || popout.switcherVisible) && PhoneConnectService.deviceIds.length > 0
+                    clip: true
+
+                    readonly property bool shouldBeVisible: (!root.hasDevice || popout.switcherVisible) && PhoneConnectService.deviceIds.length > 0
+
+                    height: shouldBeVisible ? (switcherLayout.implicitHeight + Theme.spacingM * 2) : 0
+                    opacity: shouldBeVisible ? 1.0 : 0.0
+                    visible: height > 0
+
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: 250
+                            easing.type: Easing.InOutQuad
+                        }
+                    }
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: 200
+                        }
+                    }
+
                     radius: Theme.cornerRadius
                     color: root.cardColor
                     border.width: 1
                     border.color: root.cardBorderColor
 
                     layer.enabled: true
-                    layer.effect: DropShadow {
-                        transparentBorder: true
-                        horizontalOffset: 0
-                        verticalOffset: 4
-                        radius: 16.0
-                        samples: 32
-                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowHorizontalOffset: 0
+                        shadowVerticalOffset: 4
+                        shadowBlur: 0.6
+                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
                     }
 
                     Column {
@@ -904,16 +1180,238 @@ PluginComponent {
                             model: PhoneConnectService.deviceIds
                             DeviceCard {
                                 required property string modelData
+                                required property int index
                                 width: parent.width
                                 deviceId: modelData
                                 device: PhoneConnectService.getDevice(modelData)
                                 selectable: true
                                 isSelected: root.selectedDeviceId === modelData
+                                isFirst: index === 0
+                                isLast: index === PhoneConnectService.deviceIds.length - 1
                                 onClicked: {
                                     root.selectDevice(modelData)
                                     popout.switcherVisible = false
                                 }
                                 onAction: function(action) { root.handleAction(modelData, action); }
+                            }
+                        }
+                    }
+                }
+
+                UnavailableMessage {
+                    visible: !PhoneConnectService.available
+                    width: parent.width
+                }
+
+                EmptyState {
+                    visible: PhoneConnectService.available && PhoneConnectService.deviceIds.length === 0
+                    width: parent.width
+                }
+
+                // Main Container
+                RowLayout {
+                    id: mainDeviceContainerRow
+                    width: parent.width
+                    height: 255
+                    spacing: Theme.spacingM
+                    visible: root.hasDevice
+                    transform: Translate { id: mainContainerTranslate; x: 0 }
+
+                    // Container 1: Device Image
+                    StyledRect {
+                        Layout.preferredWidth: root.container1Width
+                        Layout.fillHeight: true
+                        radius: Theme.cornerRadius
+                        color: root.cardColor
+                        border.width: 1
+                        border.color: root.cardBorderColor
+
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowHorizontalOffset: 0
+                            shadowVerticalOffset: 4
+                            shadowBlur: 0.6
+                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                        }
+
+                        PhoneDisplay {
+                            id: mainPhoneDisplay
+                            anchors.centerIn: parent
+                            backgroundImage: root.activeCustomPhoneImage
+                            isReachable: root.activeDevice?.isReachable ?? false
+                            deviceType: root.activeDevice?.type ?? "phone"
+                            onClicked: root.handleAction(root.activeDeviceId, "ping")
+                        }
+                    }
+
+                    // Container 2: Phone Name & Status
+                    StyledRect {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 160
+                        Layout.fillHeight: true
+                        radius: Theme.cornerRadius
+                        color: root.cardColor
+                        border.width: 1
+                        border.color: root.cardBorderColor
+
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowHorizontalOffset: 0
+                            shadowVerticalOffset: 4
+                            shadowBlur: 0.6
+                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                        }
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.spacingM
+                            spacing: Theme.spacingM
+
+                            // Device Name & Actions
+                            ColumnLayout {
+                                spacing: 2
+                                Layout.fillWidth: true
+
+                                StyledText {
+                                    text: root.activeDevice?.name || ""
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.weight: Font.Bold
+                                    color: Theme.surfaceText
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+
+                                RowLayout {
+                                    spacing: Theme.spacingS
+                                    Layout.alignment: Qt.AlignHCenter
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "findmyphone")
+                                        DankActionButton {
+                                            anchors.fill: parent
+                                            enabled: parent.enabled
+                                            opacity: enabled ? 1.0 : 0.4
+                                            iconName: "phone_in_talk"
+                                            iconColor: Theme.primary
+                                            buttonSize: 32
+                                            tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
+                                            onClicked: {
+                                                if (!enabled) return;
+                                                root.handleAction(root.activeDeviceId, "ring")
+                                            }
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp")
+                                        DankActionButton {
+                                            anchors.fill: parent
+                                            enabled: parent.enabled
+                                            opacity: enabled ? 1.0 : 0.4
+                                            iconName: "folder"
+                                            iconColor: Theme.primary
+                                            buttonSize: 32
+                                            tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
+                                            onClicked: {
+                                                if (!enabled) return;
+                                                root.handleAction(root.activeDeviceId, "browse")
+                                            }
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        visible: root.enableClipboardAction
+                                        enabled: root.activeDevice && root.activeDevice.isReachable
+                                        DankActionButton {
+                                            anchors.fill: parent
+                                            enabled: parent.enabled
+                                            opacity: enabled ? 1.0 : 0.4
+                                            iconName: "content_paste"
+                                            iconColor: Theme.primary
+                                            buttonSize: 32
+                                            tooltipText: I18n.tr("Send Clipboard", "KDE Connect send clipboard tooltip")
+                                            onClicked: {
+                                                if (!enabled) return;
+                                                root.handleAction(root.activeDeviceId, "clipboard")
+                                            }
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "share")
+                                        DankActionButton {
+                                            anchors.fill: parent
+                                            enabled: parent.enabled
+                                            opacity: enabled ? 1.0 : 0.4
+                                            iconName: "share"
+                                            iconColor: Theme.primary
+                                            buttonSize: 32
+                                            tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
+                                            onClicked: {
+                                                if (!enabled) return;
+                                                root.handleAction(root.activeDeviceId, "share")
+                                            }
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "sms")
+                                        DankActionButton {
+                                            anchors.fill: parent
+                                            enabled: parent.enabled
+                                            opacity: enabled ? 1.0 : 0.4
+                                            iconName: "sms"
+                                            iconColor: Theme.primary
+                                            buttonSize: 32
+                                            tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
+                                            onClicked: {
+                                                if (!enabled) return;
+                                                root.handleAction(root.activeDeviceId, "sms")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Info Rows
+                            InfoRow {
+                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "battery") && (root.activeDevice?.batteryCharge ?? -1) >= 0
+                                icon: PhoneConnectService.getBatteryIcon(root.activeDevice)
+                                label: I18n.tr("Battery", "KDE Connect battery label")
+                                value: (root.activeDevice?.batteryCharge ?? -1) >= 0 ? (root.activeDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
+                                valueColor: root.activeDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
+                            }
+
+                            InfoRow {
+                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && (root.activeDevice?.networkStrength ?? -1) >= 0
+                                icon: PhoneConnectService.getNetworkIcon(root.activeDevice) || "signal_cellular_null"
+                                label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
+                                value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.activeDevice), "Network signal strength status")
+                            }
+
+                            InfoRow {
+                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && root.activeDevice?.networkType
+                                icon: PhoneConnectService.getNetworkTypeIcon(root.activeDevice)
+                                label: I18n.tr("Network Type", "KDE Connect network type label")
+                                value: PhoneConnectService.getNetworkTypeLabel(root.activeDevice)
+                            }
+
+                            InfoRow {
+                                icon: "sms"
+                                label: I18n.tr("Notifications", "KDE Connect notifications label")
+                                value: root.activeDevice?.notificationCount ?? 0
                             }
                         }
                     }
@@ -993,20 +1491,19 @@ PluginComponent {
                     id: recentImagesContainer
                     width: parent.width
                     height: recentImagesCol.implicitHeight + Theme.spacingM * 2
-                    visible: root.hasDevice && root.recentImages.length > 0
+                    visible: root.hasDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp") && root.recentImages.length > 0
                     radius: Theme.cornerRadius
                     color: root.cardColor
                     border.width: 1
                     border.color: root.cardBorderColor
 
                     layer.enabled: true
-                    layer.effect: DropShadow {
-                        transparentBorder: true
-                        horizontalOffset: 0
-                        verticalOffset: 4
-                        radius: 16.0
-                        samples: 32
-                        color: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowHorizontalOffset: 0
+                        shadowVerticalOffset: 4
+                        shadowBlur: 0.6
+                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
                     }
 
                     Column {
@@ -1179,7 +1676,10 @@ PluginComponent {
                                         id: imageThumbCont
                                         anchors.fill: parent
                                         layer.enabled: true
-                                        layer.effect: OpacityMask { maskSource: imageMask }
+                                        layer.effect: MultiEffect {
+                                            maskEnabled: true
+                                            maskSource: imageMask
+                                        }
                                         
                                         Rectangle { anchors.fill: parent; color: Theme.surfaceContainer }
                                         Image {
@@ -1235,12 +1735,11 @@ PluginComponent {
                                         onHeightChanged: refresh()
                                         
                                         layer.enabled: true
-                                        layer.effect: DropShadow {
-                                            transparentBorder: true
-                                            radius: 8
-                                            samples: 16
-                                            color: Theme.withAlpha(Theme.shadowColor || "#000000", imageMouseArea.containsMouse ? 0.3 : 0.15)
-                                            Behavior on color { ColorAnimation { duration: 250 } }
+                                        layer.effect: MultiEffect {
+                                            shadowEnabled: true
+                                            shadowBlur: 0.4
+                                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", imageMouseArea.containsMouse ? 0.3 : 0.15)
+                                            Behavior on shadowColor { ColorAnimation { duration: 250 } }
                                         }
                                     }
 
@@ -1273,12 +1772,11 @@ PluginComponent {
                                             border.color: Theme.withAlpha(Theme.outline, 0.2)
                                             
                                             layer.enabled: true
-                                            layer.effect: DropShadow {
-                                                transparentBorder: true
-                                                radius: 6
-                                                samples: 12
-                                                color: Theme.withAlpha(Theme.shadowColor || "#000000", sendBtnMa.containsMouse ? 0.35 : 0)
-                                                Behavior on color { ColorAnimation { duration: 200 } }
+                                            layer.effect: MultiEffect {
+                                                shadowEnabled: true
+                                                shadowBlur: 0.3
+                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", sendBtnMa.containsMouse ? 0.35 : 0)
+                                                Behavior on shadowColor { ColorAnimation { duration: 200 } }
                                             }
                                         }
 
@@ -1316,20 +1814,32 @@ PluginComponent {
         }
     }
 
-    function refreshImages() {
+    function refreshImages(clearFirst) {
+        if (clearFirst === true) {
+            root.recentImages = [];
+        }
+        if (!root.recentImagesPath) {
+            root.recentImages = [];
+            return;
+        }
         if (imagesScanner) {
             imagesScanner.running = false;
-            imagesScanner.running = true;
+            Qt.callLater(function() {
+                imagesScanner.running = true;
+            });
         }
     }
 
-    onRecentImagesPathChanged: refreshImages()
-    onMaxRecentImagesChanged: refreshImages()
+    onRecentImagesPathChanged: refreshImages(true)
+    onMaxRecentImagesChanged: refreshImages(true)
 
     Timer {
         id: imageRefreshTimer
-        interval: 10000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: root.refreshImages()
+        interval: 10000
+        running: root.activeDeviceId !== "" && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp")
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.refreshImages(false)
     }
 
     function getFileInfo(line) {
@@ -1358,7 +1868,21 @@ PluginComponent {
         stdout: StdioCollector {
             onStreamFinished: {
                 let lines = text.trim().split('\n').filter(function(l) { return l !== ""; });
-                root.recentImages = lines.map(root.getFileInfo).filter(function(f) { return f !== null; });
+                let newImages = lines.map(root.getFileInfo).filter(function(f) { return f !== null; });
+                if (newImages.length !== root.recentImages.length) {
+                    root.recentImages = newImages;
+                } else {
+                    let changed = false;
+                    for (let i = 0; i < newImages.length; i++) {
+                        if (newImages[i].path !== root.recentImages[i].path) {
+                            changed = true;
+                            break;
+                        }
+                    }
+                    if (changed) {
+                        root.recentImages = newImages;
+                    }
+                }
             }
         }
     }

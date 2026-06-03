@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.Services
+import qs.Modules.Plugins
 
 Singleton {
     id: root
@@ -26,7 +27,21 @@ Singleton {
     readonly property string selfId: _backend?.selfId ?? ""
 
     readonly property var deviceIds: _backend?.deviceIds ?? []
-    readonly property var devices: _backend?.devices ?? ({})
+    readonly property var devices: {
+        const rawDevices = _backend?.devices ?? {};
+        const result = {};
+        for (const id in rawDevices) {
+            const dev = rawDevices[id];
+            if (dev) {
+                const copy = Object.assign({}, dev);
+                if (deviceTypeMap && deviceTypeMap[id]) {
+                    copy.type = deviceTypeMap[id];
+                }
+                result[id] = copy;
+            }
+        }
+        return result;
+    }
 
     readonly property var connectedDevices: _backend?.connectedDevices ?? []
     readonly property var pairedDevices: _backend?.pairedDevices ?? []
@@ -54,7 +69,10 @@ Singleton {
     signal shareReceived(string deviceId, string url)
     signal backendChanged
 
-    Component.onCompleted: detectBackend()
+    Component.onCompleted: {
+        detectBackend();
+        updateDeviceTypeMap();
+    }
 
     Connections {
         target: DMSService
@@ -167,7 +185,7 @@ Singleton {
     }
 
     function getDevice(deviceId) {
-        return _backend?.getDevice(deviceId) ?? null;
+        return devices[deviceId] || null;
     }
 
     function hasPlugin(deviceId, pluginName) {
@@ -429,8 +447,69 @@ Singleton {
         _backend.getConversations(deviceId, callback);
     }
 
+    property var deviceTypeMap: ({})
+    onDeviceTypeMapChanged: {
+        root.devicesListChanged();
+    }
+
+    function updateDeviceTypeMap() {
+        let changed = false;
+        let newMap = {};
+        if (PluginService.globalVars && PluginService.globalVars["dankKDEConnect"]) {
+            const vars = PluginService.globalVars["dankKDEConnect"];
+            if (vars && vars["deviceTypeMap"]) {
+                try {
+                    newMap = JSON.parse(vars["deviceTypeMap"]);
+                    changed = true;
+                } catch(e) {}
+            }
+        }
+        if (!changed) {
+            try {
+                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+                if (data?.deviceTypeMap) {
+                    newMap = JSON.parse(data.deviceTypeMap);
+                    changed = true;
+                }
+            } catch(e) {}
+        }
+        
+        if (JSON.stringify(deviceTypeMap) !== JSON.stringify(newMap)) {
+            deviceTypeMap = newMap;
+            root.devicesListChanged();
+        }
+    }
+
+    Connections {
+        target: PluginService
+        ignoreUnknownSignals: true
+        function onGlobalVarChanged(pluginId, varName) {
+            if (pluginId === "dankKDEConnect" && varName === "deviceTypeMap") {
+                root.updateDeviceTypeMap();
+            }
+        }
+        function onPluginDataChanged(pluginId) {
+            if (pluginId === "dankKDEConnect") {
+                root.updateDeviceTypeMap();
+            }
+        }
+    }
+
     function getDeviceIcon(device) {
-        return _backend?.getDeviceIcon(device) ?? "smartphone";
+        if (!device) return "smartphone";
+        const deviceId = device.id;
+        if (deviceId && deviceTypeMap[deviceId]) {
+            switch (deviceTypeMap[deviceId]) {
+            case "phone": return "smartphone";
+            case "tablet": return "tablet";
+            case "laptop": return "laptop";
+            case "desktop": return "desktop_windows";
+            case "tv": return "tv";
+            }
+        }
+        let icon = _backend?.getDeviceIcon(device) ?? "smartphone";
+        if (icon === "computer") icon = "desktop_windows";
+        return icon;
     }
 
     function getNetworkIcon(device) {

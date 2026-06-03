@@ -27,6 +27,135 @@ PluginSettings {
             PluginService.setGlobalVar(root.pluginId, key, val);
         }
 
+        readonly property string selectedDeviceId: loadValue("selectedDeviceId", "")
+        readonly property string targetDeviceId: selectedDeviceId || (PhoneConnectService.deviceIds.length > 0 ? PhoneConnectService.deviceIds[0] : "")
+        readonly property var targetDevice: PhoneConnectService.getDevice(targetDeviceId)
+        readonly property string targetDeviceName: targetDevice ? targetDevice.name : "Device 1"
+
+        function getDeviceImage(deviceId) {
+            if (!deviceId) return "";
+            const rawMap = loadValue("deviceImageMap", "");
+            if (rawMap) {
+                try {
+                    const map = JSON.parse(rawMap);
+                    if (map[deviceId]) return map[deviceId];
+                } catch(e) {}
+            }
+            // Fallback to legacy single image if it's the first device
+            if (PhoneConnectService.deviceIds.length > 0 && deviceId === PhoneConnectService.deviceIds[0]) {
+                return loadValue("customPhoneImage", "");
+            }
+            return "";
+        }
+
+        function saveDeviceImage(deviceId, path) {
+            if (!deviceId) return;
+            let map = {};
+            const rawMap = loadValue("deviceImageMap", "");
+            if (rawMap) {
+                try { map = JSON.parse(rawMap); } catch(e) {}
+            }
+            if (path === "" || path === null) {
+                delete map[deviceId];
+            } else {
+                map[deviceId] = path;
+            }
+            const serialized = JSON.stringify(map);
+            saveValue("deviceImageMap", serialized);
+        }
+
+        function getDeviceRecentImagesPath(deviceId) {
+            if (!deviceId) return "";
+            const rawMap = loadValue("deviceRecentImagesPathMap", "");
+            if (rawMap) {
+                try {
+                    const map = JSON.parse(rawMap);
+                    if (map[deviceId]) return map[deviceId];
+                } catch(e) {}
+            }
+            // Fallback to legacy single recentImagesPath if it's the first device
+            if (PhoneConnectService.deviceIds.length > 0 && deviceId === PhoneConnectService.deviceIds[0]) {
+                return loadValue("recentImagesPath", "");
+            }
+            return "";
+        }
+
+        function saveDeviceRecentImagesPath(deviceId, path) {
+            if (!deviceId) return;
+            let map = {};
+            const rawMap = loadValue("deviceRecentImagesPathMap", "");
+            if (rawMap) {
+                try { map = JSON.parse(rawMap); } catch(e) {}
+            }
+            if (path === "" || path === null) {
+                delete map[deviceId];
+            } else {
+                map[deviceId] = path;
+            }
+            const serialized = JSON.stringify(map);
+            saveValue("deviceRecentImagesPathMap", serialized);
+        }
+
+        function getDeviceType(deviceId) {
+            if (!deviceId) return "Phone";
+            const rawMap = loadValue("deviceTypeMap", "");
+            if (rawMap) {
+                try {
+                    const map = JSON.parse(rawMap);
+                    if (map[deviceId]) {
+                        switch (map[deviceId]) {
+                        case "phone": return "Phone";
+                        case "tablet": return "Tablet";
+                        case "laptop": return "Laptop";
+                        case "desktop": return "PC";
+                        }
+                    }
+                } catch(e) {}
+            }
+            // Fallback to real device type from service
+            const dev = PhoneConnectService.getDevice(deviceId);
+            if (dev && dev.type) {
+                switch (dev.type) {
+                case "phone":
+                case "smartphone":
+                    return "Phone";
+                case "tablet":
+                    return "Tablet";
+                case "laptop":
+                    return "Laptop";
+                case "desktop":
+                case "computer":
+                    return "PC";
+                }
+            }
+            return "Phone";
+        }
+
+        function saveDeviceType(deviceId, typeStr) {
+            if (!deviceId) return;
+            let map = {};
+            const rawMap = loadValue("deviceTypeMap", "");
+            if (rawMap) {
+                try { map = JSON.parse(rawMap); } catch(e) {}
+            }
+            
+            let typeVal = "";
+            switch (typeStr) {
+            case "Phone": typeVal = "phone"; break;
+            case "Tablet": typeVal = "tablet"; break;
+            case "Laptop": typeVal = "laptop"; break;
+            case "PC": typeVal = "desktop"; break;
+            }
+
+            if (typeVal === "") {
+                delete map[deviceId];
+            } else {
+                map[deviceId] = typeVal;
+            }
+            const serialized = JSON.stringify(map);
+            saveValue("deviceTypeMap", serialized);
+        }
+
 
 
         // 1. Connection Status Card
@@ -174,103 +303,182 @@ PluginSettings {
             }
         }
 
-        // 2. Folder Configuration Card
-        Rectangle {
-            id: folderConfigRect
-            width: parent.width
-            height: folderConfigCol.implicitHeight + Theme.spacingM * 2
-            color: Theme.surfaceContainer
-            radius: Theme.cornerRadius
-            border.color: Theme.outline
-            border.width: 1
-            opacity: 0.8
+        // 2. Folder Configuration Cards (per paired device)
+        Repeater {
+            model: PhoneConnectService.deviceIds
 
-            Column {
-                id: folderConfigCol
-                anchors.fill: parent
-                anchors.margins: Theme.spacingM
-                spacing: Theme.spacingM
+            Rectangle {
+                id: deviceSettingsRect
+                required property string modelData
+                required property int index
 
-                // Custom Phone Image Setting
+                readonly property var device: PhoneConnectService.getDevice(modelData)
+                readonly property string deviceName: device ? device.name : modelData
+
+                width: parent.width
+                height: deviceSettingsCol.implicitHeight + Theme.spacingM * 2
+                color: Theme.surfaceContainer
+                radius: Theme.cornerRadius
+                border.color: Theme.outline
+                border.width: 1
+                opacity: 0.8
+
                 Column {
-                    width: parent.width
-                    spacing: Theme.spacingS
+                    id: deviceSettingsCol
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: Theme.spacingM
+                    spacing: Theme.spacingM
 
-                    Row {
+                    // Device Header (similar to Recent Images Container title style in widget)
+                    RowLayout {
                         width: parent.width
-                        spacing: Theme.spacingM
-                        DankIcon { name: "image"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
-                        Column {
-                            width: parent.width - 22 - Theme.spacingM
-                            spacing: Theme.spacingXXS
-                            StyledText { text: "Custom Phone Image"; font.weight: Font.Medium; color: Theme.surfaceText }
-                            StyledText { text: "Custom image to display for the phone model in Control Center & Widget Pop-Up."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
+                        spacing: Theme.spacingXS
+
+                        DankIcon {
+                            name: PhoneConnectService.getDeviceIcon(deviceSettingsRect.device)
+                            size: 16
+                            color: Theme.surfaceText
+                        }
+
+                        StyledText {
+                            text: deviceSettingsRect.deviceName + " Settings"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.weight: Font.Bold
+                            color: Theme.surfaceText
+                            Layout.fillWidth: true
                         }
                     }
 
-                    RowLayout {
+                    // Separator
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: Theme.withAlpha(Theme.outline, 0.15)
+                    }
+
+                    // Custom Phone Image Setting
+                    Column {
                         width: parent.width
                         spacing: Theme.spacingS
 
-                        DankTextField {
-                            id: customImageField
-                            Layout.fillWidth: true
-                            placeholderText: "Absolute path or URL"
-                            Component.onCompleted: {
-                                text = mainSettingsCol.loadValue("customPhoneImage", "")
-                            }
-                            onEditingFinished: {
-                                mainSettingsCol.saveValue("customPhoneImage", text)
+                        Row {
+                            width: parent.width
+                            spacing: Theme.spacingM
+                            DankIcon { name: "image"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
+                            Column {
+                                width: parent.width - 22 - Theme.spacingM
+                                spacing: Theme.spacingXXS
+                                StyledText { text: "Custom Image"; font.weight: Font.Medium; color: Theme.surfaceText }
+                                StyledText { text: "Custom image to display for this device model in Control Center & Widget Pop-Up."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
                             }
                         }
 
-                        DankButton {
-                            iconName: "folder"
-                            text: "Browse"
-                            Layout.alignment: Qt.AlignVCenter
-                            onClicked: imageBrowser.open()
+                        RowLayout {
+                            width: parent.width
+                            spacing: Theme.spacingS
+
+                            DankTextField {
+                                id: customImageField
+                                Layout.fillWidth: true
+                                placeholderText: "Absolute path or URL"
+                                text: mainSettingsCol.getDeviceImage(deviceSettingsRect.modelData)
+                                onEditingFinished: {
+                                    mainSettingsCol.saveDeviceImage(deviceSettingsRect.modelData, text)
+                                }
+                            }
+
+                            DankButton {
+                                iconName: "folder"
+                                text: "Browse"
+                                Layout.alignment: Qt.AlignVCenter
+                                onClicked: {
+                                    imageBrowser.targetDeviceId = deviceSettingsRect.modelData;
+                                    imageBrowser.targetField = customImageField;
+                                    imageBrowser.open();
+                                }
+                            }
                         }
                     }
-                }
 
-                // Recent Images Folder Setting
-                Column {
-                    width: parent.width
-                    spacing: Theme.spacingS
-
-                    Row {
-                        width: parent.width
-                        spacing: Theme.spacingM
-                        DankIcon { name: "folder"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
-                        Column {
-                            width: parent.width - 22 - Theme.spacingM
-                            spacing: Theme.spacingXXS
-                            StyledText { text: "Recent Images Path"; font.weight: Font.Medium; color: Theme.surfaceText }
-                            StyledText { text: "Directory to monitor for quick media sharing."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
-                        }
-                    }
-
-                    RowLayout {
+                    // Recent Images Folder Setting
+                    Column {
                         width: parent.width
                         spacing: Theme.spacingS
 
-                        DankTextField {
-                            id: recentImagesPathField
-                            Layout.fillWidth: true
-                            placeholderText: "e.g. ~/Pictures or ~/Screenshots"
-                            Component.onCompleted: {
-                                text = mainSettingsCol.loadValue("recentImagesPath", "")
-                            }
-                            onEditingFinished: {
-                                mainSettingsCol.saveValue("recentImagesPath", text)
+                        Row {
+                            width: parent.width
+                            spacing: Theme.spacingM
+                            DankIcon { name: "folder"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
+                            Column {
+                                width: parent.width - 22 - Theme.spacingM
+                                spacing: Theme.spacingXXS
+                                StyledText { text: "Recent Images Path"; font.weight: Font.Medium; color: Theme.surfaceText }
+                                StyledText { text: "Directory to monitor for quick media sharing."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
                             }
                         }
 
-                        DankButton {
-                            iconName: "folder"
-                            text: "Browse"
-                            Layout.alignment: Qt.AlignVCenter
-                            onClicked: recentImagesBrowser.open()
+                        RowLayout {
+                            width: parent.width
+                            spacing: Theme.spacingS
+
+                            DankTextField {
+                                id: recentImagesPathField
+                                Layout.fillWidth: true
+                                placeholderText: "e.g. ~/Pictures or ~/Screenshots"
+                                text: mainSettingsCol.getDeviceRecentImagesPath(deviceSettingsRect.modelData)
+                                onEditingFinished: {
+                                    mainSettingsCol.saveDeviceRecentImagesPath(deviceSettingsRect.modelData, text)
+                                }
+                            }
+
+                            DankButton {
+                                iconName: "folder"
+                                text: "Browse"
+                                Layout.alignment: Qt.AlignVCenter
+                                onClicked: {
+                                    recentImagesBrowser.targetDeviceId = deviceSettingsRect.modelData;
+                                    recentImagesBrowser.targetField = recentImagesPathField;
+                                    recentImagesBrowser.open();
+                                }
+                            }
+                        }
+                    }
+
+                    // Device Type Override Dropdown
+                    Column {
+                        width: parent.width
+                        spacing: Theme.spacingS
+
+                        Row {
+                            width: parent.width
+                            spacing: Theme.spacingM
+                            DankIcon { name: "devices"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
+                            Column {
+                                width: parent.width - 22 - Theme.spacingM
+                                spacing: Theme.spacingXXS
+                                StyledText { text: "Override Device Type"; font.weight: Font.Medium; color: Theme.surfaceText }
+                                StyledText { text: "Select the type of device to override standard framing, icon, and layouts."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
+                            }
+                        }
+
+                        RowLayout {
+                            width: parent.width
+                            spacing: Theme.spacingS
+
+                            DankDropdown {
+                                id: deviceTypeDropdown
+                                Layout.fillWidth: true
+                                compactMode: true
+                                dropdownWidth: 200
+                                currentValue: mainSettingsCol.getDeviceType(deviceSettingsRect.modelData)
+                                options: ["Phone", "Tablet", "Laptop", "PC"]
+                                optionIcons: ["smartphone", "tablet", "laptop", "desktop_windows"]
+                                onValueChanged: function(val) {
+                                    mainSettingsCol.saveDeviceType(deviceSettingsRect.modelData, val);
+                                }
+                            }
                         }
                     }
                 }
@@ -428,6 +636,7 @@ PluginSettings {
                         maximum: 12
                         step: 1
                         unit: " images"
+                        wheelEnabled: false
                         
                         function loadValue() {
                             value = mainSettingsCol.loadValue(settingKey, defaultValue);
@@ -436,6 +645,67 @@ PluginSettings {
                         onSliderValueChanged: {
                             value = newValue;
                             mainSettingsCol.saveValue(settingKey, newValue);
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            onWheel: (wheel) => {
+                                wheel.accepted = false;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: Theme.outline
+                }
+
+                Column {
+                    width: parent.width
+                    spacing: Theme.spacingS
+
+                    RowLayout {
+                        width: parent.width
+                        spacing: Theme.spacingM
+                        DankIcon { name: "sync"; size: 22; Layout.alignment: Qt.AlignVCenter; opacity: 0.8 }
+                        Column {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                            spacing: Theme.spacingXXS
+                            StyledText { text: "State Update Interval"; width: parent.width; font.weight: Font.Medium; color: Theme.surfaceText }
+                            StyledText { text: "How often to automatically update/refresh the plugin state (0 to disable)."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
+                        }
+                    }
+
+                    DankSlider {
+                        id: updateIntervalSlider
+                        property int defaultValue: 30
+                        property string settingKey: "stateUpdateInterval"
+                        width: parent.width
+                        minimum: 0
+                        maximum: 300
+                        step: 5
+                        unit: value === 0 ? " (Disabled)" : " seconds"
+                        wheelEnabled: false
+                        
+                        function loadValue() {
+                            value = mainSettingsCol.loadValue(settingKey, defaultValue);
+                        }
+                        Component.onCompleted: loadValue()
+                        onSliderValueChanged: {
+                            value = newValue;
+                            mainSettingsCol.saveValue(settingKey, newValue);
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            onWheel: (wheel) => {
+                                wheel.accepted = false;
+                            }
                         }
                     }
                 }
@@ -527,6 +797,9 @@ PluginSettings {
 
     FileBrowserSurfaceModal {
         id: imageBrowser
+        property string targetDeviceId: ""
+        property var targetField: null
+
         browserTitle: "Select Custom Phone Image"
         browserIcon: "image"
         browserType: "generic"
@@ -534,21 +807,29 @@ PluginSettings {
         fileExtensions: ["*.png", "*.jpg", "*.jpeg", "*.webp"]
         
         onFileSelected: function(path) {
-            customImageField.text = "file://" + path
-            mainSettingsCol.saveValue("customPhoneImage", "file://" + path)
+            const urlPath = "file://" + path
+            if (targetField) {
+                targetField.text = urlPath
+            }
+            mainSettingsCol.saveDeviceImage(targetDeviceId, urlPath)
         }
     }
 
     FileBrowserSurfaceModal {
         id: recentImagesBrowser
+        property string targetDeviceId: ""
+        property var targetField: null
+
         browserTitle: "Select Recent Images Folder"
         browserIcon: "folder"
         browserType: "folder"
         showHiddenFiles: false
         
         onFileSelected: function(path) {
-            recentImagesPathField.text = path
-            mainSettingsCol.saveValue("recentImagesPath", path)
+            if (targetField) {
+                targetField.text = path
+            }
+            mainSettingsCol.saveDeviceRecentImagesPath(targetDeviceId, path)
         }
     }
 }

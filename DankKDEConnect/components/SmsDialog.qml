@@ -3,10 +3,15 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import qs.Common
 import qs.Widgets
-import Qt5Compat.GraphicalEffects
 
 StyledRect {
     id: root
+
+    focus: true
+    Keys.onEscapePressed: (event) => {
+        root.close();
+        event.accepted = true;
+    }
 
     property string deviceId: ""
 
@@ -15,6 +20,11 @@ StyledRect {
     signal launchApp
 
     property bool isOpen: false
+    onIsOpenChanged: {
+        if (isOpen) {
+            phoneInput.forceActiveFocus();
+        }
+    }
 
     height: 0
     visible: false
@@ -148,6 +158,7 @@ StyledRect {
                 border.width: 1
                 border.color: Theme.withAlpha(Theme.error, closeArea.containsMouse ? 0.4 : 0.15)
                 scale: closeArea.containsMouse ? 1.08 : 1.0
+                activeFocusOnTab: true
 
                 Behavior on color { ColorAnimation { duration: 200 } }
                 Behavior on border.color { ColorAnimation { duration: 200 } }
@@ -171,6 +182,23 @@ StyledRect {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.close()
                 }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    color: "transparent"
+                    border.color: Theme.primary
+                    border.width: 2
+                    radius: Theme.cornerRadius
+                    visible: parent.activeFocus
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                        root.close();
+                        event.accepted = true;
+                    }
+                }
             }
         }
 
@@ -178,12 +206,30 @@ StyledRect {
             id: phoneInput
             width: parent.width
             placeholderText: I18n.tr("Phone number", "KDE Connect SMS phone input placeholder") + "..."
+            activeFocusOnTab: true
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                    messageInput.forceActiveFocus();
+                    event.accepted = true;
+                }
+            }
         }
 
         DankTextField {
             id: messageInput
             width: parent.width
             placeholderText: I18n.tr("Message", "KDE Connect SMS message input placeholder") + "..."
+            activeFocusOnTab: true
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                    if (phoneInput.text.length > 0 && text.length > 0) {
+                        root.sendSms(phoneInput.text, text);
+                        phoneInput.text = "";
+                        text = "";
+                        event.accepted = true;
+                    }
+                }
+            }
         }
 
         RowLayout {
@@ -197,6 +243,7 @@ StyledRect {
                 height: 36
                 color: "transparent"
                 border.width: 0
+                activeFocusOnTab: isEnabled
                 
                 readonly property bool isEnabled: phoneInput.text.length > 0 && messageInput.text.length > 0
                 opacity: isEnabled ? 1.0 : 0.4
@@ -210,8 +257,8 @@ StyledRect {
                     readonly property real topRightRadius: 4
                     readonly property real bottomRightRadius: 4
                     
-                    property color fillColor: (sendSmsBtn.isEnabled && sendSmsArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                    property color borderColor: (sendSmsBtn.isEnabled && sendSmsArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
+                    property color fillColor: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                    property color borderColor: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
                     readonly property real borderWidth: 1
 
                     Behavior on fillColor { ColorAnimation { duration: 200 } }
@@ -263,8 +310,8 @@ StyledRect {
                     DankIcon {
                         name: "send"
                         size: 16
-                        color: (sendSmsBtn.isEnabled && sendSmsArea.containsMouse) ? Theme.primary : Theme.surfaceVariantText
-                        scale: (sendSmsBtn.isEnabled && sendSmsArea.containsMouse) ? 1.15 : 1.0
+                        color: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? Theme.primary : Theme.surfaceVariantText
+                        scale: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? 1.15 : 1.0
                         anchors.verticalCenter: parent.verticalCenter
 
                         Behavior on color { ColorAnimation { duration: 200 } }
@@ -275,7 +322,7 @@ StyledRect {
                         text: I18n.tr("Send", "KDE Connect SMS send button")
                         font.pixelSize: Theme.fontSizeSmall
                         font.weight: Font.Medium
-                        color: (sendSmsBtn.isEnabled && sendSmsArea.containsMouse) ? Theme.primary : Theme.surfaceText
+                        color: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? Theme.primary : Theme.surfaceText
                         anchors.verticalCenter: parent.verticalCenter
 
                         Behavior on color { ColorAnimation { duration: 200 } }
@@ -295,6 +342,27 @@ StyledRect {
                         }
                     }
                 }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    color: "transparent"
+                    border.color: Theme.primary
+                    border.width: 2
+                    radius: Theme.cornerRadius
+                    visible: parent.activeFocus
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                        if (sendSmsBtn.isEnabled) {
+                            root.sendSms(phoneInput.text, messageInput.text);
+                            phoneInput.text = "";
+                            messageInput.text = "";
+                            event.accepted = true;
+                        }
+                    }
+                }
             }
 
             Rectangle {
@@ -304,6 +372,7 @@ StyledRect {
                 height: 36
                 color: "transparent"
                 border.width: 0
+                activeFocusOnTab: true
 
                 Canvas {
                     id: openAppBtnBg
@@ -314,8 +383,8 @@ StyledRect {
                     readonly property real topRightRadius: Theme.cornerRadius
                     readonly property real bottomRightRadius: Theme.cornerRadius
                     
-                    property color fillColor: openAppArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                    property color borderColor: openAppArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
+                    property color fillColor: (openAppArea.containsMouse || openAppBtn.activeFocus) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                    property color borderColor: (openAppArea.containsMouse || openAppBtn.activeFocus) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
                     readonly property real borderWidth: 1
 
                     Behavior on fillColor { ColorAnimation { duration: 200 } }
@@ -367,8 +436,8 @@ StyledRect {
                     DankIcon {
                         name: "open_in_new"
                         size: 16
-                        color: openAppArea.containsMouse ? Theme.primary : Theme.surfaceVariantText
-                        scale: openAppArea.containsMouse ? 1.15 : 1.0
+                        color: (openAppArea.containsMouse || openAppBtn.activeFocus) ? Theme.primary : Theme.surfaceVariantText
+                        scale: (openAppArea.containsMouse || openAppBtn.activeFocus) ? 1.15 : 1.0
                         anchors.verticalCenter: parent.verticalCenter
 
                         Behavior on color { ColorAnimation { duration: 200 } }
@@ -379,7 +448,7 @@ StyledRect {
                         text: I18n.tr("Open App", "KDE Connect open SMS app button")
                         font.pixelSize: Theme.fontSizeSmall
                         font.weight: Font.Medium
-                        color: openAppArea.containsMouse ? Theme.primary : Theme.surfaceText
+                        color: (openAppArea.containsMouse || openAppBtn.activeFocus) ? Theme.primary : Theme.surfaceText
                         anchors.verticalCenter: parent.verticalCenter
 
                         Behavior on color { ColorAnimation { duration: 200 } }
@@ -392,6 +461,23 @@ StyledRect {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.launchApp()
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    color: "transparent"
+                    border.color: Theme.primary
+                    border.width: 2
+                    radius: Theme.cornerRadius
+                    visible: parent.activeFocus
+                }
+
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                        root.launchApp();
+                        event.accepted = true;
+                    }
                 }
             }
         }

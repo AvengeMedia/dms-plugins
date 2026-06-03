@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import qs.Common
 import qs.Widgets
-import Qt5Compat.GraphicalEffects
 
 Rectangle {
   id: phoneRoot
@@ -75,15 +74,17 @@ Rectangle {
         source: phoneRoot.backgroundImage
         fillMode: Image.PreserveAspectCrop
         visible: phoneRoot.backgroundImage !== ""
+      }
 
-        // Fallback gradient if no image
-        Rectangle {
-          anchors.fill: parent
-          visible: phoneRoot.backgroundImage === ""
-          gradient: Gradient {
-            GradientStop { position: 0.0; color: "#2c3e50" }
-            GradientStop { position: 1.0; color: "#34495e" }
-          }
+      // Fallback gradient if no image
+      Rectangle {
+        anchors.fill: parent
+        visible: phoneRoot.backgroundImage === ""
+        radius: screen.radius
+        gradient: Gradient {
+          GradientStop { position: 0.0; color: "#1a2a6c" }
+          GradientStop { position: 0.5; color: "#b21f1f" }
+          GradientStop { position: 1.0; color: "#fdbb2d" }
         }
       }
 
