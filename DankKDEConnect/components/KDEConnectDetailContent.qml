@@ -105,15 +105,15 @@ Item {
                 target: detailDeviceContainerRow
                 property: "opacity"
                 to: 0
-                duration: 150
-                easing.type: Easing.OutCubic
+                duration: 80
+                easing.type: Easing.OutQuad
             }
             NumberAnimation {
                 target: detailContainerTranslate
                 property: "x"
                 to: -15
-                duration: 150
-                easing.type: Easing.OutCubic
+                duration: 80
+                easing.type: Easing.OutQuad
             }
         }
         ScriptAction {
@@ -129,15 +129,15 @@ Item {
                 target: detailDeviceContainerRow
                 property: "opacity"
                 to: 1
-                duration: 200
-                easing.type: Easing.OutCubic
+                duration: 100
+                easing.type: Easing.OutQuad
             }
             NumberAnimation {
                 target: detailContainerTranslate
                 property: "x"
                 to: 0
-                duration: 200
-                easing.type: Easing.OutCubic
+                duration: 100
+                easing.type: Easing.OutQuad
             }
         }
     }
@@ -222,86 +222,129 @@ Item {
                             }
                         }
 
-                        // Switch Device button (only when multiple devices available)
-                        Item {
-                            width: 38
-                            height: 38
+                        // Grouped Actions Container (for Switch & Refresh buttons to keep gap small)
+                        Row {
                             Layout.alignment: Qt.AlignVCenter
-                            visible: PhoneConnectService.deviceIds.length > 1
+                            spacing: 0 // No gap between the buttons
+                            visible: true
 
-                            MouseArea {
-                                id: detailSwitcherArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.switcherVisible = !root.switcherVisible
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: Theme.cornerRadius
-                                color: root.switcherVisible
-                                    ? Theme.withAlpha(Theme.secondary, 0.2)
-                                    : (detailSwitcherArea.containsMouse ? Theme.withAlpha(Theme.secondary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4))
-                                border.width: 1
-                                border.color: Theme.withAlpha(Theme.secondary, root.switcherVisible || detailSwitcherArea.containsMouse ? 0.4 : 0.15)
-
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                                Behavior on border.color { ColorAnimation { duration: 200 } }
-                            }
-
-                            DankIcon {
-                                name: "swap_horiz"
-                                size: 20
-                                color: Theme.secondary
-                                anchors.centerIn: parent
-                                scale: detailSwitcherArea.containsMouse ? 1.15 : 1.0
-
-                                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                            }
-                        }
-
-                        Item {
-                            width: 38
-                            height: 38
-                            Layout.alignment: Qt.AlignVCenter
-
-                            MouseArea {
-                                id: refreshArea
-                                anchors.fill: parent
-                                hoverEnabled: !PhoneConnectService.isRefreshing
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: PhoneConnectService.refreshDevices()
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: Theme.cornerRadius
-                                color: refreshArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                                border.width: 1
-                                border.color: Theme.withAlpha(Theme.primary, refreshArea.containsMouse ? 0.3 : 0.15)
+                            // Switch Device button (only when multiple devices available)
+                            Item {
+                                id: switcherButton
+                                width: 38
+                                height: 38
+                                visible: PhoneConnectService.deviceIds.length > 1
+                                scale: detailSwitcherArea.pressed ? 0.92 : (detailSwitcherArea.containsMouse ? 1.05 : 1.0)
                                 
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                                MouseArea {
+                                    id: detailSwitcherArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onPressed: function(m) { detailSwitcherRipple.trigger(m.x, m.y) }
+                                    onClicked: root.switcherVisible = !root.switcherVisible
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    topLeftRadius: root.switcherVisible ? height / 2 : Theme.cornerRadius
+                                    bottomLeftRadius: root.switcherVisible ? height / 2 : Theme.cornerRadius
+                                    topRightRadius: root.switcherVisible ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 12 : Theme.cornerRadius)
+                                    bottomRightRadius: root.switcherVisible ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 12 : Theme.cornerRadius)
+
+                                    color: root.switcherVisible
+                                        ? Theme.withAlpha(Theme.secondary, 0.2)
+                                        : (detailSwitcherArea.containsMouse ? Theme.withAlpha(Theme.secondary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4))
+                                    border.width: 1
+                                    border.color: Theme.withAlpha(Theme.secondary, root.switcherVisible || detailSwitcherArea.containsMouse ? 0.4 : 0.15)
+
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                }
+
+                                DankRipple {
+                                    id: detailSwitcherRipple
+                                    anchors.fill: parent
+                                    cornerRadius: root.switcherVisible ? width / 2 : (PhoneConnectService.deviceIds.length > 1 ? 12 : Theme.cornerRadius)
+                                    rippleColor: Theme.secondary
+                                }
+
+                                DankIcon {
+                                    name: "swap_horiz"
+                                    size: 20
+                                    color: Theme.secondary
+                                    anchors.centerIn: parent
+                                    rotation: root.switcherVisible ? 180 : 0
+
+                                    Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                                }
                             }
 
-                            DankIcon {
-                                name: PhoneConnectService.isRefreshing ? "sync" : "refresh"
-                                size: 20
-                                color: Theme.primary
-                                anchors.centerIn: parent
-                                scale: refreshArea.containsMouse ? 1.15 : 1.0
-                                rotation: (refreshArea.containsMouse && !PhoneConnectService.isRefreshing) ? 180 : 0
+                            Item {
+                                id: refreshButton
+                                width: 38
+                                height: 38
+                                scale: refreshArea.pressed ? 0.92 : (refreshArea.containsMouse ? 1.05 : 1.0)
+                                
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
-                                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                                Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+                                MouseArea {
+                                    id: refreshArea
+                                    anchors.fill: parent
+                                    hoverEnabled: !PhoneConnectService.isRefreshing
+                                    cursorShape: Qt.PointingHandCursor
+                                    onPressed: function(m) { detailRefreshRipple.trigger(m.x, m.y) }
+                                    onClicked: PhoneConnectService.refreshDevices()
+                                }
 
-                                RotationAnimation on rotation {
-                                    from: 0
-                                    to: 360
-                                    duration: 1000
-                                    loops: Animation.Infinite
-                                    running: PhoneConnectService.isRefreshing
+                                Rectangle {
+                                    anchors.fill: parent
+                                    topLeftRadius: PhoneConnectService.isRefreshing ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 12 : Theme.cornerRadius)
+                                    bottomLeftRadius: PhoneConnectService.isRefreshing ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 12 : Theme.cornerRadius)
+                                    topRightRadius: PhoneConnectService.isRefreshing ? height / 2 : Theme.cornerRadius
+                                    bottomRightRadius: PhoneConnectService.isRefreshing ? height / 2 : Theme.cornerRadius
+
+                                    color: refreshArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                                    border.width: 1
+                                    border.color: Theme.withAlpha(Theme.primary, refreshArea.containsMouse ? 0.3 : 0.15)
+                                    
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                }
+
+                                DankRipple {
+                                    id: detailRefreshRipple
+                                    anchors.fill: parent
+                                    cornerRadius: PhoneConnectService.isRefreshing ? width / 2 : (PhoneConnectService.deviceIds.length > 1 ? 12 : Theme.cornerRadius)
+                                    rippleColor: Theme.primary
+                                }
+
+                                DankIcon {
+                                    name: PhoneConnectService.isRefreshing ? "sync" : "refresh"
+                                    size: 20
+                                    color: Theme.primary
+                                    anchors.centerIn: parent
+                                    rotation: (refreshArea.containsMouse && !PhoneConnectService.isRefreshing) ? 180 : 0
+
+                                    Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+
+                                    RotationAnimation on rotation {
+                                        from: 0
+                                        to: 360
+                                        duration: 1000
+                                        loops: Animation.Infinite
+                                        running: PhoneConnectService.isRefreshing
+                                    }
                                 }
                             }
                         }
@@ -503,10 +546,9 @@ Item {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "findmyphone")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "phone_in_talk"
                                             iconColor: Theme.primary
                                             buttonSize: 32
@@ -524,10 +566,9 @@ Item {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "folder"
                                             iconColor: Theme.primary
                                             buttonSize: 32
@@ -547,10 +588,9 @@ Item {
                                         height: 32
                                         visible: root.enableClipboardAction
                                         enabled: root.activeDevice && root.activeDevice.isReachable
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "content_paste"
                                             iconColor: Theme.primary
                                             buttonSize: 32
@@ -566,10 +606,9 @@ Item {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "share")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "share"
                                             iconColor: root.shareDeviceId === root.activeDeviceId ? Theme.secondary : Theme.primary
                                             buttonSize: 32
@@ -586,10 +625,9 @@ Item {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "sms")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "sms"
                                             iconColor: root.smsDeviceId === root.activeDeviceId ? Theme.secondary : Theme.primary
                                             buttonSize: 32
@@ -694,14 +732,32 @@ Item {
                 StyledRect {
                     id: recentImagesContainer
                     width: parent.width
-                    height: recentImagesCol.implicitHeight + Theme.spacingM * 2
-                    visible: root.hasDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp") && root.recentImages.length > 0
+                    clip: true
+
+                    readonly property bool shouldBeVisible: root.hasDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp") && root.recentImages.length > 0
+                    height: shouldBeVisible ? (recentImagesCol.implicitHeight + Theme.spacingM * 2) : 0
+                    opacity: shouldBeVisible ? 1.0 : 0.0
+                    visible: height > 0
+
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: 250
+                            easing.type: Easing.InOutQuad
+                        }
+                    }
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: 200
+                            easing.type: Easing.InOutQuad
+                        }
+                    }
+
                     radius: Theme.cornerRadius
                     color: root.cardColor
                     border.width: 1
                     border.color: root.cardBorderColor
 
-                    layer.enabled: true
+                    layer.enabled: shouldBeVisible || height > 0
                     layer.effect: MultiEffect {
                         shadowEnabled: true
                         shadowHorizontalOffset: 0
@@ -978,6 +1034,13 @@ Item {
                                             }
                                         }
 
+                                        DankRipple {
+                                            id: sendRipple
+                                            anchors.fill: sendBtnBg
+                                            cornerRadius: sendBtnBg.radius
+                                            rippleColor: Theme.primary
+                                        }
+
                                         DankIcon {
                                             name: "send"
                                             size: 14
@@ -990,6 +1053,7 @@ Item {
                                             id: sendBtnMa
                                             anchors.fill: parent
                                             hoverEnabled: true
+                                            onPressed: function(m) { sendRipple.trigger(m.x, m.y) }
                                             onClicked: {
                                                 Quickshell.execDetached([
                                                     "sh",
@@ -1197,7 +1261,7 @@ Item {
                                 spacing: Theme.spacingM
                                 Layout.alignment: Qt.AlignLeft
 
-                                DankActionButton {
+                                DankKDEActionButton {
                                     iconName: "skip_previous"
                                     iconColor: Theme.surfaceText
                                     buttonSize: 28
@@ -1205,7 +1269,7 @@ Item {
                                     onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "previous", function() {})
                                 }
 
-                                DankActionButton {
+                                DankKDEActionButton {
                                     iconName: root.selectedDevice?.mediaIsPlaying ? "pause" : "play_arrow"
                                     iconColor: Theme.primary
                                     buttonSize: 32
@@ -1213,7 +1277,7 @@ Item {
                                     onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "playpause", function() {})
                                 }
 
-                                DankActionButton {
+                                DankKDEActionButton {
                                     iconName: "skip_next"
                                     iconColor: Theme.surfaceText
                                     buttonSize: 28

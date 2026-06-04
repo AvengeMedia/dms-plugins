@@ -32,15 +32,27 @@ PluginSettings {
         readonly property var targetDevice: PhoneConnectService.getDevice(targetDeviceId)
         readonly property string targetDeviceName: targetDevice ? targetDevice.name : "Device 1"
 
+        readonly property var deviceTypeMap: {
+            const data = SettingsData.pluginSettings[root.pluginId];
+            const rawMap = data ? data.deviceTypeMap : "";
+            if (rawMap) {
+                try { return JSON.parse(rawMap); } catch(e) {}
+            }
+            return {};
+        }
+
+        readonly property var deviceImageMap: {
+            const data = SettingsData.pluginSettings[root.pluginId];
+            const rawMap = data ? data.deviceImageMap : "";
+            if (rawMap) {
+                try { return JSON.parse(rawMap); } catch(e) {}
+            }
+            return {};
+        }
+
         function getDeviceImage(deviceId) {
             if (!deviceId) return "";
-            const rawMap = loadValue("deviceImageMap", "");
-            if (rawMap) {
-                try {
-                    const map = JSON.parse(rawMap);
-                    if (map[deviceId]) return map[deviceId];
-                } catch(e) {}
-            }
+            if (deviceImageMap[deviceId]) return deviceImageMap[deviceId];
             // Fallback to legacy single image if it's the first device
             if (PhoneConnectService.deviceIds.length > 0 && deviceId === PhoneConnectService.deviceIds[0]) {
                 return loadValue("customPhoneImage", "");
@@ -98,19 +110,13 @@ PluginSettings {
 
         function getDeviceType(deviceId) {
             if (!deviceId) return "Phone";
-            const rawMap = loadValue("deviceTypeMap", "");
-            if (rawMap) {
-                try {
-                    const map = JSON.parse(rawMap);
-                    if (map[deviceId]) {
-                        switch (map[deviceId]) {
-                        case "phone": return "Phone";
-                        case "tablet": return "Tablet";
-                        case "laptop": return "Laptop";
-                        case "desktop": return "PC";
-                        }
-                    }
-                } catch(e) {}
+            if (deviceTypeMap[deviceId]) {
+                switch (deviceTypeMap[deviceId]) {
+                case "phone": return "Phone";
+                case "tablet": return "Tablet";
+                case "laptop": return "Laptop";
+                case "desktop": return "PC";
+                }
             }
             // Fallback to real device type from service
             const dev = PhoneConnectService.getDevice(deviceId);

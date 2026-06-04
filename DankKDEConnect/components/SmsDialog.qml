@@ -175,11 +175,19 @@ StyledRect {
                     Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                 }
 
+                DankRipple {
+                    id: smsCloseRipple
+                    anchors.fill: parent
+                    cornerRadius: parent.radius
+                    rippleColor: Theme.error
+                }
+
                 MouseArea {
                     id: closeArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onPressed: function(m) { smsCloseRipple.trigger(m.x, m.y) }
                     onClicked: root.close()
                 }
 
@@ -329,11 +337,20 @@ StyledRect {
                     }
                 }
 
+                DankRipple {
+                    id: sendSmsRipple
+                    anchors.fill: parent
+                    cornerRadius: Theme.cornerRadius
+                    rippleColor: Theme.primary
+                    enabled: sendSmsBtn.isEnabled
+                }
+
                 MouseArea {
                     id: sendSmsArea
                     anchors.fill: parent
                     hoverEnabled: sendSmsBtn.isEnabled
                     cursorShape: sendSmsBtn.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onPressed: function(m) { if (sendSmsBtn.isEnabled) sendSmsRipple.trigger(m.x, m.y) }
                     onClicked: {
                         if (sendSmsBtn.isEnabled) {
                             root.sendSms(phoneInput.text, messageInput.text);
@@ -455,11 +472,19 @@ StyledRect {
                     }
                 }
 
+                DankRipple {
+                    id: openAppRipple
+                    anchors.fill: parent
+                    cornerRadius: Theme.cornerRadius
+                    rippleColor: Theme.primary
+                }
+
                 MouseArea {
                     id: openAppArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onPressed: function(m) { openAppRipple.trigger(m.x, m.y) }
                     onClicked: root.launchApp()
                 }
 

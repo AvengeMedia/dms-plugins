@@ -209,7 +209,9 @@ Singleton {
                 const id = extractDeviceIdFromPath(data.path);
                 if (!id)
                     break;
-                fetchBatteryInfo(id);
+                const isCharging = data.body?.[0] ?? false;
+                const charge = data.body?.[1] ?? -1;
+                updateDeviceBattery(id, isCharging, charge);
                 break;
             }
         case "connectivityUpdated":
@@ -325,34 +327,60 @@ Singleton {
                 return;
             const props = response.result || {};
             const oldDev = devices[deviceId] || {};
+            const newName = props.name || deviceId;
+            const newType = props.type || "unknown";
+            const newIsReachable = props.isReachable || false;
+            const newIsPaired = props.isPaired || false;
+            const newIsPairRequested = props.isPairRequested || false;
+            const newIsPairRequestedByPeer = props.isPairRequestedByPeer || false;
+            const newStatusIconName = props.statusIconName || "smartphone";
+            const newSupportedPlugins = props.supportedPlugins || [];
+            const newVerificationKey = props.verificationKey || "";
 
-            const dev = Object.assign({}, oldDev);
-            dev.id = deviceId;
-            dev.name = props.name || deviceId;
-            dev.type = props.type || "unknown";
-            dev.isReachable = props.isReachable || false;
-            dev.isPaired = props.isPaired || false;
-            dev.isPairRequested = props.isPairRequested || false;
-            dev.isPairRequestedByPeer = props.isPairRequestedByPeer || false;
-            dev.statusIconName = props.statusIconName || "smartphone";
-            dev.supportedPlugins = props.supportedPlugins || [];
-            console.warn("[KDEConnect] Device info for", deviceId, ": name =", dev.name, ", supportedPlugins =", JSON.stringify(dev.supportedPlugins));
-            dev.verificationKey = props.verificationKey || "";
+            const changed = !devices[deviceId] ||
+                            oldDev.id !== deviceId ||
+                            oldDev.name !== newName ||
+                            oldDev.type !== newType ||
+                            oldDev.isReachable !== newIsReachable ||
+                            oldDev.isPaired !== newIsPaired ||
+                            oldDev.isPairRequested !== newIsPairRequested ||
+                            oldDev.isPairRequestedByPeer !== newIsPairRequestedByPeer ||
+                            oldDev.statusIconName !== newStatusIconName ||
+                            oldDev.verificationKey !== newVerificationKey ||
+                            JSON.stringify(oldDev.supportedPlugins) !== JSON.stringify(newSupportedPlugins);
 
-            devices = Object.assign({}, devices, {
-                [deviceId]: dev
-            });
-            deviceUpdated(deviceId);
+            if (changed) {
+                const dev = Object.assign({}, oldDev);
+                dev.id = deviceId;
+                dev.name = newName;
+                dev.type = newType;
+                dev.isReachable = newIsReachable;
+                dev.isPaired = newIsPaired;
+                dev.isPairRequested = newIsPairRequested;
+                dev.isPairRequestedByPeer = newIsPairRequestedByPeer;
+                dev.statusIconName = newStatusIconName;
+                dev.supportedPlugins = newSupportedPlugins;
+                dev.verificationKey = newVerificationKey;
 
-            if (dev.isPairRequestedByPeer && dev.verificationKey) {
-                pairingRequestReceived(deviceId, dev.verificationKey);
+                console.warn("[KDEConnect] Device info changed for", deviceId, ": name =", dev.name);
+                devices = Object.assign({}, devices, {
+                    [deviceId]: dev
+                });
+                deviceUpdated(deviceId);
             }
 
-            if (dev.isPaired && dev.isReachable) {
-                fetchBatteryInfo(deviceId);
-                fetchConnectivityInfo(deviceId);
-                fetchNotificationsCount(deviceId);
-                fetchMprisInfo(deviceId);
+            const currentDev = devices[deviceId];
+            if (currentDev) {
+                if (currentDev.isPairRequestedByPeer && currentDev.verificationKey) {
+                    pairingRequestReceived(deviceId, currentDev.verificationKey);
+                }
+
+                if (currentDev.isPaired && currentDev.isReachable) {
+                    fetchBatteryInfo(deviceId);
+                    fetchConnectivityInfo(deviceId);
+                    fetchNotificationsCount(deviceId);
+                    fetchMprisInfo(deviceId);
+                }
             }
         });
     }
@@ -367,9 +395,14 @@ Singleton {
             const oldDev = devices[deviceId];
             if (!oldDev)
                 return;
+            const newCharge = props.charge ?? -1;
+            const newCharging = props.isCharging ?? props.charging ?? false;
+            if (oldDev.batteryCharge === newCharge && oldDev.batteryCharging === newCharging)
+                return;
+
             const dev = Object.assign({}, oldDev);
-            dev.batteryCharge = props.charge ?? -1;
-            dev.batteryCharging = props.isCharging || false;
+            dev.batteryCharge = newCharge;
+            dev.batteryCharging = newCharging;
 
             devices = Object.assign({}, devices, {
                 [deviceId]: dev
@@ -388,9 +421,14 @@ Singleton {
             const oldDev = devices[deviceId];
             if (!oldDev)
                 return;
+            const newNetworkType = props.cellularNetworkType || "";
+            const newNetworkStrength = props.cellularNetworkStrength ?? -1;
+            if (oldDev.networkType === newNetworkType && oldDev.networkStrength === newNetworkStrength)
+                return;
+
             const dev = Object.assign({}, oldDev);
-            dev.networkType = props.cellularNetworkType || "";
-            dev.networkStrength = props.cellularNetworkStrength ?? -1;
+            dev.networkType = newNetworkType;
+            dev.networkStrength = newNetworkStrength;
 
             devices = Object.assign({}, devices, {
                 [deviceId]: dev
@@ -420,8 +458,12 @@ Singleton {
             const oldDev = devices[deviceId];
             if (!oldDev)
                 return;
+            const newNotificationCount = list.length;
+            if (oldDev.notificationCount === newNotificationCount)
+                return;
+
             const dev = Object.assign({}, oldDev);
-            dev.notificationCount = list.length;
+            dev.notificationCount = newNotificationCount;
 
             devices = Object.assign({}, devices, {
                 [deviceId]: dev
@@ -441,7 +483,6 @@ Singleton {
             const oldDev = devices[deviceId];
             if (!oldDev)
                 return;
-            const dev = Object.assign({}, oldDev);
             let nowPlaying = props.nowPlaying || props.NowPlaying || "";
             let title = props.title || props.Title || "";
             let artist = props.artist || props.Artist || "";
@@ -465,11 +506,23 @@ Singleton {
                 }
             }
 
+            const newIsPlaying = props.isPlaying || props.IsPlaying || props.isplaying || (props.PlaybackStatus === "Playing") || false;
+            const newPlayer = props.player || props.Player || (props.playerList && props.playerList.length > 0 ? props.playerList[0] : "") || "";
+
+            if (oldDev.mediaTitle === title &&
+                oldDev.mediaArtist === artist &&
+                oldDev.mediaAlbum === album &&
+                oldDev.mediaIsPlaying === newIsPlaying &&
+                oldDev.mediaPlayer === newPlayer) {
+                return;
+            }
+
+            const dev = Object.assign({}, oldDev);
             dev.mediaTitle = title;
             dev.mediaArtist = artist;
             dev.mediaAlbum = album;
-            dev.mediaIsPlaying = props.isPlaying || props.IsPlaying || props.isplaying || (props.PlaybackStatus === "Playing") || false;
-            dev.mediaPlayer = props.player || props.Player || (props.playerList && props.playerList.length > 0 ? props.playerList[0] : "") || "";
+            dev.mediaIsPlaying = newIsPlaying;
+            dev.mediaPlayer = newPlayer;
 
             devices = Object.assign({}, devices, {
                 [deviceId]: dev
@@ -481,6 +534,8 @@ Singleton {
     function updateDeviceBattery(deviceId, isCharging, charge) {
         const oldDev = devices[deviceId];
         if (!oldDev)
+            return;
+        if (oldDev.batteryCharge === charge && oldDev.batteryCharging === isCharging)
             return;
         const dev = Object.assign({}, oldDev);
         dev.batteryCharge = charge;

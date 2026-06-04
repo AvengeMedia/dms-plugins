@@ -41,14 +41,25 @@ Item {
         }
 
         MouseArea {
+            id: customImageMa
             anchors.fill: parent
             hoverEnabled: true
 
             onEntered: customImageContainer.scale = 1.02
             onExited:  customImageContainer.scale = 1.0
-            onPressed: customImageContainer.scale = 0.99
+            onPressed: function(m) {
+                customImageContainer.scale = 0.99;
+                customRipple.trigger(m.x, m.y);
+            }
             onReleased: customImageContainer.scale = containsMouse ? 1.02 : 1.0
             onClicked: root.clicked();
+        }
+
+        DankRipple {
+            id: customRipple
+            anchors.fill: parent
+            cornerRadius: customImageContainer.radius
+            rippleColor: Theme.primary
         }
 
         Image {
@@ -97,14 +108,30 @@ Item {
         }
 
         MouseArea {
+            id: genericMa
             anchors.fill: parent
             hoverEnabled: true
 
             onEntered: container.scale = 1.02
             onExited:  container.scale = 1.0
-            onPressed: container.scale = 0.99
+            onPressed: function(m) {
+                container.scale = 0.99;
+                genericRipple.trigger(m.x, m.y);
+            }
             onReleased: container.scale = containsMouse ? 1.02 : 1.0
             onClicked: root.clicked()
+        }
+
+        DankRipple {
+            id: genericRipple
+            anchors.fill: parent
+            cornerRadius: {
+                if (deviceType === "tv") return 4;
+                if (deviceType === "desktop" || deviceType === "computer" || deviceType === "laptop") return 8;
+                if (deviceType === "tablet") return 12;
+                return Theme.cornerRadius;
+            }
+            rippleColor: Theme.primary
         }
 
         // --- PHONE / SMARTPHONE / UNKNOWN RENDERER ---

@@ -185,11 +185,19 @@ StyledRect {
                     Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                 }
 
+                DankRipple {
+                    id: closeRipple
+                    anchors.fill: parent
+                    cornerRadius: parent.radius
+                    rippleColor: Theme.error
+                }
+
                 MouseArea {
                     id: closeArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onPressed: function(m) { closeRipple.trigger(m.x, m.y) }
                     onClicked: root.close()
                 }
 
@@ -265,11 +273,19 @@ StyledRect {
                     color: quickClipboardBtnArea.containsMouse ? Theme.primary : Theme.surfaceVariantText
                 }
 
+                DankRipple {
+                    id: clipboardRipple
+                    anchors.fill: parent
+                    cornerRadius: parent.radius
+                    rippleColor: Theme.primary
+                }
+
                 MouseArea {
                     id: quickClipboardBtnArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onPressed: function(m) { clipboardRipple.trigger(m.x, m.y) }
                     onClicked: quickClipboardBtn.triggerClipboardShare()
                 }
 
@@ -389,11 +405,20 @@ StyledRect {
                     }
                 }
 
+                DankRipple {
+                    id: shareTextRipple
+                    anchors.fill: parent
+                    cornerRadius: Theme.cornerRadius
+                    rippleColor: Theme.primary
+                    enabled: shareTextBtn.isEnabled
+                }
+
                 MouseArea {
                     id: shareTextArea
                     anchors.fill: parent
                     hoverEnabled: shareTextBtn.isEnabled
                     cursorShape: shareTextBtn.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onPressed: function(m) { if (shareTextBtn.isEnabled) shareTextRipple.trigger(m.x, m.y) }
                     onClicked: {
                         if (shareTextBtn.isEnabled) {
                             root.share(shareInput.text, root.isUrl(shareInput.text));
@@ -513,11 +538,19 @@ StyledRect {
                     }
                 }
 
+                DankRipple {
+                    id: sendFileRipple
+                    anchors.fill: parent
+                    cornerRadius: Theme.cornerRadius
+                    rippleColor: Theme.primary
+                }
+
                 MouseArea {
                     id: sendFileArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onPressed: function(m) { sendFileRipple.trigger(m.x, m.y) }
                     onClicked: fileBrowser.open()
                 }
 

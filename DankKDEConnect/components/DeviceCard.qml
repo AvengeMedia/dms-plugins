@@ -20,22 +20,42 @@ StyledRect {
 
     height: contentColumn.implicitHeight + Theme.spacingM * 2
     radius: 0
-    topLeftRadius: isFirst ? Theme.cornerRadius : 4
-    topRightRadius: isFirst ? Theme.cornerRadius : 4
-    bottomLeftRadius: isLast ? Theme.cornerRadius : 4
-    bottomRightRadius: isLast ? Theme.cornerRadius : 4
+    topLeftRadius: isSelected ? Theme.cornerRadius : (isFirst ? Theme.cornerRadius : 4)
+    topRightRadius: isSelected ? Theme.cornerRadius : (isFirst ? Theme.cornerRadius : 4)
+    bottomLeftRadius: isSelected ? Theme.cornerRadius : (isLast ? Theme.cornerRadius : 4)
+    bottomRightRadius: isSelected ? Theme.cornerRadius : (isLast ? Theme.cornerRadius : 4)
+
+    Behavior on topLeftRadius { NumberAnimation { duration: 200 } }
+    Behavior on topRightRadius { NumberAnimation { duration: 200 } }
+    Behavior on bottomLeftRadius { NumberAnimation { duration: 200 } }
+    Behavior on bottomRightRadius { NumberAnimation { duration: 200 } }
 
     color: isSelected ? Theme.withAlpha(Theme.primary, 0.12) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.surfaceContainerHighest, 0.8) : Theme.withAlpha(Theme.surfaceContainerHighest, 0.4))
     border.width: isSelected ? 1 : 0
     border.color: Theme.primary
+
+    Behavior on color { ColorAnimation { duration: 200 } }
+    Behavior on border.color { ColorAnimation { duration: 200 } }
+
+    scale: cardMouseArea.pressed ? 0.98 : 1.0
+    Behavior on scale { NumberAnimation { duration: 100 } }
 
     MouseArea {
         id: cardMouseArea
         anchors.fill: parent
         hoverEnabled: root.selectable
         cursorShape: root.selectable ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onPressed: function(m) { if (root.selectable) cardRipple.trigger(m.x, m.y) }
         onClicked: if (root.selectable)
             root.clicked()
+    }
+
+    DankRipple {
+        id: cardRipple
+        anchors.fill: parent
+        cornerRadius: root.isSelected ? Theme.cornerRadius : (root.isFirst || root.isLast ? Theme.cornerRadius : 4)
+        rippleColor: Theme.primary
+        visible: root.selectable
     }
 
     Column {
@@ -122,10 +142,9 @@ StyledRect {
                 width: 36
                 height: 36
                 enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "findmyphone")
-                DankActionButton {
+                DankKDEActionButton {
                     anchors.fill: parent
                     enabled: parent.enabled
-                    opacity: enabled ? 1.0 : 0.4
                     iconName: "phone_in_talk"
                     iconColor: Theme.primary
                     buttonSize: 36
@@ -142,10 +161,9 @@ StyledRect {
                 width: 36
                 height: 36
                 enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "ping")
-                DankActionButton {
+                DankKDEActionButton {
                     anchors.fill: parent
                     enabled: parent.enabled
-                    opacity: enabled ? 1.0 : 0.4
                     iconName: "notifications_active"
                     iconColor: Theme.primary
                     buttonSize: 36
@@ -161,12 +179,11 @@ StyledRect {
             Item {
                 width: 36
                 height: 36
-                visible: typeof SettingsData !== "undefined" ? (SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.enableClipboardAction ?? true) : true
+                visible: typeof SettingsData !== "undefined" ? (SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction ?? true) : true
                 enabled: root.device && root.device.isReachable
-                DankActionButton {
+                DankKDEActionButton {
                     anchors.fill: parent
                     enabled: parent.enabled
-                    opacity: enabled ? 1.0 : 0.4
                     iconName: "content_paste"
                     iconColor: Theme.primary
                     buttonSize: 36
@@ -183,10 +200,9 @@ StyledRect {
                 width: 36
                 height: 36
                 enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "share")
-                DankActionButton {
+                DankKDEActionButton {
                     anchors.fill: parent
                     enabled: parent.enabled
-                    opacity: enabled ? 1.0 : 0.4
                     iconName: "share"
                     iconColor: Theme.primary
                     buttonSize: 36
@@ -203,10 +219,9 @@ StyledRect {
                 width: 36
                 height: 36
                 enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "sftp")
-                DankActionButton {
+                DankKDEActionButton {
                     anchors.fill: parent
                     enabled: parent.enabled
-                    opacity: enabled ? 1.0 : 0.4
                     iconName: "folder"
                     iconColor: Theme.primary
                     buttonSize: 36
@@ -223,10 +238,9 @@ StyledRect {
                 width: 36
                 height: 36
                 enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "sms")
-                DankActionButton {
+                DankKDEActionButton {
                     anchors.fill: parent
                     enabled: parent.enabled
-                    opacity: enabled ? 1.0 : 0.4
                     iconName: "sms"
                     iconColor: Theme.primary
                     buttonSize: 36
@@ -239,7 +253,7 @@ StyledRect {
                 }
             }
 
-            DankActionButton {
+            DankKDEActionButton {
                 visible: root.device?.isPaired
                 iconName: "link_off"
                 iconColor: Theme.primary

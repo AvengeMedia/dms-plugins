@@ -331,30 +331,54 @@ Singleton {
         const iconName = extractVariant(props.IconName) || "";
         const name = extractVariant(props.Name) || "";
 
-        const dev = Object.assign({}, oldDev);
-        dev.id = deviceId;
-        dev.name = name || deviceId;
-        dev.type = iconNameToType(iconName);
-        dev.isReachable = (state & stateConnected) !== 0;
-        dev.isPaired = (state & statePaired) !== 0;
-        dev.isPairRequested = (state & statePairOutgoing) !== 0;
-        dev.isPairRequestedByPeer = (state & statePairIncoming) !== 0;
-        dev.statusIconName = iconName || "smartphone-symbolic";
-        dev.supportedPlugins = [];
-        dev.verificationKey = "";
-        dev._state = state;
+        const newName = name || deviceId;
+        const newType = iconNameToType(iconName);
+        const newIsReachable = (state & stateConnected) !== 0;
+        const newIsPaired = (state & statePaired) !== 0;
+        const newIsPairRequested = (state & statePairOutgoing) !== 0;
+        const newIsPairRequestedByPeer = (state & statePairIncoming) !== 0;
+        const newStatusIconName = iconName || "smartphone-symbolic";
 
-        devices = Object.assign({}, devices, {
-            [deviceId]: dev
-        });
-        deviceUpdated(deviceId);
+        const changed = !devices[deviceId] ||
+                        oldDev.id !== deviceId ||
+                        oldDev.name !== newName ||
+                        oldDev.type !== newType ||
+                        oldDev.isReachable !== newIsReachable ||
+                        oldDev.isPaired !== newIsPaired ||
+                        oldDev.isPairRequested !== newIsPairRequested ||
+                        oldDev.isPairRequestedByPeer !== newIsPairRequestedByPeer ||
+                        oldDev.statusIconName !== newStatusIconName ||
+                        oldDev._state !== state;
 
-        if (dev.isPairRequestedByPeer)
-            pairingRequestReceived(deviceId, "");
+        if (changed) {
+            const dev = Object.assign({}, oldDev);
+            dev.id = deviceId;
+            dev.name = newName;
+            dev.type = newType;
+            dev.isReachable = newIsReachable;
+            dev.isPaired = newIsPaired;
+            dev.isPairRequested = newIsPairRequested;
+            dev.isPairRequestedByPeer = newIsPairRequestedByPeer;
+            dev.statusIconName = newStatusIconName;
+            dev.supportedPlugins = [];
+            dev.verificationKey = "";
+            dev._state = state;
 
-        if (dev.isPaired && dev.isReachable) {
-            fetchBatteryState(deviceId);
-            fetchConnectivityState(deviceId);
+            devices = Object.assign({}, devices, {
+                [deviceId]: dev
+            });
+            deviceUpdated(deviceId);
+        }
+
+        const currentDev = devices[deviceId];
+        if (currentDev) {
+            if (currentDev.isPairRequestedByPeer)
+                pairingRequestReceived(deviceId, "");
+
+            if (currentDev.isPaired && currentDev.isReachable) {
+                fetchBatteryState(deviceId);
+                fetchConnectivityState(deviceId);
+            }
         }
     }
 
@@ -395,9 +419,14 @@ Singleton {
             if (!oldDev)
                 return;
 
+            const newCharge = stateValue["percentage"] ?? -1;
+            const newCharging = stateValue["charging"] ?? false;
+            if (oldDev.batteryCharge === newCharge && oldDev.batteryCharging === newCharging)
+                return;
+
             const dev = Object.assign({}, oldDev);
-            dev.batteryCharge = stateValue["percentage"] ?? -1;
-            dev.batteryCharging = stateValue["charging"] ?? false;
+            dev.batteryCharge = newCharge;
+            dev.batteryCharging = newCharging;
 
             devices = Object.assign({}, devices, {
                 [deviceId]: dev
@@ -430,9 +459,8 @@ Singleton {
             if (!oldDev)
                 return;
 
-            const dev = Object.assign({}, oldDev);
-            dev.networkStrength = -1;
-            dev.networkType = "";
+            let newStrength = -1;
+            let newType = "";
 
             try {
                 const signalStrengths = stateValue["signal-strengths"];
@@ -441,12 +469,19 @@ Singleton {
                     if (keys.length > 0) {
                         const primarySim = signalStrengths[keys[0]];
                         if (primarySim) {
-                            dev.networkStrength = primarySim["signal-strength"] ?? -1;
-                            dev.networkType = primarySim["network-type"] ?? "";
+                            newStrength = primarySim["signal-strength"] ?? -1;
+                            newType = primarySim["network-type"] ?? "";
                         }
                     }
                 }
             } catch (e) {}
+
+            if (oldDev.networkStrength === newStrength && oldDev.networkType === newType)
+                return;
+
+            const dev = Object.assign({}, oldDev);
+            dev.networkStrength = newStrength;
+            dev.networkType = newType;
 
             devices = Object.assign({}, devices, {
                 [deviceId]: dev

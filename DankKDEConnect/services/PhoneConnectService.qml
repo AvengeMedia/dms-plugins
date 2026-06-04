@@ -466,7 +466,7 @@ Singleton {
         }
         if (!changed) {
             try {
-                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+                const data = SettingsData.pluginSettings["dankKDEConnect"];
                 if (data?.deviceTypeMap) {
                     newMap = JSON.parse(data.deviceTypeMap);
                     changed = true;

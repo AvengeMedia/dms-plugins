@@ -64,19 +64,43 @@ PluginComponent {
         const globalVal = enableChargingAnimationVar.value;
         if (globalVal !== undefined && globalVal !== null)
             return (globalVal === true || globalVal === "true");
-        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
         const localVal = data?.enableChargingAnimation;
         return localVal !== undefined ? (localVal === true || localVal === "true") : true;
     }
 
-    property string selectedDeviceId: SettingsData.getPluginSettingsForPlugin("dankKDEConnect")?.selectedDeviceId || ""
+    property string selectedDeviceId: SettingsData.pluginSettings["dankKDEConnect"]?.selectedDeviceId || ""
     // Per-device custom image map: { deviceId: imagePath }
-    property var deviceImageMap: ({})
+    readonly property var deviceImageMap: {
+        const savedVal = deviceImageMapVar.value;
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            try { return JSON.parse(savedVal); } catch(e) {}
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        if (data && data.deviceImageMap) {
+            try { return JSON.parse(data.deviceImageMap); } catch(e) {}
+        }
+        // Migrate legacy single customPhoneImage to the map for the first paired device
+        const legacy = data?.customPhoneImage || "";
+        if (legacy) {
+            const ids = PhoneConnectService.deviceIds;
+            if (ids && ids.length > 0) {
+                const m = {}; m[ids[0]] = legacy;
+                return m;
+            }
+        }
+        return {};
+    }
 
     // Image for the currently selected device
     readonly property string customPhoneImage: deviceImageMap[selectedDeviceId] || ""
 
     property bool popoutOpen: false
+    onPopoutOpenChanged: {
+        if (popoutOpen) {
+            PhoneConnectService.refreshDevices();
+        }
+    }
 
     // Animated/active state for smooth device switching transitions (non-reactive initial to prevent instant snapping)
     property string activeDeviceId: ""
@@ -129,13 +153,22 @@ PluginComponent {
             delete updated[deviceId];
         else
             updated[deviceId] = path;
-        deviceImageMap = updated;
-        deviceImageMapVar.value = JSON.stringify(updated);
+        deviceImageMapVar.set(JSON.stringify(updated));
         PluginService.savePluginData("dankKDEConnect", "deviceImageMap", JSON.stringify(updated));
     }
 
     // Per-device custom recent images path map: { deviceId: recentImagesPath }
-    property var deviceRecentImagesPathMap: ({})
+    readonly property var deviceRecentImagesPathMap: {
+        const savedVal = deviceRecentImagesPathMapVar.value;
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            try { return JSON.parse(savedVal); } catch(e) {}
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        if (data && data.deviceRecentImagesPathMap) {
+            try { return JSON.parse(data.deviceRecentImagesPathMap); } catch(e) {}
+        }
+        return {};
+    }
 
     function getDeviceRecentImagesPath(deviceId) {
         return deviceRecentImagesPathMap[deviceId] || "";
@@ -147,13 +180,22 @@ PluginComponent {
             delete updated[deviceId];
         else
             updated[deviceId] = path;
-        deviceRecentImagesPathMap = updated;
-        deviceRecentImagesPathMapVar.value = JSON.stringify(updated);
+        deviceRecentImagesPathMapVar.set(JSON.stringify(updated));
         PluginService.savePluginData("dankKDEConnect", "deviceRecentImagesPathMap", JSON.stringify(updated));
     }
 
     // Per-device custom type map: { deviceId: type }
-    property var deviceTypeMap: ({})
+    readonly property var deviceTypeMap: {
+        const savedVal = deviceTypeMapVar.value;
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            try { return JSON.parse(savedVal); } catch(e) {}
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        if (data && data.deviceTypeMap) {
+            try { return JSON.parse(data.deviceTypeMap); } catch(e) {}
+        }
+        return {};
+    }
 
     onDeviceTypeMapChanged: {
         PhoneConnectService.deviceTypeMap = deviceTypeMap;
@@ -169,8 +211,7 @@ PluginComponent {
             delete updated[deviceId];
         else
             updated[deviceId] = type;
-        deviceTypeMap = updated;
-        deviceTypeMapVar.value = JSON.stringify(updated);
+        deviceTypeMapVar.set(JSON.stringify(updated));
         PluginService.savePluginData("dankKDEConnect", "deviceTypeMap", JSON.stringify(updated));
     }
 
@@ -184,7 +225,7 @@ PluginComponent {
             if (ids && ids.length > 0 && activeDeviceId === ids[0]) {
                 const savedVal = recentImagesPathVar.value;
                 if (savedVal !== undefined && savedVal !== null) return savedVal;
-                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+                const data = SettingsData.pluginSettings["dankKDEConnect"];
                 return data?.recentImagesPath || "";
             }
             return "";
@@ -194,7 +235,7 @@ PluginComponent {
     property int maxRecentImages: {
         const savedVal = maxRecentImagesVar.value;
         if (savedVal !== undefined) return savedVal;
-        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
         return data?.maxRecentImages || 4;
     }
     property var recentImages: []
@@ -218,7 +259,7 @@ PluginComponent {
         const globalVal = enableClipboardActionVar.value;
         if (globalVal !== undefined && globalVal !== null)
             return (globalVal === true || globalVal === "true");
-        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
         const localVal = data?.enableClipboardAction;
         return localVal !== undefined ? (localVal === true || localVal === "true") : true;
     }
@@ -226,7 +267,7 @@ PluginComponent {
         const globalVal = showOngoingMediaVar.value;
         if (globalVal !== undefined && globalVal !== null)
             return (globalVal === true || globalVal === "true");
-        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
         const localVal = data?.showOngoingMedia;
         return localVal !== undefined ? (localVal === true || localVal === "true") : true;
     }
@@ -234,7 +275,7 @@ PluginComponent {
         const globalVal = stateUpdateIntervalVar.value;
         if (globalVal !== undefined && globalVal !== null)
             return parseInt(globalVal) || 30;
-        const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
         return parseInt(data?.stateUpdateInterval) || 30;
     }
 
@@ -294,96 +335,6 @@ PluginComponent {
         const savedId = pluginService.loadPluginData("dankKDEConnect", "selectedDeviceId", "");
         if (savedId)
             selectedDeviceId = savedId;
-
-        // Load map values from persistent store on startup
-        const savedTypeMap = pluginService.loadPluginData("dankKDEConnect", "deviceTypeMap", "");
-        if (savedTypeMap) {
-            try { deviceTypeMap = JSON.parse(savedTypeMap); } catch(e) {}
-        } else {
-            try {
-                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
-                if (data?.deviceTypeMap) deviceTypeMap = JSON.parse(data.deviceTypeMap);
-            } catch(e) {}
-        }
-
-        const savedImageMap = pluginService.loadPluginData("dankKDEConnect", "deviceImageMap", "");
-        if (savedImageMap) {
-            try { deviceImageMap = JSON.parse(savedImageMap); } catch(e) {}
-        } else {
-            try {
-                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
-                if (data?.deviceImageMap) {
-                    deviceImageMap = JSON.parse(data.deviceImageMap);
-                } else if (data?.customPhoneImage) {
-                    const ids = PhoneConnectService.deviceIds;
-                    if (ids && ids.length > 0) {
-                        const m = {}; m[ids[0]] = data.customPhoneImage;
-                        deviceImageMap = m;
-                    }
-                }
-            } catch(e) {}
-        }
-
-        const savedPathMap = pluginService.loadPluginData("dankKDEConnect", "deviceRecentImagesPathMap", "");
-        if (savedPathMap) {
-            try { deviceRecentImagesPathMap = JSON.parse(savedPathMap); } catch(e) {}
-        } else {
-            try {
-                const data = SettingsData.getPluginSettingsForPlugin("dankKDEConnect");
-                if (data?.deviceRecentImagesPathMap) deviceRecentImagesPathMap = JSON.parse(data.deviceRecentImagesPathMap);
-            } catch(e) {}
-        }
-        
-        // Push the type map to PhoneConnectService immediately
-        PhoneConnectService.deviceTypeMap = deviceTypeMap;
-    }
-
-    Connections {
-        target: deviceTypeMapVar
-        ignoreUnknownSignals: true
-        function onValueChanged() {
-            const val = deviceTypeMapVar.value;
-            if (val !== undefined && val !== null && val !== "") {
-                try {
-                    const newMap = JSON.parse(val);
-                    if (JSON.stringify(deviceTypeMap) !== JSON.stringify(newMap)) {
-                        deviceTypeMap = newMap;
-                    }
-                } catch(e) {}
-            }
-        }
-    }
-
-    Connections {
-        target: deviceImageMapVar
-        ignoreUnknownSignals: true
-        function onValueChanged() {
-            const val = deviceImageMapVar.value;
-            if (val !== undefined && val !== null && val !== "") {
-                try {
-                    const newMap = JSON.parse(val);
-                    if (JSON.stringify(deviceImageMap) !== JSON.stringify(newMap)) {
-                        deviceImageMap = newMap;
-                    }
-                } catch(e) {}
-            }
-        }
-    }
-
-    Connections {
-        target: deviceRecentImagesPathMapVar
-        ignoreUnknownSignals: true
-        function onValueChanged() {
-            const val = deviceRecentImagesPathMapVar.value;
-            if (val !== undefined && val !== null && val !== "") {
-                try {
-                    const newMap = JSON.parse(val);
-                    if (JSON.stringify(deviceRecentImagesPathMap) !== JSON.stringify(newMap)) {
-                        deviceRecentImagesPathMap = newMap;
-                    }
-                } catch(e) {}
-            }
-        }
     }
 
     Timer {
@@ -602,23 +553,13 @@ PluginComponent {
                 id: hWaveContainer
                 readonly property var basePill: {
                     let p = parent;
-                    while (p) {
-                        if (p.visualWidth !== undefined && p.visualWidth > 0) {
-                            return p;
-                        }
+                    while (p && p.visualWidth === undefined) {
                         p = p.parent;
                     }
-                    p = parent;
-                    while (p) {
-                        if (p.width > 0 && p.height > 0 && p !== horizWrapper && p !== horizRow) {
-                            return p;
-                        }
-                        p = p.parent;
-                    }
-                    return parent;
+                    return p;
                 }
-                width: basePill ? (basePill.visualWidth || basePill.width) : 0
-                height: basePill ? (basePill.visualHeight || basePill.height) : 0
+                width: basePill ? basePill.visualWidth : 0
+                height: basePill ? basePill.visualHeight : 0
                 anchors.centerIn: parent
                 visible: root.enableChargingAnimation &&
                          root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
@@ -633,7 +574,7 @@ PluginComponent {
                 Shape {
                     id: hWaveShape
                     anchors.fill: parent
-                    
+
                     property real value: (root.selectedDevice?.batteryCharge ?? 0) / 100.0
                     property real phase: 0
                     property real amp: 3
@@ -644,18 +585,15 @@ PluginComponent {
                         return Theme.withAlpha(Theme.success, 0.3);
                     }
 
-                    NumberAnimation on phase {
-                        from: 0
-                        to: Math.PI * 200
-                        duration: 30000
-                        loops: Animation.Infinite
+                    FrameAnimation {
                         running: hWaveContainer.visible
+                        onTriggered: hWaveShape.phase += 0.08 * frameTime * 60
                     }
 
                     ShapePath {
                         fillColor: hWaveShape.fillColor
                         strokeColor: "transparent"
-                        
+
                         PathMove { x: 0; y: 0 }
                         PathLine {
                             x: {
@@ -767,23 +705,13 @@ PluginComponent {
                 id: vWaveContainer
                 readonly property var basePill: {
                     let p = parent;
-                    while (p) {
-                        if (p.visualWidth !== undefined && p.visualWidth > 0) {
-                            return p;
-                        }
+                    while (p && p.visualWidth === undefined) {
                         p = p.parent;
                     }
-                    p = parent;
-                    while (p) {
-                        if (p.width > 0 && p.height > 0 && p !== vertWrapper && p !== vertCol) {
-                            return p;
-                        }
-                        p = p.parent;
-                    }
-                    return parent;
+                    return p;
                 }
-                width: basePill ? (basePill.visualWidth || basePill.width) : 0
-                height: basePill ? (basePill.visualHeight || basePill.height) : 0
+                width: basePill ? basePill.visualWidth : 0
+                height: basePill ? basePill.visualHeight : 0
                 anchors.centerIn: parent
                 visible: root.enableChargingAnimation &&
                          root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
@@ -798,7 +726,7 @@ PluginComponent {
                 Shape {
                     id: vWaveShape
                     anchors.fill: parent
-                    
+
                     property real value: (root.selectedDevice?.batteryCharge ?? 0) / 100.0
                     property real phase: 0
                     property real amp: 3
@@ -809,18 +737,15 @@ PluginComponent {
                         return Theme.withAlpha(Theme.success, 0.3);
                     }
 
-                    NumberAnimation on phase {
-                        from: 0
-                        to: Math.PI * 200
-                        duration: 30000
-                        loops: Animation.Infinite
+                    FrameAnimation {
                         running: vWaveContainer.visible
+                        onTriggered: vWaveShape.phase += 0.08 * frameTime * 60
                     }
 
                     ShapePath {
                         fillColor: vWaveShape.fillColor
                         strokeColor: "transparent"
-                        
+
                         PathMove { x: 0; y: vWaveShape.height }
                         PathLine {
                             x: 0
@@ -922,22 +847,22 @@ PluginComponent {
             Component.onCompleted: root.popoutOpen = true
             Component.onDestruction: root.popoutOpen = false
 
-            SequentialAnimation {
+             SequentialAnimation {
                 id: deviceChangeAnim
                 ParallelAnimation {
                     NumberAnimation {
                         target: mainDeviceContainerRow
                         property: "opacity"
                         to: 0
-                        duration: 150
-                        easing.type: Easing.OutCubic
+                        duration: 80
+                        easing.type: Easing.OutQuad
                     }
                     NumberAnimation {
                         target: mainContainerTranslate
                         property: "x"
                         to: -15
-                        duration: 150
-                        easing.type: Easing.OutCubic
+                        duration: 80
+                        easing.type: Easing.OutQuad
                     }
                 }
                 ScriptAction {
@@ -953,15 +878,15 @@ PluginComponent {
                         target: mainDeviceContainerRow
                         property: "opacity"
                         to: 1
-                        duration: 200
-                        easing.type: Easing.OutCubic
+                        duration: 100
+                        easing.type: Easing.OutQuad
                     }
                     NumberAnimation {
                         target: mainContainerTranslate
                         property: "x"
                         to: 0
-                        duration: 200
-                        easing.type: Easing.OutCubic
+                        duration: 100
+                        easing.type: Easing.OutQuad
                     }
                 }
             }
@@ -1044,86 +969,132 @@ PluginComponent {
                             }
                         }
 
-                        // Switch Device button (only when multiple devices available)
-                        Item {
-                            width: 38
-                            height: 38
+                        // Grouped Actions Container (for Switch & Refresh buttons)
+                        Row {
                             Layout.alignment: Qt.AlignVCenter
-                            visible: PhoneConnectService.deviceIds.length > 1
+                            spacing: 2 // Gap between switch & refresh buttons
+                            visible: true
 
-                            MouseArea {
-                                id: switcherArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: popout.switcherVisible = !popout.switcherVisible
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: Theme.cornerRadius
-                                color: popout.switcherVisible
-                                    ? Theme.withAlpha(Theme.secondary, 0.2)
-                                    : (switcherArea.containsMouse ? Theme.withAlpha(Theme.secondary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4))
-                                border.width: 1
-                                border.color: Theme.withAlpha(Theme.secondary, popout.switcherVisible || switcherArea.containsMouse ? 0.4 : 0.15)
-
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                                Behavior on border.color { ColorAnimation { duration: 200 } }
-                            }
-
-                            DankIcon {
-                                name: "swap_horiz"
-                                size: 20
-                                color: Theme.secondary
-                                anchors.centerIn: parent
-                                scale: switcherArea.containsMouse ? 1.15 : 1.0
-
-                                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                            }
-                        }
-
-                        Item {
-                            width: 38
-                            height: 38
-                            Layout.alignment: Qt.AlignVCenter
-
-                            MouseArea {
-                                id: refreshArea
-                                anchors.fill: parent
-                                hoverEnabled: !PhoneConnectService.isRefreshing
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: PhoneConnectService.refreshDevices()
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: Theme.cornerRadius
-                                color: refreshArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                                border.width: 1
-                                border.color: Theme.withAlpha(Theme.primary, refreshArea.containsMouse ? 0.3 : 0.15)
+                            // Switch Device button (only when multiple devices available)
+                            Item {
+                                id: switcherButton
+                                width: 38
+                                height: 38
+                                visible: PhoneConnectService.deviceIds.length > 1
+                                scale: switcherArea.pressed ? 0.92 : (switcherArea.containsMouse ? 1.05 : 1.0)
                                 
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                                MouseArea {
+                                    id: switcherArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onPressed: function(m) { switcherRipple.trigger(m.x, m.y) }
+                                    onClicked: {
+                                        switcherContainer.animateHeight = true;
+                                        popout.switcherVisible = !popout.switcherVisible;
+                                    }
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    topLeftRadius: popout.switcherVisible ? height / 2 : Theme.cornerRadius
+                                    bottomLeftRadius: popout.switcherVisible ? height / 2 : Theme.cornerRadius
+                                    topRightRadius: popout.switcherVisible ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 8 : Theme.cornerRadius)
+                                    bottomRightRadius: popout.switcherVisible ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 8 : Theme.cornerRadius)
+
+                                    color: popout.switcherVisible
+                                        ? Theme.withAlpha(Theme.secondary, 0.2)
+                                        : (switcherArea.containsMouse ? Theme.withAlpha(Theme.secondary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4))
+                                    border.width: 1
+                                    border.color: Theme.withAlpha(Theme.secondary, popout.switcherVisible || switcherArea.containsMouse ? 0.4 : 0.15)
+
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                }
+
+                                DankRipple {
+                                    id: switcherRipple
+                                    anchors.fill: parent
+                                    cornerRadius: popout.switcherVisible ? width / 2 : (PhoneConnectService.deviceIds.length > 1 ? 8 : Theme.cornerRadius)
+                                    rippleColor: Theme.secondary
+                                }
+
+                                DankIcon {
+                                    name: "swap_horiz"
+                                    size: 20
+                                    color: Theme.secondary
+                                    anchors.centerIn: parent
+                                    rotation: popout.switcherVisible ? 180 : 0
+
+                                    Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                                }
                             }
 
-                            DankIcon {
-                                name: PhoneConnectService.isRefreshing ? "sync" : "refresh"
-                                size: 20
-                                color: Theme.primary
-                                anchors.centerIn: parent
-                                scale: refreshArea.containsMouse ? 1.15 : 1.0
-                                rotation: (refreshArea.containsMouse && !PhoneConnectService.isRefreshing) ? 180 : 0
+                            Item {
+                                id: refreshButton
+                                width: 38
+                                height: 38
+                                scale: refreshArea.pressed ? 0.92 : (refreshArea.containsMouse ? 1.05 : 1.0)
+                                
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
-                                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                                Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+                                MouseArea {
+                                    id: refreshArea
+                                    anchors.fill: parent
+                                    hoverEnabled: !PhoneConnectService.isRefreshing
+                                    cursorShape: Qt.PointingHandCursor
+                                    onPressed: function(m) { refreshRipple.trigger(m.x, m.y) }
+                                    onClicked: PhoneConnectService.refreshDevices()
+                                }
 
-                                RotationAnimation on rotation {
-                                    from: 0
-                                    to: 360
-                                    duration: 1000
-                                    loops: Animation.Infinite
-                                    running: PhoneConnectService.isRefreshing
+                                Rectangle {
+                                    anchors.fill: parent
+                                    topLeftRadius: PhoneConnectService.isRefreshing ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 8 : Theme.cornerRadius)
+                                    bottomLeftRadius: PhoneConnectService.isRefreshing ? height / 2 : (PhoneConnectService.deviceIds.length > 1 ? 8 : Theme.cornerRadius)
+                                    topRightRadius: PhoneConnectService.isRefreshing ? height / 2 : Theme.cornerRadius
+                                    bottomRightRadius: PhoneConnectService.isRefreshing ? height / 2 : Theme.cornerRadius
+
+                                    color: refreshArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                                    border.width: 1
+                                    border.color: Theme.withAlpha(Theme.primary, refreshArea.containsMouse ? 0.3 : 0.15)
+                                    
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                }
+
+                                DankRipple {
+                                    id: refreshRipple
+                                    anchors.fill: parent
+                                    cornerRadius: PhoneConnectService.isRefreshing ? width / 2 : (PhoneConnectService.deviceIds.length > 1 ? 8 : Theme.cornerRadius)
+                                    rippleColor: Theme.primary
+                                }
+
+                                DankIcon {
+                                    name: PhoneConnectService.isRefreshing ? "sync" : "refresh"
+                                    size: 20
+                                    color: Theme.primary
+                                    anchors.centerIn: parent
+                                    rotation: (refreshArea.containsMouse && !PhoneConnectService.isRefreshing) ? 180 : 0
+
+                                    Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+
+                                    RotationAnimation on rotation {
+                                        from: 0
+                                        to: 360
+                                        duration: 1000
+                                        loops: Animation.Infinite
+                                        running: PhoneConnectService.isRefreshing
+                                    }
                                 }
                             }
                         }
@@ -1136,6 +1107,7 @@ PluginComponent {
                     width: parent.width
                     clip: true
 
+                    property bool animateHeight: false
                     readonly property bool shouldBeVisible: (!root.hasDevice || popout.switcherVisible) && PhoneConnectService.deviceIds.length > 0
 
                     height: shouldBeVisible ? (switcherLayout.implicitHeight + Theme.spacingM * 2) : 0
@@ -1143,12 +1115,14 @@ PluginComponent {
                     visible: height > 0
 
                     Behavior on height {
+                        enabled: switcherContainer.animateHeight
                         NumberAnimation {
                             duration: 250
                             easing.type: Easing.InOutQuad
                         }
                     }
                     Behavior on opacity {
+                        enabled: switcherContainer.animateHeight
                         NumberAnimation {
                             duration: 200
                         }
@@ -1189,6 +1163,7 @@ PluginComponent {
                                 isFirst: index === 0
                                 isLast: index === PhoneConnectService.deviceIds.length - 1
                                 onClicked: {
+                                    switcherContainer.animateHeight = true
                                     root.selectDevice(modelData)
                                     popout.switcherVisible = false
                                 }
@@ -1291,10 +1266,9 @@ PluginComponent {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "findmyphone")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "phone_in_talk"
                                             iconColor: Theme.primary
                                             buttonSize: 32
@@ -1310,10 +1284,9 @@ PluginComponent {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "folder"
                                             iconColor: Theme.primary
                                             buttonSize: 32
@@ -1330,10 +1303,9 @@ PluginComponent {
                                         height: 32
                                         visible: root.enableClipboardAction
                                         enabled: root.activeDevice && root.activeDevice.isReachable
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "content_paste"
                                             iconColor: Theme.primary
                                             buttonSize: 32
@@ -1349,10 +1321,9 @@ PluginComponent {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "share")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "share"
                                             iconColor: Theme.primary
                                             buttonSize: 32
@@ -1368,10 +1339,9 @@ PluginComponent {
                                         width: 32
                                         height: 32
                                         enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "sms")
-                                        DankActionButton {
+                                        DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
-                                            opacity: enabled ? 1.0 : 0.4
                                             iconName: "sms"
                                             iconColor: Theme.primary
                                             buttonSize: 32
