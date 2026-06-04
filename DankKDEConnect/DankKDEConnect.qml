@@ -569,6 +569,7 @@ PluginComponent {
                     anchors.fill: parent
                     radius: (root.barConfig?.noBackground ?? false) ? 0 : Theme.cornerRadius
                     visible: false
+                    layer.enabled: true
                 }
 
                 Shape {
@@ -632,12 +633,12 @@ PluginComponent {
                         }
                         PathLine { x: 0; y: hWaveShape.height }
                     }
+                }
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        maskEnabled: true
-                        maskSource: hWaveMask
-                    }
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskSource: hWaveMask
                 }
             }
 
@@ -721,6 +722,7 @@ PluginComponent {
                     anchors.fill: parent
                     radius: (root.barConfig?.noBackground ?? false) ? 0 : Theme.cornerRadius
                     visible: false
+                    layer.enabled: true
                 }
 
                 Shape {
@@ -784,12 +786,12 @@ PluginComponent {
                         }
                         PathLine { x: vWaveShape.width; y: vWaveShape.height }
                     }
+                }
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        maskEnabled: true
-                        maskSource: vWaveMask
-                    }
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskSource: vWaveMask
                 }
             }
 
