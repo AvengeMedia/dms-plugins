@@ -9,7 +9,6 @@ Rectangle {
     id: root
 
     property var parentPopout: null
-    property int listHeight: 280
     property string shareDeviceId: ""
 
     implicitHeight: contentColumn.implicitHeight + Theme.spacingM * 2
@@ -25,6 +24,7 @@ Rectangle {
         spacing: Theme.spacingS
 
         RowLayout {
+            id: headerRow
             spacing: Theme.spacingS
             width: parent.width
 
@@ -72,6 +72,7 @@ Rectangle {
         }
 
         Rectangle {
+            id: dividerLine
             height: 1
             width: parent.width
             color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.12)
@@ -79,7 +80,7 @@ Rectangle {
 
         Item {
             width: parent.width
-            height: root.listHeight
+            height: Math.max(0, root.height - headerRow.height - dividerLine.height - Theme.spacingS * 2 - Theme.spacingM * 2)
 
             Column {
                 anchors.centerIn: parent

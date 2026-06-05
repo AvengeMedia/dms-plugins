@@ -45,9 +45,7 @@ PluginComponent {
     onCcWidgetExpanded: PhoneConnectService.detectBackend()
 
     ccDetailContent: Component {
-        KDEConnectDetailContent {
-            listHeight: 300
-        }
+        KDEConnectDetailContent {}
     }
 
     onPluginServiceChanged: {
