@@ -32,22 +32,54 @@ PluginSettings {
         readonly property var targetDevice: PhoneConnectService.getDevice(targetDeviceId)
         readonly property string targetDeviceName: targetDevice ? targetDevice.name : "Device 1"
 
-        readonly property var deviceTypeMap: {
-            const data = SettingsData.pluginSettings[root.pluginId];
-            const rawMap = data ? data.deviceTypeMap : "";
+        property var deviceTypeMap: ({})
+        property var deviceImageMap: ({})
+
+        function refreshDeviceTypeMap() {
+            const rawMap = loadValue("deviceTypeMap", "");
             if (rawMap) {
-                try { return JSON.parse(rawMap); } catch(e) {}
+                try {
+                    deviceTypeMap = JSON.parse(rawMap);
+                    return;
+                } catch(e) {}
             }
-            return {};
+            deviceTypeMap = {};
         }
 
-        readonly property var deviceImageMap: {
-            const data = SettingsData.pluginSettings[root.pluginId];
-            const rawMap = data ? data.deviceImageMap : "";
+        function refreshDeviceImageMap() {
+            const rawMap = loadValue("deviceImageMap", "");
             if (rawMap) {
-                try { return JSON.parse(rawMap); } catch(e) {}
+                try {
+                    deviceImageMap = JSON.parse(rawMap);
+                    return;
+                } catch(e) {}
             }
-            return {};
+            deviceImageMap = {};
+        }
+
+        Component.onCompleted: {
+            refreshDeviceTypeMap();
+            refreshDeviceImageMap();
+        }
+
+        Connections {
+            target: PluginService
+            ignoreUnknownSignals: true
+            function onGlobalVarChanged(pluginId, varName) {
+                if (pluginId === root.pluginId) {
+                    if (varName === "deviceTypeMap") {
+                        mainSettingsCol.refreshDeviceTypeMap();
+                    } else if (varName === "deviceImageMap") {
+                        mainSettingsCol.refreshDeviceImageMap();
+                    }
+                }
+            }
+            function onPluginDataChanged(pluginId) {
+                if (pluginId === root.pluginId) {
+                    mainSettingsCol.refreshDeviceTypeMap();
+                    mainSettingsCol.refreshDeviceImageMap();
+                }
+            }
         }
 
         function getDeviceImage(deviceId) {
@@ -62,18 +94,14 @@ PluginSettings {
 
         function saveDeviceImage(deviceId, path) {
             if (!deviceId) return;
-            let map = {};
-            const rawMap = loadValue("deviceImageMap", "");
-            if (rawMap) {
-                try { map = JSON.parse(rawMap); } catch(e) {}
-            }
+            let newMap = Object.assign({}, deviceImageMap);
             if (path === "" || path === null) {
-                delete map[deviceId];
+                delete newMap[deviceId];
             } else {
-                map[deviceId] = path;
+                newMap[deviceId] = path;
             }
-            const serialized = JSON.stringify(map);
-            saveValue("deviceImageMap", serialized);
+            deviceImageMap = newMap;
+            saveValue("deviceImageMap", JSON.stringify(newMap));
         }
 
         function getDeviceRecentImagesPath(deviceId) {
@@ -139,12 +167,6 @@ PluginSettings {
 
         function saveDeviceType(deviceId, typeStr) {
             if (!deviceId) return;
-            let map = {};
-            const rawMap = loadValue("deviceTypeMap", "");
-            if (rawMap) {
-                try { map = JSON.parse(rawMap); } catch(e) {}
-            }
-            
             let typeVal = "";
             switch (typeStr) {
             case "Phone": typeVal = "phone"; break;
@@ -153,13 +175,14 @@ PluginSettings {
             case "PC": typeVal = "desktop"; break;
             }
 
+            let newMap = Object.assign({}, deviceTypeMap);
             if (typeVal === "") {
-                delete map[deviceId];
+                delete newMap[deviceId];
             } else {
-                map[deviceId] = typeVal;
+                newMap[deviceId] = typeVal;
             }
-            const serialized = JSON.stringify(map);
-            saveValue("deviceTypeMap", serialized);
+            deviceTypeMap = newMap;
+            saveValue("deviceTypeMap", JSON.stringify(newMap));
         }
 
 
@@ -395,14 +418,149 @@ PluginSettings {
                                 }
                             }
 
-                            DankButton {
-                                iconName: "folder"
-                                text: "Browse"
+                            RowLayout {
+                                spacing: 1
                                 Layout.alignment: Qt.AlignVCenter
-                                onClicked: {
-                                    imageBrowser.targetDeviceId = deviceSettingsRect.modelData;
-                                    imageBrowser.targetField = customImageField;
-                                    imageBrowser.open();
+
+                                // Browse Button Item
+                                Item {
+                                    id: browseBtnItem
+                                    height: 36
+                                    width: 96
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        topLeftRadius: Theme.cornerRadius
+                                        bottomLeftRadius: Theme.cornerRadius
+                                        topRightRadius: clearBtnContainer.isShown ? 0 : Theme.cornerRadius
+                                        bottomRightRadius: clearBtnContainer.isShown ? 0 : Theme.cornerRadius
+
+                                        color: browseMA.containsMouse 
+                                            ? Theme.withAlpha(Theme.primary, 0.15) 
+                                            : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                                        border.width: 1
+                                        border.color: Theme.withAlpha(Theme.primary, browseMA.containsMouse ? 0.3 : 0.15)
+                                    }
+
+                                    DankRipple {
+                                        anchors.fill: parent
+                                        cornerRadius: Theme.cornerRadius
+                                        rippleColor: Theme.primary
+                                    }
+
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: Theme.spacingXXS
+                                        DankIcon {
+                                            name: "folder"
+                                            size: 16
+                                            color: Theme.primary
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                        StyledText {
+                                            text: "Browse"
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            font.weight: Font.Medium
+                                            color: Theme.primary
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: browseMA
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            imageBrowser.targetDeviceId = deviceSettingsRect.modelData;
+                                            imageBrowser.targetField = customImageField;
+                                            imageBrowser.open();
+                                        }
+                                    }
+                                }
+
+                                // Animated container for Clear Button
+                                Item {
+                                    id: clearBtnContainer
+                                    height: 36
+                                    property bool isShown: customImageField.text !== ""
+                                    width: isShown ? 88 : 0
+                                    opacity: isShown ? 1.0 : 0.0
+                                    scale: isShown ? 1.0 : 0.8
+                                    clip: true
+
+                                    Behavior on width {
+                                        NumberAnimation {
+                                            duration: Theme.shorterDuration
+                                            easing.type: Easing.OutCubic
+                                        }
+                                    }
+                                    Behavior on opacity {
+                                        NumberAnimation {
+                                            duration: Theme.shorterDuration
+                                            easing.type: Easing.OutCubic
+                                        }
+                                    }
+                                    Behavior on scale {
+                                        NumberAnimation {
+                                            duration: Theme.shorterDuration
+                                            easing.type: Easing.OutCubic
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 88
+                                        height: 36
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            topLeftRadius: 0
+                                            bottomLeftRadius: 0
+                                            topRightRadius: Theme.cornerRadius
+                                            bottomRightRadius: Theme.cornerRadius
+
+                                            color: clearMA.containsMouse 
+                                                ? Theme.withAlpha(Theme.primary, 0.15) 
+                                                : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                                            border.width: 1
+                                            border.color: Theme.withAlpha(Theme.primary, clearMA.containsMouse ? 0.3 : 0.15)
+                                        }
+
+                                        DankRipple {
+                                            anchors.fill: parent
+                                            cornerRadius: Theme.cornerRadius
+                                            rippleColor: Theme.primary
+                                        }
+
+                                        Row {
+                                            anchors.centerIn: parent
+                                            spacing: Theme.spacingXXS
+                                            DankIcon {
+                                                name: "clear"
+                                                size: 16
+                                                color: Theme.primary
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                            StyledText {
+                                                text: "Clear"
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                font.weight: Font.Medium
+                                                color: Theme.primary
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            id: clearMA
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                customImageField.text = "";
+                                                mainSettingsCol.saveDeviceImage(deviceSettingsRect.modelData, "");
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -551,6 +709,20 @@ PluginSettings {
                         onToggled: function(newChecked) {
                             checked = newChecked;
                             mainSettingsCol.saveValue("showOngoingMedia", newChecked);
+                        }
+                    }
+
+                    DankToggle {
+                        id: showDevicePlaceholderToggle
+                        width: parent.width
+                        text: "Show Device Image Placeholder"
+                        description: "Show the device graphics representation or custom image in the device details."
+                        Component.onCompleted: {
+                            checked = mainSettingsCol.loadValue("showDevicePlaceholder", true);
+                        }
+                        onToggled: function(newChecked) {
+                            checked = newChecked;
+                            mainSettingsCol.saveValue("showDevicePlaceholder", newChecked);
                         }
                     }
                 }

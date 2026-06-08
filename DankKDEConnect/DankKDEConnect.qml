@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Mpris
 import qs.Common
 import qs.Services
 import qs.Widgets
@@ -60,41 +61,22 @@ PluginComponent {
         varName: "enableChargingAnimation"
     }
 
-    property bool enableChargingAnimation: {
-        const globalVal = enableChargingAnimationVar.value;
-        if (globalVal !== undefined && globalVal !== null)
-            return (globalVal === true || globalVal === "true");
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        const localVal = data?.enableChargingAnimation;
-        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
+    PluginGlobalVar {
+        id: showDevicePlaceholderVar
+        varName: "showDevicePlaceholder"
     }
+
+    property bool enableChargingAnimation: (enableChargingAnimationVar.value !== undefined && enableChargingAnimationVar.value !== null) ? (enableChargingAnimationVar.value === true || enableChargingAnimationVar.value === "true") : ((SettingsData.pluginSettings["dankKDEConnect"]?.enableChargingAnimation !== undefined) ? (SettingsData.pluginSettings["dankKDEConnect"]?.enableChargingAnimation === true || SettingsData.pluginSettings["dankKDEConnect"]?.enableChargingAnimation === "true") : true)
+    property bool showDevicePlaceholder: (showDevicePlaceholderVar.value !== undefined && showDevicePlaceholderVar.value !== null) ? (showDevicePlaceholderVar.value === true || showDevicePlaceholderVar.value === "true") : ((SettingsData.pluginSettings["dankKDEConnect"]?.showDevicePlaceholder !== undefined) ? (SettingsData.pluginSettings["dankKDEConnect"]?.showDevicePlaceholder === true || SettingsData.pluginSettings["dankKDEConnect"]?.showDevicePlaceholder === "true") : true)
 
     property string selectedDeviceId: SettingsData.pluginSettings["dankKDEConnect"]?.selectedDeviceId || ""
     // Per-device custom image map: { deviceId: imagePath }
-    readonly property var deviceImageMap: {
-        const savedVal = deviceImageMapVar.value;
-        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
-            try { return JSON.parse(savedVal); } catch(e) {}
-        }
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        if (data && data.deviceImageMap) {
-            try { return JSON.parse(data.deviceImageMap); } catch(e) {}
-        }
-        // Migrate legacy single customPhoneImage to the map for the first paired device
-        const legacy = data?.customPhoneImage || "";
-        if (legacy) {
-            const ids = PhoneConnectService.deviceIds;
-            if (ids && ids.length > 0) {
-                const m = {}; m[ids[0]] = legacy;
-                return m;
-            }
-        }
-        return {};
-    }
+    property var deviceImageMap: ({})
 
     // Image for the currently selected device
     readonly property string customPhoneImage: deviceImageMap[selectedDeviceId] || ""
 
+    property bool isSeeking: false
     property bool popoutOpen: false
     onPopoutOpenChanged: {
         if (popoutOpen) {
@@ -107,23 +89,57 @@ PluginComponent {
     readonly property var activeDevice: activeDeviceId ? (PhoneConnectService.devices[activeDeviceId] ?? null) : null
     readonly property string activeCustomPhoneImage: deviceImageMap[activeDeviceId] || ""
 
-    readonly property real container1Width: {
-        const type = root.activeDevice?.type;
-        if (type === "desktop" || type === "computer" || type === "laptop") {
-            return 240;
-        } else if (type === "tv") {
-            return 260;
-        } else if (type === "tablet") {
-            return 185;
+    readonly property MprisPlayer phoneMprisPlayer: {
+        if (!root.activeDevice || !root.activeDevice.name || typeof MprisController === "undefined") {
+            return null;
         }
-        return 135;
+        const players = MprisController.availablePlayers || [];
+        const devicePlayers = [];
+        const normDevice = root.activeDevice.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        for (let i = 0; i < players.length; i++) {
+            const p = players[i];
+            if (p) {
+                if (p.dbusName && p.dbusName.indexOf("org.mpris.MediaPlayer2.kdeconnect") === 0 && p.identity) {
+                    const normIdentity = p.identity.toLowerCase().replace(/[^a-z0-9]/g, "");
+                    if (normIdentity.indexOf(normDevice) !== -1) {
+                        devicePlayers.push(p);
+                    }
+                }
+            }
+        }
+        if (devicePlayers.length === 0) {
+            return null;
+        }
+        for (let i = 0; i < devicePlayers.length; i++) {
+            if (devicePlayers[i].playbackState === MprisPlaybackState.Playing) {
+                return devicePlayers[i];
+            }
+        }
+        return devicePlayers[0];
     }
 
+    readonly property bool hasOngoingMediaActive: {
+        if (!root.hasDevice || !root.showOngoingMedia || root.deviceSwitching)
+            return false;
+        if (root.phoneMprisPlayer && (root.phoneMprisPlayer.trackTitle || "") !== "")
+            return true;
+        if ((root.activeDevice?.mediaTitle || "") !== "")
+            return true;
+        return false;
+    }
+
+    readonly property real container1Width: (root.activeDevice?.type === "desktop" || root.activeDevice?.type === "computer" || root.activeDevice?.type === "laptop") ? 240
+        : (root.activeDevice?.type === "tv") ? 260
+        : (root.activeDevice?.type === "tablet") ? 185
+        : 135
+
     onActiveDeviceIdChanged: {
+        // Clear images immediately and stop any ongoing scan.
+        // Do NOT call refreshImages here — recentImagesPath is a reactive binding
+        // on activeDeviceId and hasn't re-evaluated yet in this tick.
+        // onRecentImagesPathChanged will fire after the binding settles and kick off the scan.
         recentImages = [];
-        if (activeDeviceId && PhoneConnectService.hasPlugin(activeDeviceId, "sftp")) {
-            refreshImages(true);
-        }
+        if (imagesScanner) imagesScanner.running = false;
     }
 
     onSelectedDeviceIdChanged: {
@@ -136,11 +152,147 @@ PluginComponent {
         }
     }
 
+    function loadDeviceTypeMap() {
+        const savedVal = deviceTypeMapVar.value;
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            try { return JSON.parse(savedVal); } catch(e) {}
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        if (data && data.deviceTypeMap) {
+            try { return JSON.parse(data.deviceTypeMap); } catch(e) {}
+        }
+        return {};
+    }
+
+    function loadDeviceImageMap() {
+        const savedVal = deviceImageMapVar.value;
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            try { return JSON.parse(savedVal); } catch(e) {}
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        if (data && data.deviceImageMap) {
+            try { return JSON.parse(data.deviceImageMap); } catch(e) {}
+        }
+        const legacy = data?.customPhoneImage || "";
+        if (legacy) {
+            const ids = PhoneConnectService.deviceIds;
+            if (ids && ids.length > 0) {
+                const m = {}; m[ids[0]] = legacy;
+                return m;
+            }
+        }
+        return {};
+    }
+
+    function loadDeviceRecentImagesPathMap() {
+        const savedVal = deviceRecentImagesPathMapVar.value;
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            try { return JSON.parse(savedVal); } catch(e) {}
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        if (data && data.deviceRecentImagesPathMap) {
+            try { return JSON.parse(data.deviceRecentImagesPathMap); } catch(e) {}
+        }
+        return {};
+    }
+
+    function loadRecentImagesPath() {
+        if (activeDeviceId) {
+            if (deviceRecentImagesPathMap[activeDeviceId]) {
+                return deviceRecentImagesPathMap[activeDeviceId];
+            }
+            const ids = PhoneConnectService.deviceIds;
+            if (ids && ids.length > 0 && activeDeviceId === ids[0]) {
+                const savedVal = recentImagesPathVar.value;
+                if (savedVal !== undefined && savedVal !== null) return savedVal;
+                const data = SettingsData.pluginSettings["dankKDEConnect"];
+                return data?.recentImagesPath || "";
+            }
+        }
+        return "";
+    }
+
+    function loadMaxRecentImages() {
+        const savedVal = maxRecentImagesVar.value;
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            const parsed = parseInt(savedVal);
+            if (!isNaN(parsed)) return parsed;
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        return data?.maxRecentImages || 4;
+    }
+
+    function loadEnableClipboardAction() {
+        const globalVal = enableClipboardActionVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return (globalVal === true || globalVal === "true");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        const localVal = data?.enableClipboardAction;
+        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
+    }
+
+    function loadShowOngoingMedia() {
+        const globalVal = showOngoingMediaVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return (globalVal === true || globalVal === "true");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        const localVal = data?.showOngoingMedia;
+        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
+    }
+
+    function loadStateUpdateInterval() {
+        const globalVal = stateUpdateIntervalVar.value;
+        if (globalVal !== undefined && globalVal !== null && globalVal !== "") {
+            const parsed = parseInt(globalVal);
+            if (!isNaN(parsed)) return parsed;
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        return parseInt(data?.stateUpdateInterval) || 30;
+    }
+
+    function loadEnableChargingAnimation() {
+        const globalVal = enableChargingAnimationVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return (globalVal === true || globalVal === "true");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        const localVal = data?.enableChargingAnimation;
+        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
+    }
+
+    function loadShowDevicePlaceholder() {
+        const globalVal = showDevicePlaceholderVar.value;
+        if (globalVal !== undefined && globalVal !== null)
+            return (globalVal === true || globalVal === "true");
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        const localVal = data?.showDevicePlaceholder;
+        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
+    }
+
+    Connections {
+        target: deviceTypeMapVar
+        ignoreUnknownSignals: true
+        function onValueChanged() { deviceTypeMap = loadDeviceTypeMap(); }
+    }
+    Connections {
+        target: deviceImageMapVar
+        ignoreUnknownSignals: true
+        function onValueChanged() { deviceImageMap = loadDeviceImageMap(); }
+    }
+    Connections {
+        target: deviceRecentImagesPathMapVar
+        ignoreUnknownSignals: true
+        function onValueChanged() { deviceRecentImagesPathMap = loadDeviceRecentImagesPathMap(); }
+    }
     Component.onCompleted: {
         if (activeDeviceId === "" && selectedDeviceId !== "") {
             activeDeviceId = selectedDeviceId;
         }
+        deviceTypeMap = loadDeviceTypeMap();
+        deviceImageMap = loadDeviceImageMap();
+        deviceRecentImagesPathMap = loadDeviceRecentImagesPathMap();
+
         PhoneConnectService.deviceTypeMap = root.deviceTypeMap;
+        PhoneConnectService.refreshDevices();
     }
 
     function getDeviceImage(deviceId) {
@@ -157,18 +309,7 @@ PluginComponent {
         PluginService.savePluginData("dankKDEConnect", "deviceImageMap", JSON.stringify(updated));
     }
 
-    // Per-device custom recent images path map: { deviceId: recentImagesPath }
-    readonly property var deviceRecentImagesPathMap: {
-        const savedVal = deviceRecentImagesPathMapVar.value;
-        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
-            try { return JSON.parse(savedVal); } catch(e) {}
-        }
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        if (data && data.deviceRecentImagesPathMap) {
-            try { return JSON.parse(data.deviceRecentImagesPathMap); } catch(e) {}
-        }
-        return {};
-    }
+    property var deviceRecentImagesPathMap: ({})
 
     function getDeviceRecentImagesPath(deviceId) {
         return deviceRecentImagesPathMap[deviceId] || "";
@@ -185,17 +326,7 @@ PluginComponent {
     }
 
     // Per-device custom type map: { deviceId: type }
-    readonly property var deviceTypeMap: {
-        const savedVal = deviceTypeMapVar.value;
-        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
-            try { return JSON.parse(savedVal); } catch(e) {}
-        }
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        if (data && data.deviceTypeMap) {
-            try { return JSON.parse(data.deviceTypeMap); } catch(e) {}
-        }
-        return {};
-    }
+    property var deviceTypeMap: ({})
 
     onDeviceTypeMapChanged: {
         PhoneConnectService.deviceTypeMap = deviceTypeMap;
@@ -211,38 +342,20 @@ PluginComponent {
             delete updated[deviceId];
         else
             updated[deviceId] = type;
+        deviceTypeMap = updated;
+        PhoneConnectService.deviceTypeMap = updated;
         deviceTypeMapVar.set(JSON.stringify(updated));
         PluginService.savePluginData("dankKDEConnect", "deviceTypeMap", JSON.stringify(updated));
     }
 
-    property string recentImagesPath: {
-        if (activeDeviceId) {
-            if (deviceRecentImagesPathMap[activeDeviceId]) {
-                return deviceRecentImagesPathMap[activeDeviceId];
-            }
-            // Fallback to legacy single path ONLY if it's the first/only device, or if the device ID matches the first device
-            const ids = PhoneConnectService.deviceIds;
-            if (ids && ids.length > 0 && activeDeviceId === ids[0]) {
-                const savedVal = recentImagesPathVar.value;
-                if (savedVal !== undefined && savedVal !== null) return savedVal;
-                const data = SettingsData.pluginSettings["dankKDEConnect"];
-                return data?.recentImagesPath || "";
-            }
-            return "";
-        }
-        return "";
-    }
-    property int maxRecentImages: {
-        const savedVal = maxRecentImagesVar.value;
-        if (savedVal !== undefined) return savedVal;
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        return data?.maxRecentImages || 4;
-    }
+    property string recentImagesPath: activeDeviceId ? (deviceRecentImagesPathMap[activeDeviceId] || ((PhoneConnectService.deviceIds.length > 0 && activeDeviceId === PhoneConnectService.deviceIds[0]) ? (recentImagesPathVar.value !== undefined && recentImagesPathVar.value !== null ? recentImagesPathVar.value : (SettingsData.pluginSettings["dankKDEConnect"]?.recentImagesPath || "")) : "")) : ""
+    property int maxRecentImages: (maxRecentImagesVar.value !== undefined && maxRecentImagesVar.value !== null && maxRecentImagesVar.value !== "") ? parseInt(maxRecentImagesVar.value) : (SettingsData.pluginSettings["dankKDEConnect"]?.maxRecentImages || 4)
     property var recentImages: []
     readonly property bool loadingImages: imagesScanner && imagesScanner.running
     property bool showShareDialog: false
     property bool showSmsDialog: false
     property string shareDeviceId: ""
+    property bool deviceSwitching: false
 
     onCustomPhoneImageChanged: {
         console.log("[DMS DEBUG DankKDEConnect] customPhoneImage changed to:", customPhoneImage)
@@ -255,29 +368,9 @@ PluginComponent {
     readonly property string serviceName: PhoneConnectService.backendName
 
     readonly property string pluginId: "dankKDEConnect"
-    property bool enableClipboardAction: {
-        const globalVal = enableClipboardActionVar.value;
-        if (globalVal !== undefined && globalVal !== null)
-            return (globalVal === true || globalVal === "true");
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        const localVal = data?.enableClipboardAction;
-        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
-    }
-    property bool showOngoingMedia: {
-        const globalVal = showOngoingMediaVar.value;
-        if (globalVal !== undefined && globalVal !== null)
-            return (globalVal === true || globalVal === "true");
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        const localVal = data?.showOngoingMedia;
-        return localVal !== undefined ? (localVal === true || localVal === "true") : true;
-    }
-    property int stateUpdateInterval: {
-        const globalVal = stateUpdateIntervalVar.value;
-        if (globalVal !== undefined && globalVal !== null)
-            return parseInt(globalVal) || 30;
-        const data = SettingsData.pluginSettings["dankKDEConnect"];
-        return parseInt(data?.stateUpdateInterval) || 30;
-    }
+    property bool enableClipboardAction: (enableClipboardActionVar.value !== undefined && enableClipboardActionVar.value !== null) ? (enableClipboardActionVar.value === true || enableClipboardActionVar.value === "true") : ((SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction !== undefined) ? (SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction === true || SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction === "true") : true)
+    property bool showOngoingMedia: (showOngoingMediaVar.value !== undefined && showOngoingMediaVar.value !== null) ? (showOngoingMediaVar.value === true || showOngoingMediaVar.value === "true") : ((SettingsData.pluginSettings["dankKDEConnect"]?.showOngoingMedia !== undefined) ? (SettingsData.pluginSettings["dankKDEConnect"]?.showOngoingMedia === true || SettingsData.pluginSettings["dankKDEConnect"]?.showOngoingMedia === "true") : true)
+    property int stateUpdateInterval: (stateUpdateIntervalVar.value !== undefined && stateUpdateIntervalVar.value !== null && stateUpdateIntervalVar.value !== "") ? (parseInt(stateUpdateIntervalVar.value) || 30) : (parseInt(SettingsData.pluginSettings["dankKDEConnect"]?.stateUpdateInterval) || 30)
 
     readonly property bool isDarkTheme: (Theme.surface.r * 0.299 + Theme.surface.g * 0.587 + Theme.surface.b * 0.114) < 0.5
     readonly property color cardColor: isDarkTheme ? Theme.withAlpha("#ffffff", 0.08) : Theme.withAlpha(Theme.surfaceContainerHigh, 0.6)
@@ -308,7 +401,7 @@ PluginComponent {
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
     ccDetailHeight: 460
-    popoutWidth: 400 + (container1Width - 135)
+    popoutWidth: root.showDevicePlaceholder ? (400 + (container1Width - 135)) : 400
 
     ccDetailContent: Component {
         ScrollView {
@@ -350,7 +443,12 @@ PluginComponent {
 
 
 
-    readonly property bool isTyping: activeFocusItem && (activeFocusItem.toString().includes("TextInput") || activeFocusItem.toString().includes("TextEdit") || activeFocusItem.toString().includes("TextField") || activeFocusItem.toString().includes("TextArea"))
+    readonly property bool isTyping: {
+        const win = root.Window?.window;
+        if (!win || !win.activeFocusItem) return false;
+        const str = win.activeFocusItem.toString();
+        return str.includes("TextInput") || str.includes("TextEdit") || str.includes("TextField") || str.includes("TextArea");
+    }
 
     function switchDeviceNext() {
         const ids = PhoneConnectService.deviceIds;
@@ -380,11 +478,13 @@ PluginComponent {
 
     Repeater {
         model: Math.min(PhoneConnectService.deviceIds.length, 9)
-        delegate: Shortcut {
-            sequence: "Alt+" + (index + 1)
-            onActivated: {
-                if (index < PhoneConnectService.deviceIds.length) {
-                    root.selectDevice(PhoneConnectService.deviceIds[index]);
+        delegate: Item {
+            Shortcut {
+                sequence: "Alt+" + (index + 1)
+                onActivated: {
+                    if (index < PhoneConnectService.deviceIds.length) {
+                        root.selectDevice(PhoneConnectService.deviceIds[index]);
+                    }
                 }
             }
         }
@@ -849,48 +949,61 @@ PluginComponent {
             Component.onCompleted: root.popoutOpen = true
             Component.onDestruction: root.popoutOpen = false
 
-             SequentialAnimation {
+            // Collapse all device content up into the header on switch, then expand from header for new device
+            SequentialAnimation {
                 id: deviceChangeAnim
+
+                ScriptAction { script: { root.deviceSwitching = true; } }
+
+                // Phase 1: Slide up into header + fade out
                 ParallelAnimation {
                     NumberAnimation {
-                        target: mainDeviceContainerRow
+                        target: deviceContentGroup
                         property: "opacity"
                         to: 0
-                        duration: 80
+                        duration: Theme.shorterDuration * 0.8
                         easing.type: Easing.OutQuad
                     }
                     NumberAnimation {
-                        target: mainContainerTranslate
-                        property: "x"
-                        to: -15
-                        duration: 80
-                        easing.type: Easing.OutQuad
+                        target: deviceContentTranslate
+                        property: "y"
+                        to: -28
+                        duration: Theme.shorterDuration * 0.8
+                        easing.type: Easing.InCubic
                     }
                 }
+
+                // Swap device while invisible
                 ScriptAction {
                     script: { root.activeDeviceId = root.selectedDeviceId; }
                 }
+
+                // Reset to below header, ready to slide in
                 PropertyAction {
-                    target: mainContainerTranslate
-                    property: "x"
-                    value: 15
+                    target: deviceContentTranslate
+                    property: "y"
+                    value: 28
                 }
+
+                // Phase 2: Slide down into place + fade in
                 ParallelAnimation {
                     NumberAnimation {
-                        target: mainDeviceContainerRow
+                        target: deviceContentGroup
                         property: "opacity"
                         to: 1
-                        duration: 100
-                        easing.type: Easing.OutQuad
+                        duration: Theme.shorterDuration * 0.9
+                        easing.type: Easing.OutCubic
                     }
                     NumberAnimation {
-                        target: mainContainerTranslate
-                        property: "x"
+                        target: deviceContentTranslate
+                        property: "y"
                         to: 0
-                        duration: 100
-                        easing.type: Easing.OutQuad
+                        duration: Theme.shorterDuration * 0.9
+                        easing.type: Easing.OutCubic
                     }
                 }
+
+                ScriptAction { script: { root.deviceSwitching = false; } }
             }
 
             Connections {
@@ -1012,12 +1125,12 @@ PluginComponent {
                                     border.width: 1
                                     border.color: Theme.withAlpha(Theme.secondary, popout.switcherVisible || switcherArea.containsMouse ? 0.4 : 0.15)
 
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on border.color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
                                 }
 
                                 DankRipple {
@@ -1034,7 +1147,7 @@ PluginComponent {
                                     anchors.centerIn: parent
                                     rotation: popout.switcherVisible ? 180 : 0
 
-                                    Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                                    Behavior on rotation { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.OutBack } }
                                 }
                             }
 
@@ -1066,12 +1179,12 @@ PluginComponent {
                                     border.width: 1
                                     border.color: Theme.withAlpha(Theme.primary, refreshArea.containsMouse ? 0.3 : 0.15)
                                     
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on border.color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
                                 }
 
                                 DankRipple {
@@ -1088,7 +1201,7 @@ PluginComponent {
                                     anchors.centerIn: parent
                                     rotation: (refreshArea.containsMouse && !PhoneConnectService.isRefreshing) ? 180 : 0
 
-                                    Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+                                    Behavior on rotation { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.OutBack } }
 
                                     RotationAnimation on rotation {
                                         from: 0
@@ -1119,14 +1232,15 @@ PluginComponent {
                     Behavior on height {
                         enabled: switcherContainer.animateHeight
                         NumberAnimation {
-                            duration: 250
-                            easing.type: Easing.InOutQuad
+                            duration: Theme.shorterDuration
+                            easing.type: Easing.OutCubic
                         }
                     }
                     Behavior on opacity {
                         enabled: switcherContainer.animateHeight
                         NumberAnimation {
-                            duration: 200
+                            duration: Theme.shorterDuration
+                            easing.type: Easing.OutCubic
                         }
                     }
 
@@ -1185,17 +1299,44 @@ PluginComponent {
                     width: parent.width
                 }
 
+                // ── Animatable device content group ──────────────────────────
+                // All per-device cards (image, info, share, sms, recent images)
+                // slide as one unit: up into header on exit, down from header on enter.
+                Item {
+                    id: deviceContentGroup
+                    width: parent.width
+                    // height wraps children; the Column parent handles spacing
+                    implicitHeight: deviceContentCol.implicitHeight
+                    height: implicitHeight
+                    clip: true
+
+                    transform: Translate { id: deviceContentTranslate; y: 0 }
+
+                    Column {
+                        id: deviceContentCol
+                        width: parent.width
+                        spacing: Theme.spacingM
+
                 // Main Container
                 RowLayout {
                     id: mainDeviceContainerRow
                     width: parent.width
-                    height: 255
+                    height: {
+                        if (!root.showDevicePlaceholder) {
+                            return mainInfoColumn.implicitHeight + Theme.spacingM * 2;
+                        }
+                        const type = root.activeDevice?.type;
+                        if (type === "desktop" || type === "computer" || type === "laptop" || type === "tablet" || type === "tv") {
+                            return Math.max(mainInfoColumn.implicitHeight + Theme.spacingM * 2, 160);
+                        }
+                        return 255;
+                    }
                     spacing: Theme.spacingM
                     visible: root.hasDevice
-                    transform: Translate { id: mainContainerTranslate; x: 0 }
 
                     // Container 1: Device Image
                     StyledRect {
+                        visible: root.showDevicePlaceholder
                         Layout.preferredWidth: root.container1Width
                         Layout.fillHeight: true
                         radius: Theme.cornerRadius
@@ -1215,6 +1356,7 @@ PluginComponent {
                         PhoneDisplay {
                             id: mainPhoneDisplay
                             anchors.centerIn: parent
+                            height: parent.height - 20
                             backgroundImage: root.activeCustomPhoneImage
                             isReachable: root.activeDevice?.isReachable ?? false
                             deviceType: root.activeDevice?.type ?? "phone"
@@ -1226,7 +1368,8 @@ PluginComponent {
                     StyledRect {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 160
-                        Layout.fillHeight: true
+                        Layout.fillHeight: root.showDevicePlaceholder
+                        Layout.preferredHeight: root.showDevicePlaceholder ? -1 : (mainInfoColumn.implicitHeight + Theme.spacingM * 2)
                         radius: Theme.cornerRadius
                         color: root.cardColor
                         border.width: 1
@@ -1242,14 +1385,19 @@ PluginComponent {
                         }
 
                         ColumnLayout {
-                            anchors.fill: parent
+                            id: mainInfoColumn
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: root.showDevicePlaceholder ? parent.bottom : undefined
                             anchors.margins: Theme.spacingM
                             spacing: Theme.spacingM
 
-                            // Device Name & Actions
+                            // Top Group: Device Name & Actions (Centered)
                             ColumnLayout {
                                 spacing: 2
                                 Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignHCenter
 
                                 StyledText {
                                     text: root.activeDevice?.name || ""
@@ -1278,6 +1426,25 @@ PluginComponent {
                                             onClicked: {
                                                 if (!enabled) return;
                                                 root.handleAction(root.activeDeviceId, "ring")
+                                            }
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        visible: !root.showDevicePlaceholder
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "ping")
+                                        DankKDEActionButton {
+                                            anchors.fill: parent
+                                            enabled: parent.enabled
+                                            iconName: "notifications_active"
+                                            iconColor: Theme.primary
+                                            buttonSize: 32
+                                            tooltipText: I18n.tr("Ping", "KDE Connect ping tooltip")
+                                            onClicked: {
+                                                if (!enabled) return;
+                                                root.handleAction(root.activeDeviceId, "ping")
                                             }
                                         }
                                     }
@@ -1357,33 +1524,40 @@ PluginComponent {
                                 }
                             }
 
-                            // Info Rows
-                            InfoRow {
-                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "battery") && (root.activeDevice?.batteryCharge ?? -1) >= 0
-                                icon: PhoneConnectService.getBatteryIcon(root.activeDevice)
-                                label: I18n.tr("Battery", "KDE Connect battery label")
-                                value: (root.activeDevice?.batteryCharge ?? -1) >= 0 ? (root.activeDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
-                                valueColor: root.activeDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
-                            }
+                            // Bottom Group: Info Rows (Dynamic 1 or 2 Columns)
+                            GridLayout {
+                                Layout.fillWidth: true
+                                columnSpacing: Theme.spacingL
+                                rowSpacing: Theme.spacingS
+                                columns: root.showDevicePlaceholder ? 1 : 2
 
-                            InfoRow {
-                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && (root.activeDevice?.networkStrength ?? -1) >= 0
-                                icon: PhoneConnectService.getNetworkIcon(root.activeDevice) || "signal_cellular_null"
-                                label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
-                                value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.activeDevice), "Network signal strength status")
-                            }
+                                InfoRow {
+                                    visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "battery") && (root.activeDevice?.batteryCharge ?? -1) >= 0
+                                    icon: PhoneConnectService.getBatteryIcon(root.activeDevice)
+                                    label: I18n.tr("Battery", "KDE Connect battery label")
+                                    value: (root.activeDevice?.batteryCharge ?? -1) >= 0 ? (root.activeDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
+                                    valueColor: root.activeDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
+                                }
 
-                            InfoRow {
-                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && root.activeDevice?.networkType
-                                icon: PhoneConnectService.getNetworkTypeIcon(root.activeDevice)
-                                label: I18n.tr("Network Type", "KDE Connect network type label")
-                                value: PhoneConnectService.getNetworkTypeLabel(root.activeDevice)
-                            }
+                                InfoRow {
+                                    visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && (root.activeDevice?.networkStrength ?? -1) >= 0
+                                    icon: PhoneConnectService.getNetworkIcon(root.activeDevice) || "signal_cellular_null"
+                                    label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
+                                    value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.activeDevice), "Network signal strength status")
+                                }
 
-                            InfoRow {
-                                icon: "sms"
-                                label: I18n.tr("Notifications", "KDE Connect notifications label")
-                                value: root.activeDevice?.notificationCount ?? 0
+                                InfoRow {
+                                    visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && root.activeDevice?.networkType
+                                    icon: PhoneConnectService.getNetworkTypeIcon(root.activeDevice)
+                                    label: I18n.tr("Network Type", "KDE Connect network type label")
+                                    value: PhoneConnectService.getNetworkTypeLabel(root.activeDevice)
+                                }
+
+                                InfoRow {
+                                    icon: "sms"
+                                    label: I18n.tr("Notifications", "KDE Connect notifications label")
+                                    value: root.activeDevice?.notificationCount ?? 0
+                                }
                             }
                         }
                     }
@@ -1458,16 +1632,516 @@ PluginComponent {
                     }
                 }
 
+                // Ongoing Media Section
+                Item {
+                    id: mprisContainerWrapper
+                    width: parent.width
+                    height: mprisMainLayout.implicitHeight + Theme.spacingM * 4
+                    visible: root.hasOngoingMediaActive
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.cornerRadius
+                        color: root.cardColor
+                        
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowHorizontalOffset: 0
+                            shadowVerticalOffset: 4
+                            shadowBlur: 0.6
+                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
+                        }
+                    }
+
+                    StyledRect {
+                        id: mprisContainer
+                        anchors.fill: parent
+                        radius: Theme.cornerRadius
+                        color: "transparent"
+                        border.width: 1
+                        border.color: root.cardBorderColor
+                        clip: true
+
+                    Image {
+                        id: mprisBgImage
+                        anchors.fill: parent
+                        source: smallThumbnailContainer.activeArtUrl
+                        fillMode: Image.PreserveAspectCrop
+                        visible: false
+                    }
+
+                    Rectangle {
+                        id: bgMask
+                        anchors.fill: parent
+                        radius: Theme.cornerRadius
+                        visible: false
+                    }
+
+                    MultiEffect {
+                        anchors.fill: parent
+                        source: mprisBgImage
+                        blurEnabled: true
+                        blur: 1.0
+                        blurMax: 64
+                        maskEnabled: true
+                        maskSource: bgMask
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: root.cardColor
+                        opacity: smallThumbnailContainer.activeArtUrl !== "" ? 0.25 : 1.0
+                    }
+
+
+
+                    Timer {
+                        interval: 1000
+                        running: (root.phoneMprisPlayer ? (root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false)) && !root.isSeeking
+                        repeat: true
+                        onTriggered: {
+                            if (root.phoneMprisPlayer) {
+                                root.phoneMprisPlayer.positionChanged();
+                            }
+                        }
+                    }
+
+                    Item {
+                        id: waveCanvasItem
+                        anchors.fill: parent
+                        z: 1
+                        
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            maskEnabled: true
+                            maskSource: Rectangle {
+                                width: waveCanvasItem.width
+                                height: waveCanvasItem.height
+                                radius: Theme.cornerRadius
+                            }
+                        }
+
+                        Canvas {
+                            id: waveCanvas
+                            anchors.fill: parent
+                            opacity: (root.phoneMprisPlayer ? (root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false)) ? 0.35 : 0.1
+                            
+                            property real phase: 0
+                            
+                            Timer {
+                                interval: 16
+                                running: (root.phoneMprisPlayer ? (root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false))
+                                repeat: true
+                                onTriggered: {
+                                    waveCanvas.phase += 0.05;
+                                    waveCanvas.requestPaint();
+                                }
+                            }
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                ctx.clearRect(0, 0, width, height);
+                                
+                                drawWave(ctx, Theme.withAlpha(Theme.primary, 0.15), 0.5, 12, phase);
+                                drawWave(ctx, Theme.withAlpha(Theme.primary, 0.25), 0.8, 8, phase * 0.7);
+                                drawWave(ctx, Theme.withAlpha(Theme.primary, 0.30), 0.8, 8, phase * 0.9);
+                            }
+
+                            function drawWave(ctx, color, speed, amplitude, currentPhase) {
+                                ctx.beginPath();
+                                ctx.fillStyle = color;
+                                var waveHeight = height * 0.75;
+                                ctx.moveTo(0, height);
+                                for (var x = 0; x <= width; x += 5) {
+                                    var y = waveHeight + Math.sin(x * 0.025 + currentPhase) * amplitude;
+                                    ctx.lineTo(x, y);
+                                }
+                                ctx.lineTo(width, height);
+                                ctx.closePath();
+                                ctx.fill();
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        id: mprisMainLayout
+                        anchors.fill: parent
+                        anchors.margins: Theme.spacingM
+                        spacing: Theme.spacingM
+                        z: 2
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingXS
+                            
+                            Item {
+                                width: 16
+                                height: 16
+                                
+                                property string serviceIdStr: (root.phoneMprisPlayer && root.phoneMprisPlayer.identity) ? root.phoneMprisPlayer.identity.toLowerCase() : ""
+                                property string serviceIconSvg: {
+                                    if (serviceIdStr.includes("spotify")) return "assets/icons/spotify.svg";
+                                    if (serviceIdStr.includes("youtube")) return "assets/icons/youtube.svg";
+                                    if (serviceIdStr.includes("soundcloud")) return "assets/icons/soundcloud.svg";
+                                    if (serviceIdStr.includes("apple")) return "assets/icons/applemusic.svg";
+                                    return "";
+                                }
+
+                                DankIcon {
+                                    anchors.centerIn: parent
+                                    name: "music_note"
+                                    size: 16
+                                    color: Theme.primary
+                                    visible: parent.serviceIconSvg === ""
+                                }
+
+                                Image {
+                                    id: svcIconImage
+                                    anchors.fill: parent
+                                    source: parent.serviceIconSvg !== "" ? Qt.resolvedUrl(parent.serviceIconSvg) : ""
+                                    sourceSize: Qt.size(16, 16)
+                                    visible: false
+                                }
+
+                                Rectangle {
+                                    id: svcIconColorRect
+                                    anchors.fill: parent
+                                    color: Theme.primary
+                                    visible: false
+                                }
+
+                                MultiEffect {
+                                    anchors.fill: parent
+                                    source: svcIconColorRect
+                                    maskEnabled: true
+                                    maskSource: svcIconImage
+                                    visible: parent.serviceIconSvg !== ""
+                                }
+                            }
+                            
+                            StyledText {
+                                text: {
+                                    if (root.phoneMprisPlayer && root.phoneMprisPlayer.identity) {
+                                        return root.phoneMprisPlayer.identity.split(" - ")[0];
+                                    }
+                                    return root.activeDevice?.mediaPlayer || I18n.tr("Media Player");
+                                }
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.DemiBold
+                                color: Theme.primary
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+
+                            DankKDEActionButton {
+                                iconName: "speaker"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 24
+                                tooltipText: I18n.tr("Audio Output")
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingM
+                            
+                            Rectangle {
+                                id: smallThumbnailContainer
+                                width: 72
+                                height: 72
+                                radius: 36
+                                color: Theme.withAlpha(Theme.surfaceContainerHighest || "#000000", 0.4)
+                                border.color: Theme.withAlpha(Theme.primary, 0.2)
+                                border.width: 1
+                                clip: true
+
+                                property string activeArtUrl: root.phoneMprisPlayer ? TrackArtService.getArtworkUrl(root.phoneMprisPlayer) : ""
+
+                                DankCircularImage {
+                                    id: albumArt
+                                    anchors.fill: parent
+                                    imageSource: smallThumbnailContainer.activeArtUrl
+                                    fallbackIcon: "album"
+                                    visible: smallThumbnailContainer.activeArtUrl !== ""
+                                }
+                                
+                                DankIcon {
+                                    anchors.centerIn: parent
+                                    name: "music_note"
+                                    size: 32
+                                    color: Theme.surfaceText
+                                    visible: !albumArt.visible
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                
+                                StyledText {
+                                    text: root.phoneMprisPlayer ? (root.phoneMprisPlayer.trackTitle || "Unknown Track") : (root.activeDevice?.mediaTitle || "Unknown Track")
+                                    font.pixelSize: Theme.fontSizeMedium
+                                    font.weight: Font.Bold
+                                    color: Theme.surfaceText
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+
+                                StyledText {
+                                    text: {
+                                        if (root.phoneMprisPlayer) {
+                                            let artist = root.phoneMprisPlayer.trackArtist || "";
+                                            let album = root.phoneMprisPlayer.trackAlbum || "";
+                                            if (artist && album) return artist + " — " + album;
+                                            return artist || album || I18n.tr("Unknown Artist");
+                                        } else {
+                                            let artist = root.activeDevice?.mediaArtist || "";
+                                            let album = root.activeDevice?.mediaAlbum || "";
+                                            if (artist && album) return artist + " — " + album;
+                                            return artist || album || I18n.tr("Unknown Artist");
+                                        }
+                                    }
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            DankKDEActionButton {
+                                iconName: (root.phoneMprisPlayer ? (root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false)) ? "pause" : "play_arrow"
+                                iconColor: Theme.primary
+                                backgroundColor: Theme.withAlpha(Theme.primary, 0.1)
+                                buttonSize: 48
+                                iconSize: 28
+                                tooltipText: iconName === "pause" ? I18n.tr("Pause", "Media pause tooltip") : I18n.tr("Play", "Media play tooltip")
+                                onClicked: {
+                                    if (root.phoneMprisPlayer) {
+                                        root.phoneMprisPlayer.playPause();
+                                    } else {
+                                        PhoneConnectService.mprisAction(root.activeDeviceId, "PlayPause", function() {});
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingS
+
+                            DankKDEActionButton {
+                                iconName: "skip_previous"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Previous", "Media previous tooltip")
+                                onClicked: root.phoneMprisPlayer ? root.phoneMprisPlayer.previous() : PhoneConnectService.mprisAction(root.activeDeviceId, "previous", function() {})
+                            }
+                            
+                            DankKDEActionButton {
+                                iconName: "replay_10"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Rewind 10s", "Media rewind tooltip")
+                                onClicked: {
+                                    if (root.phoneMprisPlayer && root.phoneMprisPlayer.canSeek) {
+                                        root.phoneMprisPlayer.position = Math.max(0, (root.phoneMprisPlayer.position || 0) - 10);
+                                    }
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                visible: root.phoneMprisPlayer !== null && root.phoneMprisPlayer.length > 0
+                                
+                                Item {
+                                    id: customSeekbar
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 16
+
+                                    readonly property real stableLength: root.phoneMprisPlayer ? Math.max(1, root.phoneMprisPlayer.length) : 1
+                                    readonly property real playerValue: {
+                                        if (!root.phoneMprisPlayer || stableLength <= 0) return 0;
+                                        return Math.max(0, Math.min(1, (root.phoneMprisPlayer.position || 0) / stableLength));
+                                    }
+                                    
+                                    property real seekPreviewRatio: -1
+                                    property real value: seekPreviewRatio >= 0 ? seekPreviewRatio : playerValue
+
+                                    Loader {
+                                        anchors.fill: parent
+                                        visible: root.phoneMprisPlayer && stableLength > 0
+                                        sourceComponent: SettingsData.waveProgressEnabled ? waveComponent : flatComponent
+                                        
+                                        Component {
+                                            id: waveComponent
+                                            M3WaveProgress {
+                                                value: customSeekbar.value
+                                                actualValue: customSeekbar.playerValue
+                                                showActualPlaybackState: root.isSeeking
+                                                actualProgressColor: Theme.withAlpha(Theme.surfaceText, 0.45)
+                                                isPlaying: root.phoneMprisPlayer && root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing
+
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    enabled: root.phoneMprisPlayer && root.phoneMprisPlayer.canSeek && customSeekbar.stableLength > 0
+
+                                                    onPressed: mouse => {
+                                                        root.isSeeking = true;
+                                                        customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                    }
+                                                    onPositionChanged: mouse => {
+                                                        if (pressed && root.isSeeking) {
+                                                            customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                        }
+                                                    }
+                                                    onReleased: {
+                                                        root.isSeeking = false;
+                                                        if (customSeekbar.seekPreviewRatio >= 0 && root.phoneMprisPlayer) {
+                                                            root.phoneMprisPlayer.position = Math.max(0.1, customSeekbar.seekPreviewRatio * customSeekbar.stableLength);
+                                                        }
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                    onCanceled: {
+                                                        root.isSeeking = false;
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Component {
+                                            id: flatComponent
+                                            Item {
+                                                Rectangle {
+                                                    width: parent.width
+                                                    height: 4
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    color: Theme.withAlpha(Theme.surfaceText, 0.15)
+                                                    radius: 2
+                                                }
+                                                Rectangle {
+                                                    width: Math.max(0, Math.min(parent.width, parent.width * customSeekbar.value))
+                                                    height: 4
+                                                    anchors.left: parent.left
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    color: Theme.primary
+                                                    radius: 2
+                                                }
+                                                Rectangle {
+                                                    x: Math.max(0, Math.min(parent.width - width, parent.width * customSeekbar.value - width/2))
+                                                    width: 10
+                                                    height: 10
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    radius: 5
+                                                    color: Theme.primary
+                                                    visible: flatMouseArea.containsMouse || flatMouseArea.pressed
+                                                }
+                                                MouseArea {
+                                                    id: flatMouseArea
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    enabled: root.phoneMprisPlayer && root.phoneMprisPlayer.canSeek && customSeekbar.stableLength > 0
+
+                                                    onPressed: mouse => {
+                                                        root.isSeeking = true;
+                                                        customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                    }
+                                                    onPositionChanged: mouse => {
+                                                        if (pressed && root.isSeeking) {
+                                                            customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                        }
+                                                    }
+                                                    onReleased: {
+                                                        root.isSeeking = false;
+                                                        if (customSeekbar.seekPreviewRatio >= 0 && root.phoneMprisPlayer) {
+                                                            root.phoneMprisPlayer.position = Math.max(0.1, customSeekbar.seekPreviewRatio * customSeekbar.stableLength);
+                                                        }
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                    onCanceled: {
+                                                        root.isSeeking = false;
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    StyledText {
+                                        text: {
+                                            if (!root.phoneMprisPlayer) return "0:00";
+                                            const seconds = root.phoneMprisPlayer.position || 0;
+                                            const minutes = Math.floor(seconds / 60);
+                                            const secs = Math.floor(seconds % 60);
+                                            return minutes + ":" + (secs < 10 ? "0" : "") + secs;
+                                        }
+                                        font.pixelSize: Theme.fontSizeSmall * 0.8
+                                        color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                    StyledText {
+                                        text: {
+                                            if (!root.phoneMprisPlayer || !root.phoneMprisPlayer.length) return "0:00";
+                                            const seconds = root.phoneMprisPlayer.length;
+                                            const minutes = Math.floor(seconds / 60);
+                                            const secs = Math.floor(seconds % 60);
+                                            return minutes + ":" + (secs < 10 ? "0" : "") + secs;
+                                        }
+                                        font.pixelSize: Theme.fontSizeSmall * 0.8
+                                        color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                                    }
+                                }
+                            }
+
+                            DankKDEActionButton {
+                                iconName: "forward_10"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Forward 10s", "Media forward tooltip")
+                                onClicked: {
+                                    if (root.phoneMprisPlayer && root.phoneMprisPlayer.canSeek) {
+                                        root.phoneMprisPlayer.position = Math.min(root.phoneMprisPlayer.length, (root.phoneMprisPlayer.position || 0) + 10);
+                                    }
+                                }
+                            }
+
+                            DankKDEActionButton {
+                                iconName: "skip_next"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Next", "Media next tooltip")
+                                onClicked: root.phoneMprisPlayer ? root.phoneMprisPlayer.next() : PhoneConnectService.mprisAction(root.activeDeviceId, "next", function() {})
+                            }
+                        }
+                    }
+                }
+                }
+
                 // Recent Images Section
                 StyledRect {
                     id: recentImagesContainer
                     width: parent.width
                     height: recentImagesCol.implicitHeight + Theme.spacingM * 2
-                    visible: root.hasDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp") && root.recentImages.length > 0
+                    visible: root.hasDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp") && root.recentImagesPath !== "" && !root.deviceSwitching
                     radius: Theme.cornerRadius
                     color: root.cardColor
                     border.width: 1
                     border.color: root.cardBorderColor
+
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: Theme.shorterDuration
+                            easing.type: Easing.OutCubic
+                        }
+                    }
 
                     layer.enabled: true
                     layer.effect: MultiEffect {
@@ -1509,16 +2183,76 @@ PluginComponent {
                             }
                         }
 
+                        // Skeleton Loading State (global — only while scanner hasn't returned any results yet)
+                        Grid {
+                            id: skeletonGrid
+                            visible: root.loadingImages && root.recentImages.length === 0
+                            width: parent.width
+                            columns: 2
+                            spacing: 4
+
+                            Repeater {
+                                model: 4
+                                Rectangle {
+                                    width: (skeletonGrid.width - 4) / 2
+                                    height: 72
+                                    radius: 6
+                                    color: Theme.withAlpha(Theme.surfaceVariantText, 0.15)
+                                    border.width: 1
+                                    border.color: Theme.withAlpha(Theme.surfaceVariantText, 0.08)
+
+                                    DankIcon {
+                                        name: "image"
+                                        size: 20
+                                        color: Theme.withAlpha(Theme.surfaceVariantText, 0.25)
+                                        anchors.centerIn: parent
+                                    }
+                                }
+                            }
+
+                            SequentialAnimation on opacity {
+                                running: skeletonGrid.visible
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutQuad }
+                                NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
+                            }
+                        }
+
+                        // Empty / No Images Found State
+                        Column {
+                            visible: !root.loadingImages && root.recentImages.length === 0
+                            width: parent.width
+                            spacing: Theme.spacingXS
+                            bottomPadding: Theme.spacingM
+                            topPadding: Theme.spacingM
+
+                            DankIcon {
+                                name: "image_not_supported"
+                                size: 32
+                                color: Theme.withAlpha(Theme.surfaceText, 0.4)
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+
+                            StyledText {
+                                text: I18n.tr("No images found", "No recent images found message")
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.Medium
+                                color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                        }
+
                         Flow {
                             id: imagesGrid
+                            visible: root.recentImages.length > 0
                             width: parent.width
                             spacing: 4
-                            property int columns: {
+                            property int columns: (() => {
                                 let count = root.recentImages.length;
                                 if (count <= 0) return 0;
                                 if (count <= 2) return count;
                                 return Math.ceil(count / 2);
-                            }
+                            })()
 
                             property int itemWidth: (width - (columns > 1 ? (columns - 1) * spacing : 0)) / Math.max(1, columns)
                             property int itemHeight: root.recentImages.length <= 2 ? Math.min(160, itemWidth * 0.625) : 72
@@ -1534,8 +2268,6 @@ PluginComponent {
                                     width: isSpan2 ? (imagesGrid.itemWidth * 2 + imagesGrid.spacing) : imagesGrid.itemWidth
                                     height: imagesGrid.itemHeight
                                     property bool isDragging: false
-                                    Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
-                                    Behavior on height { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
                                     property bool hovered: imageMouseArea.containsMouse || sendBtnMa.containsMouse
 
                                     // Dynamic Corner Logic
@@ -1545,18 +2277,18 @@ PluginComponent {
                                     property int virtualIndex: isOddLayout ? (index === 0 ? 0 : index + 1) : index
                                     
                                     property bool isFirstRow: virtualIndex < Math.max(1, imagesGrid.columns)
-                                    property bool isLastRow: {
+                                    property bool isLastRow: (() => {
                                         let totalVirtual = isOddLayout ? root.recentImages.length + 1 : root.recentImages.length;
                                         let cols = Math.max(1, imagesGrid.columns);
                                         return virtualIndex >= (Math.floor((totalVirtual - 1) / cols) * cols);
-                                    }
+                                    })()
                                     property bool isLeftCol: virtualIndex % Math.max(1, imagesGrid.columns) === 0
-                                    property bool isRightCol: {
+                                    property bool isRightCol: (() => {
                                         let cols = Math.max(1, imagesGrid.columns);
                                         let endVirtual = isSpan2 ? 1 : virtualIndex;
                                         let totalVirtual = isOddLayout ? root.recentImages.length + 1 : root.recentImages.length;
                                         return (endVirtual % cols) === (cols - 1) || virtualIndex === (totalVirtual - 1);
-                                    }
+                                    })()
 
                                     property real tlr: (isFirstRow && isLeftCol) ? outerRadius : innerRadius
                                     property real trr: (isFirstRow && isRightCol) ? outerRadius : innerRadius
@@ -1653,8 +2385,41 @@ PluginComponent {
                                             maskSource: imageMask
                                         }
                                         
+                                        // Per-cell skeleton shimmer — visible until this specific image decodes
+                                        Rectangle {
+                                            id: cellSkeleton
+                                            anchors.fill: parent
+                                            color: Theme.withAlpha(Theme.surfaceVariantText, 0.15)
+                                            radius: imageItem.innerRadius
+                                            border.width: 1
+                                            border.color: Theme.withAlpha(Theme.surfaceVariantText, 0.08)
+
+                                            property real pulseValue: 1.0
+                                            opacity: (thumbImage.status === Image.Ready) ? 0.0 : pulseValue
+                                            visible: opacity > 0.0
+                                            z: 2
+
+                                            Behavior on opacity {
+                                                NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+                                            }
+
+                                            SequentialAnimation on pulseValue {
+                                                loops: Animation.Infinite
+                                                running: thumbImage.status !== Image.Ready
+                                                NumberAnimation { to: 0.35; duration: 850; easing.type: Easing.InOutQuad }
+                                                NumberAnimation { to: 1.0; duration: 850; easing.type: Easing.InOutQuad }
+                                            }
+
+                                            DankIcon {
+                                                name: "image"
+                                                size: 20
+                                                color: Theme.withAlpha(Theme.surfaceVariantText, 0.25)
+                                                anchors.centerIn: parent
+                                            }
+                                        }
                                         Rectangle { anchors.fill: parent; color: Theme.surfaceContainer }
                                         Image {
+                                            id: thumbImage
                                             anchors.fill: parent
                                             source: "file://" + modelData.path
                                             fillMode: Image.PreserveAspectCrop
@@ -1757,7 +2522,7 @@ PluginComponent {
                                             size: 14
                                             anchors.centerIn: parent
                                             color: sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
-                                            Behavior on color { ColorAnimation { duration: 200 } }
+                                            Behavior on color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
                                         }
 
                                         MouseArea {
@@ -1782,9 +2547,12 @@ PluginComponent {
                     }
                 }
 
-            }
-        }
-    }
+                    } // end deviceContentCol Column
+                } // end deviceContentGroup Item
+
+            } // end outer Column
+        } // end PopoutComponent
+    } // end popoutContent Component
 
     function refreshImages(clearFirst) {
         if (clearFirst === true) {
@@ -1797,12 +2565,16 @@ PluginComponent {
         if (imagesScanner) {
             imagesScanner.running = false;
             Qt.callLater(function() {
-                imagesScanner.running = true;
+                // Guard: path may have changed again before callLater fires
+                if (root.recentImagesPath) imagesScanner.running = true;
             });
         }
     }
 
-    onRecentImagesPathChanged: refreshImages(true)
+    onRecentImagesPathChanged: {
+        // Only act when path has a real value or just became empty (device switched away)
+        refreshImages(true);
+    }
     onMaxRecentImagesChanged: refreshImages(true)
 
     Timer {
@@ -1831,6 +2603,21 @@ PluginComponent {
             name: path.split('/').pop(),
             time: Date.now()
         };
+    }
+
+    // Persistent offscreen cache for recent images to ensure they load instantly in the popout
+    Item {
+        visible: false
+        width: 0
+        height: 0
+        Repeater {
+            model: root.recentImages
+            Image {
+                source: "file://" + modelData.path
+                asynchronous: true
+                cache: true
+            }
+        }
     }
 
     Process {

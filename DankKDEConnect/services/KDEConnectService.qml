@@ -80,6 +80,12 @@ Singleton {
     readonly property int connectedCount: connectedDevices.length
     readonly property int pairedCount: pairedDevices.length
 
+    function hasPlugin(dev, pluginName) {
+        if (!dev || !dev.supportedPlugins) return false;
+        return dev.supportedPlugins.includes(pluginName) || 
+               dev.supportedPlugins.includes("kdeconnect_" + pluginName);
+    }
+
     Component.onCompleted: {
         if (DMSService.isConnected) {
             checkAvailability();
@@ -379,13 +385,15 @@ Singleton {
                     fetchBatteryInfo(deviceId);
                     fetchConnectivityInfo(deviceId);
                     fetchNotificationsCount(deviceId);
-                    fetchMprisInfo(deviceId);
                 }
             }
         });
     }
 
     function fetchBatteryInfo(deviceId) {
+        const dev = devices[deviceId];
+        if (!hasPlugin(dev, "battery"))
+            return;
         const path = daemonPath + "/devices/" + deviceId + "/battery";
 
         DMSService.dbusGetAllProperties("session", service, path, batteryInterface, function(response) {
@@ -412,6 +420,9 @@ Singleton {
     }
 
     function fetchConnectivityInfo(deviceId) {
+        const dev = devices[deviceId];
+        if (!hasPlugin(dev, "connectivity_report"))
+            return;
         const path = daemonPath + "/devices/" + deviceId + "/connectivity_report";
 
         DMSService.dbusGetAllProperties("session", service, path, connectivityInterface, function(response) {
@@ -438,10 +449,12 @@ Singleton {
     }
 
     function fetchNotificationsCount(deviceId) {
+        const dev = devices[deviceId];
+        if (!hasPlugin(dev, "notifications"))
+            return;
         const path = daemonPath + "/devices/" + deviceId + "/notifications";
 
         DMSService.dbusCall("session", service, path, notificationsInterface, "activeNotifications", [], function(response) {
-            console.warn("[KDEConnect] fetchNotificationsCount response for", deviceId, ":", JSON.stringify(response));
             if (response.error)
                 return;
             const result = response.result?.values;
@@ -454,29 +467,31 @@ Singleton {
                     list = [list];
                 }
             }
-            
+
+            const count = list.length;
             const oldDev = devices[deviceId];
             if (!oldDev)
                 return;
-            const newNotificationCount = list.length;
-            if (oldDev.notificationCount === newNotificationCount)
+            if (oldDev.notificationCount === count)
                 return;
 
-            const dev = Object.assign({}, oldDev);
-            dev.notificationCount = newNotificationCount;
+            const updatedDev = Object.assign({}, oldDev);
+            updatedDev.notificationCount = count;
 
             devices = Object.assign({}, devices, {
-                [deviceId]: dev
+                [deviceId]: updatedDev
             });
             deviceUpdated(deviceId);
         });
     }
 
     function fetchMprisInfo(deviceId) {
+        const dev = devices[deviceId];
+        if (!hasPlugin(dev, "mprisremote"))
+            return;
         const path = daemonPath + "/devices/" + deviceId + "/mprisremote";
 
         DMSService.dbusGetAllProperties("session", service, path, mprisRemoteInterface, function(response) {
-            console.warn("[KDEConnect] fetchMprisInfo response for", deviceId, ":", JSON.stringify(response));
             if (response.error)
                 return;
             const props = response.result || {};

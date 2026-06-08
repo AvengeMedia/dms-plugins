@@ -21,9 +21,29 @@ Item {
     property string recentImagesPath: ""
     property var pluginRoot: null
     property string pluginId: "dankKDEConnect"
+    property string shareDeviceId: ""
+    property string smsDeviceId: ""
+    property bool switcherVisible: false
+
 
     property bool enableClipboardAction: pluginRoot ? pluginRoot.enableClipboardAction : true
     property bool showOngoingMedia: pluginRoot ? pluginRoot.showOngoingMedia : true
+    property bool showDevicePlaceholder: pluginRoot ? pluginRoot.showDevicePlaceholder : (() => {
+        try {
+            const val = PluginService.loadPluginData(root.pluginId, "showDevicePlaceholder", "true");
+            return val === true || val === "true" || val === 1;
+        } catch(e) {}
+        return true;
+    })()
+
+    // Colors
+    readonly property color cardColor: Theme.withAlpha(Theme.surfaceContainerHigh, Theme.popupTransparency)
+    readonly property color cardBorderColor: Theme.withAlpha(Theme.primary, 0.15)
+
+    signal deviceSelected(string deviceId)
+
+    implicitHeight: contentColumn.implicitHeight + Theme.spacingM * 2
+    height: contentColumn.implicitHeight + Theme.spacingM * 2
 
     function sendClipboardWayland() {
         Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
@@ -53,15 +73,14 @@ Item {
         });
     }
 
-    // Effective device: injected ID, or first connected device, or first paired device
-    readonly property string effectiveDeviceId: {
+    readonly property string effectiveDeviceId: (() => {
         if (selectedDeviceId && PhoneConnectService.deviceIds.includes(selectedDeviceId))
             return selectedDeviceId;
         const ids = PhoneConnectService.deviceIds;
         if (ids.length > 0)
             return ids[0];
         return "";
-    }
+    })()
 
     readonly property bool hasDevice: effectiveDeviceId !== ""
     readonly property var selectedDevice: hasDevice ? (PhoneConnectService.devices[effectiveDeviceId] ?? null) : null
@@ -70,7 +89,7 @@ Item {
     // Animated/active state for smooth device switching transitions
     property string activeDeviceId: ""
     readonly property var activeDevice: activeDeviceId ? (PhoneConnectService.devices[activeDeviceId] ?? null) : null
-    readonly property string activeCustomPhoneImage: {
+    readonly property string activeCustomPhoneImage: (() => {
         if (pluginRoot) {
             return pluginRoot.getDeviceImage(activeDeviceId);
         }
@@ -82,7 +101,7 @@ Item {
             }
         } catch(e) {}
         return "";
-    }
+    })()
 
     onEffectiveDeviceIdChanged: {
         if (activeDeviceId === "") {
@@ -105,14 +124,14 @@ Item {
                 target: detailDeviceContainerRow
                 property: "opacity"
                 to: 0
-                duration: 80
+                duration: Theme.shorterDuration * 0.5
                 easing.type: Easing.OutQuad
             }
             NumberAnimation {
                 target: detailContainerTranslate
                 property: "x"
                 to: -15
-                duration: 80
+                duration: Theme.shorterDuration * 0.5
                 easing.type: Easing.OutQuad
             }
         }
@@ -129,31 +148,18 @@ Item {
                 target: detailDeviceContainerRow
                 property: "opacity"
                 to: 1
-                duration: 100
+                duration: Theme.shorterDuration * 0.5
                 easing.type: Easing.OutQuad
             }
             NumberAnimation {
                 target: detailContainerTranslate
                 property: "x"
                 to: 0
-                duration: 100
+                duration: Theme.shorterDuration * 0.5
                 easing.type: Easing.OutQuad
             }
         }
     }
-
-    property string shareDeviceId: ""
-    property string smsDeviceId: ""
-    property bool switcherVisible: false
-
-    // Colors
-    readonly property color cardColor: Theme.withAlpha(Theme.surfaceContainerHigh, Theme.popupTransparency)
-    readonly property color cardBorderColor: Theme.withAlpha(Theme.primary, 0.15)
-
-    signal deviceSelected(string deviceId)
-
-    implicitHeight: contentColumn.implicitHeight + Theme.spacingM * 2
-    height: contentColumn.implicitHeight + Theme.spacingM * 2
 
     Column {
                 id: contentColumn
@@ -260,12 +266,12 @@ Item {
                                     border.width: 1
                                     border.color: Theme.withAlpha(Theme.secondary, root.switcherVisible || detailSwitcherArea.containsMouse ? 0.4 : 0.15)
 
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on border.color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
                                 }
 
                                 DankRipple {
@@ -282,7 +288,7 @@ Item {
                                     anchors.centerIn: parent
                                     rotation: root.switcherVisible ? 180 : 0
 
-                                    Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                                    Behavior on rotation { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.OutBack } }
                                 }
                             }
 
@@ -314,12 +320,12 @@ Item {
                                     border.width: 1
                                     border.color: Theme.withAlpha(Theme.primary, refreshArea.containsMouse ? 0.3 : 0.15)
                                     
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                                    Behavior on topLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomLeftRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on topRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-                                    Behavior on bottomRightRadius { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+                                    Behavior on color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on border.color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                    Behavior on topLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomLeftRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on topRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
+                                    Behavior on bottomRightRadius { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.InOutQuad } }
                                 }
 
                                 DankRipple {
@@ -336,7 +342,7 @@ Item {
                                     anchors.centerIn: parent
                                     rotation: (refreshArea.containsMouse && !PhoneConnectService.isRefreshing) ? 180 : 0
 
-                                    Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+                                    Behavior on rotation { NumberAnimation { duration: Theme.popoutAnimationDuration; easing.type: Easing.OutBack } }
 
                                     RotationAnimation on rotation {
                                         from: 0
@@ -365,13 +371,14 @@ Item {
 
                     Behavior on height {
                         NumberAnimation {
-                            duration: 250
-                            easing.type: Easing.InOutQuad
+                            duration: Theme.shorterDuration
+                            easing.type: Easing.OutCubic
                         }
                     }
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 200
+                            duration: Theme.shorterDuration
+                            easing.type: Easing.OutCubic
                         }
                     }
 
@@ -456,13 +463,23 @@ Item {
                 RowLayout {
                     id: detailDeviceContainerRow
                     width: parent.width
-                    height: 255
+                    height: {
+                        if (!root.showDevicePlaceholder) {
+                            return detailInfoColumn.implicitHeight + Theme.spacingM * 2;
+                        }
+                        const type = root.activeDevice?.type;
+                        if (type === "desktop" || type === "computer" || type === "laptop" || type === "tablet" || type === "tv") {
+                            return Math.max(detailInfoColumn.implicitHeight + Theme.spacingM * 2, 160);
+                        }
+                        return 255;
+                    }
                     spacing: Theme.spacingM
                     visible: root.hasDevice
                     transform: Translate { id: detailContainerTranslate; x: 0 }
 
                     // Container 1: Device Image
                     StyledRect {
+                        visible: root.showDevicePlaceholder
                         Layout.preferredWidth: {
                             const type = root.activeDevice?.type;
                             if (type === "desktop" || type === "computer" || type === "laptop") {
@@ -492,6 +509,7 @@ Item {
                         PhoneDisplay {
                             id: detailPhoneDisplay
                             anchors.centerIn: parent
+                            height: parent.height - 20
                             backgroundImage: root.activeCustomPhoneImage
                             isReachable: root.activeDevice?.isReachable ?? false
                             deviceType: root.activeDevice?.type ?? "phone"
@@ -503,7 +521,8 @@ Item {
                     StyledRect {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 160
-                        Layout.fillHeight: true
+                        Layout.fillHeight: root.showDevicePlaceholder
+                        Layout.preferredHeight: root.showDevicePlaceholder ? -1 : (detailInfoColumn.implicitHeight + Theme.spacingM * 2)
                         radius: Theme.cornerRadius
                         color: root.cardColor
                         border.width: 1
@@ -519,14 +538,19 @@ Item {
                         }
 
                         ColumnLayout {
-                            anchors.fill: parent
+                            id: detailInfoColumn
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: root.showDevicePlaceholder ? parent.bottom : undefined
                             anchors.margins: Theme.spacingM
                             spacing: Theme.spacingM
 
-                            // Device Name & Actions
+                            // Top Group: Device Name & Actions (Centered)
                             ColumnLayout {
                                 spacing: 2
                                 Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignHCenter
 
                                 StyledText {
                                     text: root.activeDevice?.name || ""
@@ -541,7 +565,6 @@ Item {
                                 RowLayout {
                                     spacing: Theme.spacingS
                                     Layout.alignment: Qt.AlignHCenter
-
                                     Item {
                                         width: 32
                                         height: 32
@@ -558,6 +581,27 @@ Item {
                                                 root.shareDeviceId = "";
                                                 root.smsDeviceId = "";
                                                 PhoneConnectService.ringDevice(root.activeDeviceId, function() {})
+                                            }
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 32
+                                        height: 32
+                                        visible: !root.showDevicePlaceholder
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "ping")
+                                        DankKDEActionButton {
+                                            anchors.fill: parent
+                                            enabled: parent.enabled
+                                            iconName: "notifications_active"
+                                            iconColor: Theme.primary
+                                            buttonSize: 32
+                                            tooltipText: I18n.tr("Ping", "KDE Connect ping tooltip")
+                                            onClicked: {
+                                                if (!enabled) return;
+                                                root.shareDeviceId = "";
+                                                root.smsDeviceId = "";
+                                                PhoneConnectService.sendPing(root.activeDeviceId, "", function(response) {});
                                             }
                                         }
                                     }
@@ -642,34 +686,40 @@ Item {
                                 }
                             }
 
-                            // Info Rows
-                            InfoRow {
-                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "battery") && (root.activeDevice?.batteryCharge ?? -1) >= 0
-                                icon: PhoneConnectService.getBatteryIcon(root.activeDevice)
-                                label: I18n.tr("Battery", "KDE Connect battery label")
-                                value: (root.activeDevice?.batteryCharge ?? -1) >= 0 ? (root.activeDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
-                                valueColor: root.activeDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
-                            }
+                            // Bottom Group: Info Rows (Dynamic 1 or 2 Columns)
+                            GridLayout {
+                                Layout.fillWidth: true
+                                columnSpacing: Theme.spacingL
+                                rowSpacing: Theme.spacingS
+                                columns: root.showDevicePlaceholder ? 1 : 2
 
-                            // Signal strength, network rows etc
-                            InfoRow {
-                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && (root.activeDevice?.networkStrength ?? -1) >= 0
-                                icon: PhoneConnectService.getNetworkIcon(root.activeDevice) || "signal_cellular_null"
-                                label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
-                                value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.activeDevice), "Network signal strength status")
-                            }
+                                InfoRow {
+                                    visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "battery") && (root.activeDevice?.batteryCharge ?? -1) >= 0
+                                    icon: PhoneConnectService.getBatteryIcon(root.activeDevice)
+                                    label: I18n.tr("Battery", "KDE Connect battery label")
+                                    value: (root.activeDevice?.batteryCharge ?? -1) >= 0 ? (root.activeDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
+                                    valueColor: root.activeDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
+                                }
 
-                            InfoRow {
-                                visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && root.activeDevice?.networkType
-                                icon: PhoneConnectService.getNetworkTypeIcon(root.activeDevice)
-                                label: I18n.tr("Network Type", "KDE Connect network type label")
-                                value: PhoneConnectService.getNetworkTypeLabel(root.activeDevice)
-                            }
+                                InfoRow {
+                                    visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && (root.activeDevice?.networkStrength ?? -1) >= 0
+                                    icon: PhoneConnectService.getNetworkIcon(root.activeDevice) || "signal_cellular_null"
+                                    label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
+                                    value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.activeDevice), "Network signal strength status")
+                                }
 
-                            InfoRow {
-                                icon: "sms"
-                                label: I18n.tr("Notifications", "KDE Connect notifications label")
-                                value: root.activeDevice?.notificationCount ?? 0
+                                InfoRow {
+                                    visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && root.activeDevice?.networkType
+                                    icon: PhoneConnectService.getNetworkTypeIcon(root.activeDevice)
+                                    label: I18n.tr("Network Type", "KDE Connect network type label")
+                                    value: PhoneConnectService.getNetworkTypeLabel(root.activeDevice)
+                                }
+
+                                InfoRow {
+                                    icon: "sms"
+                                    label: I18n.tr("Notifications", "KDE Connect notifications label")
+                                    value: root.activeDevice?.notificationCount ?? 0
+                                }
                             }
                         }
                     }
@@ -741,14 +791,14 @@ Item {
 
                     Behavior on height {
                         NumberAnimation {
-                            duration: 250
-                            easing.type: Easing.InOutQuad
+                            duration: Theme.shorterDuration
+                            easing.type: Easing.OutCubic
                         }
                     }
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 200
-                            easing.type: Easing.InOutQuad
+                            duration: Theme.shorterDuration
+                            easing.type: Easing.OutCubic
                         }
                     }
 
@@ -801,12 +851,12 @@ Item {
                             id: imagesGrid
                             width: parent.width
                             spacing: 4
-                            property int columns: {
+                            property int columns: (() => {
                                 let count = root.recentImages.length;
                                 if (count <= 0) return 0;
                                 if (count <= 2) return count;
                                 return Math.ceil(count / 2);
-                            }
+                            })()
 
                             property int itemWidth: (width - (columns > 1 ? (columns - 1) * spacing : 0)) / Math.max(1, columns)
                             property int itemHeight: root.recentImages.length <= 2 ? Math.min(160, itemWidth * 0.625) : 72
@@ -833,18 +883,18 @@ Item {
                                     property int virtualIndex: isOddLayout ? (index === 0 ? 0 : index + 1) : index
                                     
                                     property bool isFirstRow: virtualIndex < Math.max(1, imagesGrid.columns)
-                                    property bool isLastRow: {
+                                    property bool isLastRow: (() => {
                                         let totalVirtual = isOddLayout ? root.recentImages.length + 1 : root.recentImages.length;
                                         let cols = Math.max(1, imagesGrid.columns);
                                         return virtualIndex >= (Math.floor((totalVirtual - 1) / cols) * cols);
-                                    }
+                                    })()
                                     property bool isLeftCol: virtualIndex % Math.max(1, imagesGrid.columns) === 0
-                                    property bool isRightCol: {
+                                    property bool isRightCol: (() => {
                                         let cols = Math.max(1, imagesGrid.columns);
                                         let endVirtual = isSpan2 ? 1 : virtualIndex;
                                         let totalVirtual = isOddLayout ? root.recentImages.length + 1 : root.recentImages.length;
                                         return (endVirtual % cols) === (cols - 1) || virtualIndex === (totalVirtual - 1);
-                                    }
+                                    })()
 
                                     property real tlr: (isFirstRow && isLeftCol) ? outerRadius : innerRadius
                                     property real trr: (isFirstRow && isRightCol) ? outerRadius : innerRadius

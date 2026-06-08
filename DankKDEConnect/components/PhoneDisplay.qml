@@ -11,15 +11,17 @@ Item {
 
     height: 235
     width: {
+        if (backgroundImage !== "") return 115;
         switch (deviceType) {
         case "desktop":
         case "computer":
+            return Math.ceil((height - 30) * (16 / 9));
         case "laptop":
-            return 220;
+            return Math.ceil((height - 12) * (16 / 10));
         case "tv":
-            return 240;
+            return Math.ceil((height - 12) * (16 / 9));
         case "tablet":
-            return 165;
+            return Math.ceil(height * (3 / 4));
         default:
             return 115;
         }
