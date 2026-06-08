@@ -170,8 +170,7 @@ StyledRect {
                     size: 16
                     color: closeArea.containsMouse ? (Theme.isLightMode ? "#000000" : Theme.error) : Theme.surfaceVariantText
                     rotation: closeArea.containsMouse ? 90 : 0
-                    
-                    Behavior on color { ColorAnimation { duration: 200 } }
+
                     Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                 }
 
@@ -322,7 +321,6 @@ StyledRect {
                         scale: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? 1.15 : 1.0
                         anchors.verticalCenter: parent.verticalCenter
 
-                        Behavior on color { ColorAnimation { duration: 200 } }
                         Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                     }
 
@@ -457,7 +455,6 @@ StyledRect {
                         scale: (openAppArea.containsMouse || openAppBtn.activeFocus) ? 1.15 : 1.0
                         anchors.verticalCenter: parent.verticalCenter
 
-                        Behavior on color { ColorAnimation { duration: 200 } }
                         Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                     }
 

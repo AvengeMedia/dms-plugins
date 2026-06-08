@@ -1096,7 +1096,6 @@ Item {
                                             size: 14
                                             anchors.centerIn: parent
                                             color: sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
-                                            Behavior on color { ColorAnimation { duration: 200 } }
                                         }
 
                                         MouseArea {

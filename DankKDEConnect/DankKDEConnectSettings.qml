@@ -779,7 +779,6 @@ PluginSettings {
                                 color: limitResetMa.containsMouse ? Theme.primary : Theme.surfaceVariantText
                                 rotation: limitResetMa.containsMouse ? 90 : 0
                                 Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
-                                Behavior on color { ColorAnimation { duration: 150 } }
                             }
 
                             MouseArea {
