@@ -1471,7 +1471,7 @@ PluginComponent {
                                         width: 32
                                         height: 32
                                         visible: root.enableClipboardAction
-                                        enabled: root.activeDevice && root.activeDevice.isReachable
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "clipboard")
                                         DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
