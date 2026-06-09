@@ -1024,14 +1024,6 @@ PluginComponent {
                     border.width: 1
                     border.color: root.cardBorderColor
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 4
-                        shadowBlur: 0.6
-                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
 
                     RowLayout {
                         anchors.fill: parent
@@ -1239,14 +1231,6 @@ PluginComponent {
                     border.width: 1
                     border.color: root.cardBorderColor
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 4
-                        shadowBlur: 0.6
-                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
 
                     Column {
                         id: switcherLayout
@@ -1334,14 +1318,6 @@ PluginComponent {
                         border.width: 1
                         border.color: root.cardBorderColor
 
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            shadowEnabled: true
-                            shadowHorizontalOffset: 0
-                            shadowVerticalOffset: 4
-                            shadowBlur: 0.6
-                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                        }
 
                         PhoneDisplay {
                             id: mainPhoneDisplay
@@ -1365,14 +1341,6 @@ PluginComponent {
                         border.width: 1
                         border.color: root.cardBorderColor
 
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            shadowEnabled: true
-                            shadowHorizontalOffset: 0
-                            shadowVerticalOffset: 4
-                            shadowBlur: 0.6
-                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                        }
 
                         ColumnLayout {
                             id: mainInfoColumn
@@ -1622,68 +1590,16 @@ PluginComponent {
                 }
 
                 // Ongoing Media Section
-                Item {
-                    id: mprisContainerWrapper
+                StyledRect {
+                    id: mprisContainer
                     width: parent.width
                     height: mprisMainLayout.implicitHeight + Theme.spacingM * 4
                     visible: root.hasOngoingMediaActive
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Theme.cornerRadius
-                        color: root.cardColor
-                        
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            shadowEnabled: true
-                            shadowHorizontalOffset: 0
-                            shadowVerticalOffset: 4
-                            shadowBlur: 0.6
-                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                        }
-                    }
-
-                    StyledRect {
-                        id: mprisContainer
-                        anchors.fill: parent
-                        radius: Theme.cornerRadius
-                        color: "transparent"
-                        border.width: 1
-                        border.color: root.cardBorderColor
-                        clip: true
-
-                    Image {
-                        id: mprisBgImage
-                        anchors.fill: parent
-                        source: smallThumbnailContainer.activeArtUrl
-                        fillMode: Image.PreserveAspectCrop
-                        visible: false
-                    }
-
-                    Rectangle {
-                        id: bgMask
-                        anchors.fill: parent
-                        radius: Theme.cornerRadius
-                        visible: false
-                    }
-
-                    MultiEffect {
-                        anchors.fill: parent
-                        source: mprisBgImage
-                        blurEnabled: true
-                        blur: 1.0
-                        blurMax: 64
-                        maskEnabled: true
-                        maskSource: bgMask
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: root.cardColor
-                        opacity: smallThumbnailContainer.activeArtUrl !== "" ? 0.25 : 1.0
-                    }
-
-
+                    radius: Theme.cornerRadius
+                    color: root.cardColor
+                    border.width: 1
+                    border.color: root.cardBorderColor
+                    clip: true
 
                     Timer {
                         interval: 1000
@@ -1692,63 +1608,6 @@ PluginComponent {
                         onTriggered: {
                             if (root.phoneMprisPlayer) {
                                 root.phoneMprisPlayer.positionChanged();
-                            }
-                        }
-                    }
-
-                    Item {
-                        id: waveCanvasItem
-                        anchors.fill: parent
-                        z: 1
-                        
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            maskEnabled: true
-                            maskSource: Rectangle {
-                                width: waveCanvasItem.width
-                                height: waveCanvasItem.height
-                                radius: Theme.cornerRadius
-                            }
-                        }
-
-                        Canvas {
-                            id: waveCanvas
-                            anchors.fill: parent
-                            opacity: (root.phoneMprisPlayer ? (root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false)) ? 0.35 : 0.1
-                            
-                            property real phase: 0
-                            
-                            Timer {
-                                interval: 16
-                                running: (root.phoneMprisPlayer ? (root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false))
-                                repeat: true
-                                onTriggered: {
-                                    waveCanvas.phase += 0.05;
-                                    waveCanvas.requestPaint();
-                                }
-                            }
-
-                            onPaint: {
-                                var ctx = getContext("2d");
-                                ctx.clearRect(0, 0, width, height);
-                                
-                                drawWave(ctx, Theme.withAlpha(Theme.primary, 0.15), 0.5, 12, phase);
-                                drawWave(ctx, Theme.withAlpha(Theme.primary, 0.25), 0.8, 8, phase * 0.7);
-                                drawWave(ctx, Theme.withAlpha(Theme.primary, 0.30), 0.8, 8, phase * 0.9);
-                            }
-
-                            function drawWave(ctx, color, speed, amplitude, currentPhase) {
-                                ctx.beginPath();
-                                ctx.fillStyle = color;
-                                var waveHeight = height * 0.75;
-                                ctx.moveTo(0, height);
-                                for (var x = 0; x <= width; x += 5) {
-                                    var y = waveHeight + Math.sin(x * 0.025 + currentPhase) * amplitude;
-                                    ctx.lineTo(x, y);
-                                }
-                                ctx.lineTo(width, height);
-                                ctx.closePath();
-                                ctx.fill();
                             }
                         }
                     }
@@ -2112,7 +1971,6 @@ PluginComponent {
                         }
                     }
                 }
-                }
 
                 // Recent Images Section
                 StyledRect {
@@ -2132,14 +1990,6 @@ PluginComponent {
                         }
                     }
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 4
-                        shadowBlur: 0.6
-                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
 
                     Column {
                         id: recentImagesCol
@@ -2173,18 +2023,30 @@ PluginComponent {
                         }
 
                         // Skeleton Loading State (global — only while scanner hasn't returned any results yet)
-                        Grid {
+                        Flow {
                             id: skeletonGrid
                             visible: root.loadingImages && root.recentImages.length === 0
                             width: parent.width
-                            columns: 2
                             spacing: 4
+                            
+                            property int columns: (() => {
+                                let count = root.maxRecentImages;
+                                if (count <= 0) return 0;
+                                if (count <= 2) return count;
+                                return Math.ceil(count / 2);
+                            })()
+
+                            property int itemWidth: (width - (columns > 1 ? (columns - 1) * spacing : 0)) / Math.max(1, columns)
+                            property int itemHeight: root.maxRecentImages <= 2 ? Math.min(160, itemWidth * 0.625) : 72
 
                             Repeater {
-                                model: 4
+                                model: root.maxRecentImages
                                 Rectangle {
-                                    width: (skeletonGrid.width - 4) / 2
-                                    height: 72
+                                    property bool isOddLayout: root.maxRecentImages % 2 === 1 && root.maxRecentImages > 1
+                                    property bool isSpan2: isOddLayout && index === 0
+
+                                    width: isSpan2 ? (skeletonGrid.itemWidth * 2 + skeletonGrid.spacing) : skeletonGrid.itemWidth
+                                    height: skeletonGrid.itemHeight
                                     radius: 6
                                     color: Theme.withAlpha(Theme.surfaceVariantText, 0.15)
                                     border.width: 1
@@ -2460,13 +2322,6 @@ PluginComponent {
                                         onWidthChanged: refresh()
                                         onHeightChanged: refresh()
                                         
-                                        layer.enabled: true
-                                        layer.effect: MultiEffect {
-                                            shadowEnabled: true
-                                            shadowBlur: 0.4
-                                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", imageMouseArea.containsMouse ? 0.3 : 0.15)
-                                            Behavior on shadowColor { ColorAnimation { duration: 250 } }
-                                        }
                                     }
 
                                     DankRipple { id: imageRipple; anchors.fill: parent; cornerRadius: imageItem.tlr; rippleColor: Theme.primary }
@@ -2500,13 +2355,6 @@ PluginComponent {
                                             border.width: 1
                                             border.color: Theme.withAlpha(Theme.outline, 0.2)
                                             
-                                            layer.enabled: true
-                                            layer.effect: MultiEffect {
-                                                shadowEnabled: true
-                                                shadowBlur: 0.3
-                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? 0.35 : 0)
-                                                Behavior on shadowColor { ColorAnimation { duration: 200 } }
-                                            }
                                         }
 
                                         DankIcon {
@@ -2556,12 +2404,22 @@ PluginComponent {
             root.recentImages = [];
             return;
         }
-        if (imagesScanner) {
-            imagesScanner.running = false;
-            Qt.callLater(function() {
-                // Guard: path may have changed again before callLater fires
-                if (root.recentImagesPath) imagesScanner.running = true;
+        
+        const doScan = function() {
+            if (imagesScanner) {
+                imagesScanner.running = false;
+                Qt.callLater(function() {
+                    if (root.recentImagesPath) imagesScanner.running = true;
+                });
+            }
+        };
+
+        if (root.activeDeviceId && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp")) {
+            PhoneConnectService.mountAndWait(root.activeDeviceId, function(success) {
+                doScan();
             });
+        } else {
+            doScan();
         }
     }
 

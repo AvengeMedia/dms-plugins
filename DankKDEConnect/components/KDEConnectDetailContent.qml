@@ -164,14 +164,6 @@ Item {
                     border.width: 1
                     border.color: root.cardBorderColor
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 4
-                        shadowBlur: 0.6
-                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
 
                     RowLayout {
                         anchors.fill: parent
@@ -373,14 +365,6 @@ Item {
                     border.width: 1
                     border.color: root.cardBorderColor
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 4
-                        shadowBlur: 0.6
-                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
 
                     Column {
                         id: switcherLayout
@@ -483,14 +467,6 @@ Item {
                         border.width: 1
                         border.color: root.cardBorderColor
 
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            shadowEnabled: true
-                            shadowHorizontalOffset: 0
-                            shadowVerticalOffset: 4
-                            shadowBlur: 0.6
-                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                        }
 
                         PhoneDisplay {
                             id: detailPhoneDisplay
@@ -514,14 +490,6 @@ Item {
                         border.width: 1
                         border.color: root.cardBorderColor
 
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            shadowEnabled: true
-                            shadowHorizontalOffset: 0
-                            shadowVerticalOffset: 4
-                            shadowBlur: 0.6
-                            shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                        }
 
                         ColumnLayout {
                             id: detailInfoColumn
@@ -1060,13 +1028,6 @@ Item {
                                             border.width: 1
                                             border.color: Theme.withAlpha(Theme.outline, 0.2)
                                             
-                                            layer.enabled: true
-                                            layer.effect: MultiEffect {
-                                                shadowEnabled: true
-                                                shadowBlur: 0.3
-                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? 0.35 : 0)
-                                                Behavior on shadowColor { ColorAnimation { duration: 200 } }
-                                            }
                                         }
 
                                         DankRipple {
@@ -1114,14 +1075,6 @@ Item {
                     border.width: 1
                     border.color: root.cardBorderColor
 
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 4
-                        shadowBlur: 0.6
-                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
 
                     // --- Ocean Wave Background ---
                     Canvas {

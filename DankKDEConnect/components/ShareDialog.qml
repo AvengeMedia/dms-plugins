@@ -48,18 +48,28 @@ StyledRect {
         property string label: ""
         property string iconName: ""
         property bool isEnabled: true
+        property bool isFirst: false
+        property bool isLast: false
 
         signal clicked
 
         Layout.fillWidth: true
         Layout.preferredWidth: 1
         height: 36
-        radius: Theme.cornerRadius
+        radius: 0
+        topLeftRadius: isFirst ? Theme.cornerRadius : 4
+        bottomLeftRadius: isFirst ? Theme.cornerRadius : 4
+        topRightRadius: isLast ? Theme.cornerRadius : 4
+        bottomRightRadius: isLast ? Theme.cornerRadius : 4
+
         color: (isEnabled && actionArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
         border.width: 1
         border.color: Theme.withAlpha(Theme.primary, (isEnabled && actionArea.containsMouse) ? 0.3 : 0.15)
         opacity: isEnabled ? 1.0 : 0.4
         activeFocusOnTab: isEnabled
+        
+        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on border.color { ColorAnimation { duration: 150 } }
 
         Row {
             anchors.centerIn: parent
@@ -69,7 +79,9 @@ StyledRect {
                 name: actionRoot.iconName
                 size: 16
                 color: (actionRoot.isEnabled && actionArea.containsMouse) ? Theme.primary : Theme.surfaceVariantText
+                scale: (actionRoot.isEnabled && actionArea.containsMouse) ? 1.15 : 1.0
                 anchors.verticalCenter: parent.verticalCenter
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             }
 
             StyledText {
@@ -78,6 +90,7 @@ StyledRect {
                 font.weight: Font.Medium
                 color: (actionRoot.isEnabled && actionArea.containsMouse) ? Theme.primary : Theme.surfaceText
                 anchors.verticalCenter: parent.verticalCenter
+                Behavior on color { ColorAnimation { duration: 150 } }
             }
         }
 
@@ -136,13 +149,6 @@ StyledRect {
     border.width: 1
     border.color: Theme.withAlpha(Theme.primary, 0.15)
 
-    layer.enabled: true
-    layer.effect: MultiEffect {
-        shadowEnabled: true
-        shadowBlur: 0.4
-        shadowVerticalOffset: 3
-        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
-    }
 
     states: [
         State {
@@ -340,6 +346,7 @@ StyledRect {
                 label: I18n.tr("URI", "KDE Connect share URI button")
                 iconName: "link"
                 isEnabled: root.isUri(shareInput.text)
+                isFirst: true
                 onClicked: root.shareInputContent(true)
             }
 
@@ -353,6 +360,7 @@ StyledRect {
             ShareActionButton {
                 label: I18n.tr("File", "KDE Connect send file button")
                 iconName: "upload_file"
+                isLast: true
                 onClicked: fileBrowser.open()
             }
         }

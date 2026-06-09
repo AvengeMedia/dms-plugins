@@ -34,13 +34,6 @@ StyledRect {
     border.width: 1
     border.color: Theme.withAlpha(Theme.primary, 0.15)
 
-    layer.enabled: true
-    layer.effect: MultiEffect {
-        shadowEnabled: true
-        shadowBlur: 0.4
-        shadowVerticalOffset: 3
-        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.35)
-    }
 
     states: [
         State {
