@@ -20,9 +20,9 @@ PluginComponent {
 
     onPluginServiceChanged: {
         if (pluginService) {
-            currentDateKey = formatDateKey(new Date())
-            globalCompletedPomodoros.set(pluginService.loadPluginState("dankPomodoroTimer", "completedPomodoros-" + currentDateKey))
-            loadLast7Days()
+            currentDateKey = formatDateKey(new Date());
+            globalCompletedPomodoros.set(pluginService.loadPluginState("dankPomodoroTimer", "completedPomodoros-" + currentDateKey));
+            loadLast7Days();
         }
     }
 
@@ -32,97 +32,97 @@ PluginComponent {
         repeat: true
         running: true
         onTriggered: {
-            const newDateKey = formatDateKey(new Date())
+            const newDateKey = formatDateKey(new Date());
             if (newDateKey !== root.currentDateKey) {
-                root.currentDateKey = newDateKey
+                root.currentDateKey = newDateKey;
                 if (pluginService) {
-                    globalCompletedPomodoros.set(pluginService.loadPluginState("dankPomodoroTimer", "completedPomodoros-" + newDateKey))
-                    loadLast7Days()
+                    globalCompletedPomodoros.set(pluginService.loadPluginState("dankPomodoroTimer", "completedPomodoros-" + newDateKey));
+                    loadLast7Days();
                 }
             }
         }
     }
 
     function formatDateKey(date) {
-        const year = date.getFullYear()
-        const month = (date.getMonth() + 1).toString().padStart(2, '0')
-        const day = date.getDate().toString().padStart(2, '0')
-        return year + "-" + month + "-" + day
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return year + "-" + month + "-" + day;
     }
 
     function loadLast7Days() {
-        if (!pluginService) return
-
-        let data = []
-        const today = new Date()
-        const todayKey = formatDateKey(today)
+        if (!pluginService)
+            return;
+        let data = [];
+        const today = new Date();
+        const todayKey = formatDateKey(today);
 
         for (let i = 6; i >= 0; i--) {
-            const date = new Date(today)
-            date.setDate(today.getDate() - i)
-            const dateKey = formatDateKey(date)
-            
-            let count = 0
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const dateKey = formatDateKey(date);
+
+            let count = 0;
             if (dateKey === todayKey) {
-                count = globalCompletedPomodoros.value
+                count = globalCompletedPomodoros.value;
             } else {
-                count = pluginService.loadPluginState("dankPomodoroTimer", "completedPomodoros-" + dateKey)
+                count = pluginService.loadPluginState("dankPomodoroTimer", "completedPomodoros-" + dateKey);
             }
 
             data.push({
                 date: dateKey,
                 count: count,
                 dayLabel: i === 0 ? "Today" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()]
-            })
+            });
         }
 
-        last7DaysData = data
-        cleanupOldData()
+        last7DaysData = data;
+        cleanupOldData();
     }
 
     function cleanupOldData() {
-        if (!pluginService) return
-
-        const today = new Date()
-        const cutoffDate = new Date(today)
-        cutoffDate.setDate(today.getDate() - 7)
+        if (!pluginService)
+            return;
+        const today = new Date();
+        const cutoffDate = new Date(today);
+        cutoffDate.setDate(today.getDate() - 7);
 
         for (let daysAgo = 8; daysAgo <= 30; daysAgo++) {
-            const date = new Date(today)
-            date.setDate(today.getDate() - daysAgo)
-            const dateKey = formatDateKey(date)
-            const key = "completedPomodoros-" + dateKey
+            const date = new Date(today);
+            date.setDate(today.getDate() - daysAgo);
+            const dateKey = formatDateKey(date);
+            const key = "completedPomodoros-" + dateKey;
 
-            const value = pluginService.loadPluginState("dankPomodoroTimer", key)
+            const value = pluginService.loadPluginState("dankPomodoroTimer", key);
             if (value !== null) {
-                pluginService.savePluginState("dankPomodoroTimer", key, undefined)
+                pluginService.savePluginState("dankPomodoroTimer", key, undefined);
             }
         }
     }
     onWorkDurationChanged: {
         if (globalTimerState.value === "work" && globalTotalSeconds.value > 0) {
-            const newTotal = workDuration * 60
-            const elapsed = globalTotalSeconds.value - globalRemainingSeconds.value
-            globalTotalSeconds.set(newTotal)
-            globalRemainingSeconds.set(Math.max(1, newTotal - elapsed))
+            const newTotal = workDuration * 60;
+            const elapsed = globalTotalSeconds.value - globalRemainingSeconds.value;
+            globalTotalSeconds.set(newTotal);
+            globalRemainingSeconds.set(Math.max(1, newTotal - elapsed));
         }
     }
 
     onShortBreakDurationChanged: {
         if (globalTimerState.value === "shortBreak" && globalTotalSeconds.value > 0) {
-            const newTotal = shortBreakDuration * 60
-            const elapsed = globalTotalSeconds.value - globalRemainingSeconds.value
-            globalTotalSeconds.set(newTotal)
-            globalRemainingSeconds.set(Math.max(1, newTotal - elapsed))
+            const newTotal = shortBreakDuration * 60;
+            const elapsed = globalTotalSeconds.value - globalRemainingSeconds.value;
+            globalTotalSeconds.set(newTotal);
+            globalRemainingSeconds.set(Math.max(1, newTotal - elapsed));
         }
     }
 
     onLongBreakDurationChanged: {
         if (globalTimerState.value === "longBreak" && globalTotalSeconds.value > 0) {
-            const newTotal = longBreakDuration * 60
-            const elapsed = globalTotalSeconds.value - globalRemainingSeconds.value
-            globalTotalSeconds.set(newTotal)
-            globalRemainingSeconds.set(Math.max(1, newTotal - elapsed))
+            const newTotal = longBreakDuration * 60;
+            const elapsed = globalTotalSeconds.value - globalRemainingSeconds.value;
+            globalTotalSeconds.set(newTotal);
+            globalRemainingSeconds.set(Math.max(1, newTotal - elapsed));
         }
     }
 
@@ -171,145 +171,145 @@ PluginComponent {
         running: globalIsRunning.value && globalTimerOwnerId.value === root.instanceId
         onTriggered: {
             if (globalRemainingSeconds.value > 0) {
-                globalRemainingSeconds.set(globalRemainingSeconds.value - 1)
+                globalRemainingSeconds.set(globalRemainingSeconds.value - 1);
             } else {
-                root.timerComplete()
+                root.timerComplete();
             }
         }
     }
 
     function timerComplete() {
-        globalIsRunning.set(false)
+        globalIsRunning.set(false);
 
         if (globalTimerState.value === "work") {
-            globalCompletedPomodoros.set(globalCompletedPomodoros.value + 1)
+            globalCompletedPomodoros.set(globalCompletedPomodoros.value + 1);
             if (pluginService) {
-                const dateKey = formatDateKey(new Date())
-                pluginService.savePluginState("dankPomodoroTimer", "completedPomodoros-" + dateKey, globalCompletedPomodoros.value)
-                loadLast7Days()
+                const dateKey = formatDateKey(new Date());
+                pluginService.savePluginState("dankPomodoroTimer", "completedPomodoros-" + dateKey, globalCompletedPomodoros.value);
+                loadLast7Days();
             }
-            const isLongBreak = globalCompletedPomodoros.value % 4 === 0
+            const isLongBreak = globalCompletedPomodoros.value % 4 === 0;
 
-            Quickshell.execDetached(["sh", "-c", "notify-send 'Pomodoro Complete' 'Time for a " + (isLongBreak ? "long" : "short") + " break!' -u normal"])
+            Quickshell.execDetached(["sh", "-c", "notify-send 'Pomodoro Complete' 'Time for a " + (isLongBreak ? "long" : "short") + " break!' -u normal"]);
 
             if (root.autoSetDND) {
-                SessionData.setDoNotDisturb(false)
+                SessionData.setDoNotDisturb(false);
             }
             if (isLongBreak) {
-                root.startLongBreak(root.autoStartBreaks)
+                root.startLongBreak(root.autoStartBreaks);
             } else {
-                root.startShortBreak(root.autoStartBreaks)
+                root.startShortBreak(root.autoStartBreaks);
             }
         } else {
-            Quickshell.execDetached(["sh", "-c", "notify-send 'Break Complete' 'Ready for another pomodoro?' -u normal"])
-            root.startWork(root.autoStartPomodoros)
+            Quickshell.execDetached(["sh", "-c", "notify-send 'Break Complete' 'Ready for another pomodoro?' -u normal"]);
+            root.startWork(root.autoStartPomodoros);
         }
     }
 
     function startWork(autoStart) {
-        globalTimerState.set("work")
-        globalTotalSeconds.set(root.workDuration * 60)
-        globalRemainingSeconds.set(globalTotalSeconds.value)
+        globalTimerState.set("work");
+        globalTotalSeconds.set(root.workDuration * 60);
+        globalRemainingSeconds.set(globalTotalSeconds.value);
         if (autoStart) {
-            globalTimerOwnerId.set(root.instanceId)
+            globalTimerOwnerId.set(root.instanceId);
 
             if (root.autoSetDND) {
-                SessionData.setDoNotDisturb(true)
+                SessionData.setDoNotDisturb(true);
             }
         }
-        globalIsRunning.set(autoStart ?? false)
+        globalIsRunning.set(autoStart ?? false);
     }
 
     function startShortBreak(autoStart) {
         if (globalTimerState.value === "work" && root.autoSetDND) {
-            SessionData.setDoNotDisturb(false)
+            SessionData.setDoNotDisturb(false);
         }
-        globalTimerState.set("shortBreak")
-        globalTotalSeconds.set(root.shortBreakDuration * 60)
-        globalRemainingSeconds.set(globalTotalSeconds.value)
+        globalTimerState.set("shortBreak");
+        globalTotalSeconds.set(root.shortBreakDuration * 60);
+        globalRemainingSeconds.set(globalTotalSeconds.value);
         if (autoStart) {
-            globalTimerOwnerId.set(root.instanceId)
+            globalTimerOwnerId.set(root.instanceId);
         }
-        globalIsRunning.set(autoStart ?? false)
+        globalIsRunning.set(autoStart ?? false);
     }
 
     function startLongBreak(autoStart) {
         if (globalTimerState.value === "work" && root.autoSetDND) {
-            SessionData.setDoNotDisturb(false)
+            SessionData.setDoNotDisturb(false);
         }
-        globalTimerState.set("longBreak")
-        globalTotalSeconds.set(root.longBreakDuration * 60)
-        globalRemainingSeconds.set(globalTotalSeconds.value)
+        globalTimerState.set("longBreak");
+        globalTotalSeconds.set(root.longBreakDuration * 60);
+        globalRemainingSeconds.set(globalTotalSeconds.value);
         if (autoStart) {
-            globalTimerOwnerId.set(root.instanceId)
+            globalTimerOwnerId.set(root.instanceId);
         }
-        globalIsRunning.set(autoStart ?? false)
+        globalIsRunning.set(autoStart ?? false);
     }
 
     function toggleTimer() {
         if (!globalIsRunning.value) {
-            globalTimerOwnerId.set(root.instanceId)
+            globalTimerOwnerId.set(root.instanceId);
         }
-        globalIsRunning.set(!globalIsRunning.value)
+        globalIsRunning.set(!globalIsRunning.value);
         if (root.autoSetDND && globalTimerState.value === "work") {
-            SessionData.setDoNotDisturb(globalIsRunning.value)
+            SessionData.setDoNotDisturb(globalIsRunning.value);
         }
     }
 
     function resetTimer() {
-        globalIsRunning.set(false)
+        globalIsRunning.set(false);
         if (root.autoSetDND && globalTimerState.value === "work") {
-            SessionData.setDoNotDisturb(false)
+            SessionData.setDoNotDisturb(false);
         }
-        globalRemainingSeconds.set(globalTotalSeconds.value)
+        globalRemainingSeconds.set(globalTotalSeconds.value);
     }
 
     function formatTime(seconds, isVertical = false) {
-        const mins = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return isVertical ? mins + "\n" + (secs < 10 ? "0" : "") + secs : mins + ":" + (secs < 10 ? "0" : "") + secs
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return isVertical ? mins + "\n" + (secs < 10 ? "0" : "") + secs : mins + ":" + (secs < 10 ? "0" : "") + secs;
     }
 
     function getStateColor() {
         if (globalTimerState.value === "work")
-            return Theme.primary
+            return Theme.primary;
         if (globalTimerState.value === "shortBreak")
-            return Theme.info
-        return Theme.warning
+            return Theme.info;
+        return Theme.warning;
     }
 
     function getStateIcon() {
         if (globalTimerState.value === "work")
-            return "work"
+            return "work";
         if (globalTimerState.value === "longBreak")
-            return "weekend"
-        return "coffee"
+            return "weekend";
+        return "coffee";
     }
 
     IpcHandler {
         function resetTimer(): string {
-            root.resetTimer()
-            return "POMDORO_TIME_RESET_SUCCESS"
+            root.resetTimer();
+            return "POMDORO_TIME_RESET_SUCCESS";
         }
 
         function toggleTimer(): string {
-            root.toggleTimer()
-            return globalIsRunning.value ? "Timer is running" : "Timer is paused"
+            root.toggleTimer();
+            return globalIsRunning.value ? "Timer is running" : "Timer is paused";
         }
 
         function startWork(): string {
-            root.startWork(true)
-            return "POMODORO_WORK_STARTED"
+            root.startWork(true);
+            return "POMODORO_WORK_STARTED";
         }
 
         function startShortBreak(): string {
-            root.startShortBreak(true)
-            return "POMODORO_SHORT_BREAK_STARTED"
+            root.startShortBreak(true);
+            return "POMODORO_SHORT_BREAK_STARTED";
         }
 
         function startLongBreak(): string {
-            root.startLongBreak(true)
-            return "POMODORO_LONG_BREAK_STARTED"
+            root.startLongBreak(true);
+            return "POMODORO_LONG_BREAK_STARTED";
         }
 
         target: "pomodoroTimer"
@@ -322,7 +322,7 @@ PluginComponent {
         running: true
         onTriggered: {
             if (globalRemainingSeconds.value === 0 && globalTotalSeconds.value === 0) {
-                root.startWork(false)
+                root.startWork(false);
             }
         }
     }
@@ -376,10 +376,10 @@ PluginComponent {
             headerText: "Pomodoro Timer"
             detailsText: {
                 if (globalTimerState.value === "work")
-                    return "Focus session • " + globalCompletedPomodoros.value + " completed"
+                    return "Focus session • " + globalCompletedPomodoros.value + " completed";
                 if (globalTimerState.value === "shortBreak")
-                    return "Short break"
-                return "Long break"
+                    return "Short break";
+                return "Long break";
             }
             showCloseButton: true
 
@@ -408,25 +408,25 @@ PluginComponent {
                             anchors.centerIn: parent
 
                             onPaint: {
-                                var ctx = getContext("2d")
-                                ctx.clearRect(0, 0, width, height)
-                                ctx.lineWidth = 8
-                                ctx.strokeStyle = root.getStateColor()
-                                ctx.beginPath()
-                                const centerX = width / 2
-                                const centerY = height / 2
-                                const radius = (width - 8) / 2
-                                const progress = globalRemainingSeconds.value / globalTotalSeconds.value
-                                const startAngle = -Math.PI / 2
-                                const endAngle = startAngle + (2 * Math.PI * progress)
-                                ctx.arc(centerX, centerY, radius, startAngle, endAngle, false)
-                                ctx.stroke()
+                                var ctx = getContext("2d");
+                                ctx.clearRect(0, 0, width, height);
+                                ctx.lineWidth = 8;
+                                ctx.strokeStyle = root.getStateColor();
+                                ctx.beginPath();
+                                const centerX = width / 2;
+                                const centerY = height / 2;
+                                const radius = (width - 8) / 2;
+                                const progress = globalRemainingSeconds.value / globalTotalSeconds.value;
+                                const startAngle = -Math.PI / 2;
+                                const endAngle = startAngle + (2 * Math.PI * progress);
+                                ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
+                                ctx.stroke();
                             }
 
                             Connections {
                                 target: globalRemainingSeconds
                                 function onValueChanged() {
-                                    progressCanvas.requestPaint()
+                                    progressCanvas.requestPaint();
                                 }
                             }
                         }
@@ -448,10 +448,10 @@ PluginComponent {
                             StyledText {
                                 text: {
                                     if (globalTimerState.value === "work")
-                                        return "Work"
+                                        return "Work";
                                     if (globalTimerState.value === "shortBreak")
-                                        return "Short Break"
-                                    return "Long Break"
+                                        return "Short Break";
+                                    return "Long Break";
                                 }
                                 font.pixelSize: Theme.fontSizeMedium
                                 color: Theme.surfaceVariantText
@@ -638,14 +638,14 @@ PluginComponent {
                                             Rectangle {
                                                 width: parent.width
                                                 height: {
-                                                    let maxCount = 1
+                                                    let maxCount = 1;
                                                     for (let i = 0; i < root.last7DaysData.length; i++) {
                                                         if (root.last7DaysData[i].count > maxCount) {
-                                                            maxCount = root.last7DaysData[i].count
+                                                            maxCount = root.last7DaysData[i].count;
                                                         }
                                                     }
-                                                    const barHeight = (modelData.count / maxCount) * (parent.height - 2)
-                                                    return Math.max(barHeight, modelData.count > 0 ? 4 : 0)
+                                                    const barHeight = (modelData.count / maxCount) * (parent.height - 2);
+                                                    return Math.max(barHeight, modelData.count > 0 ? 4 : 0);
                                                 }
                                                 anchors.bottom: parent.bottom
                                                 radius: 2
@@ -653,8 +653,8 @@ PluginComponent {
 
                                                 StyledText {
                                                     text: modelData.count > 0 ? modelData.count : ""
-                                                    font.pixelSize: Theme.fontSizeXSmall
-                                                    color: Theme.surfaceText
+                                                    font.pixelSize: Theme.fontSizeSmall
+                                                    color: Theme.primaryText
                                                     anchors.centerIn: parent
                                                     visible: modelData.count > 0 && parent.height > 12
                                                 }
@@ -663,7 +663,7 @@ PluginComponent {
 
                                         StyledText {
                                             text: modelData.dayLabel
-                                            font.pixelSize: Theme.fontSizeXSmall
+                                            font.pixelSize: Theme.fontSizeSmall
                                             color: modelData.dayLabel === "Today" ? Theme.surfaceText : Theme.surfaceVariantText
                                             horizontalAlignment: Text.AlignHCenter
                                             width: parent.width

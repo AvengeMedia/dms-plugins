@@ -2,7 +2,7 @@
     "id": "dankPomodoroTimer",
     "name": "Dank Pomodoro Timer",
     "description": "Productivity timer with 25-minute work sessions and breaks",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "license": "MIT",
     "author": "Avenge Media",
     "icon": "timer",
