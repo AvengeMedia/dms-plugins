@@ -8,10 +8,29 @@ Item {
     property string backgroundImage: ""
     property bool isReachable: true
     property string deviceType: "phone"
+    readonly property string backgroundImageSource: resolveBackgroundImage(backgroundImage)
+    readonly property bool hasBackgroundImage: backgroundImageSource !== ""
+
+    function resolveBackgroundImage(path) {
+        if (typeof path !== "string")
+            return "";
+
+        const value = path.trim();
+        if (value === "")
+            return "";
+        if (value.startsWith(":/") || value.startsWith("qrc:/") || value.startsWith("image://"))
+            return value;
+        if (value.startsWith("/"))
+            return "file://" + value;
+        if (/^(file|https?):\/\//i.test(value))
+            return value;
+
+        return "";
+    }
 
     height: 235
     width: {
-        if (backgroundImage !== "") return 115;
+        if (hasBackgroundImage) return 115;
         switch (deviceType) {
         case "desktop":
         case "computer":
@@ -33,7 +52,7 @@ Item {
     Rectangle {
         id: customImageContainer
         anchors.fill: parent
-        visible: root.backgroundImage !== ""
+        visible: root.hasBackgroundImage
         radius: Theme.cornerRadius // matches the container's rounded corner
         color: "transparent"
         clip: true
@@ -67,16 +86,7 @@ Item {
         Image {
             id: bgImage
             anchors.fill: parent
-            source: {
-                if (root.backgroundImage === "") return "";
-                if (root.backgroundImage.indexOf(":/") !== -1) {
-                    return root.backgroundImage;
-                }
-                if (root.backgroundImage.startsWith("/")) {
-                    return "file://" + root.backgroundImage;
-                }
-                return root.backgroundImage;
-            }
+            source: root.backgroundImageSource
             fillMode: Image.PreserveAspectCrop
         }
 
@@ -103,7 +113,7 @@ Item {
     Item {
         id: container
         anchors.fill: parent
-        visible: root.backgroundImage === ""
+        visible: !root.hasBackgroundImage
 
         Behavior on scale {
             NumberAnimation { duration: 100; easing.type: Easing.OutCubic }

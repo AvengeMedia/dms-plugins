@@ -74,6 +74,10 @@ valent --gapplication-service
 systemctl --user enable --now valent
 ```
 
+**Known issue:**
+
+- Valent clipboard sync may fail silently on some Wayland compositors unless Valent is focused. Text/file sharing is unaffected.
+
 **Niri example** (`~/.config/niri/config.kdl`):
 
 ```kdl

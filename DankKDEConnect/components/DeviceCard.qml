@@ -180,7 +180,7 @@ StyledRect {
                 width: 36
                 height: 36
                 visible: typeof SettingsData !== "undefined" ? (SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction ?? true) : true
-                enabled: root.device && root.device.isReachable
+                enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "clipboard")
                 DankKDEActionButton {
                     anchors.fill: parent
                     enabled: parent.enabled

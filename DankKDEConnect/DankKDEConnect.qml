@@ -532,23 +532,13 @@ PluginComponent {
             pluginService.savePluginData("dankKDEConnect", "selectedDeviceId", deviceId);
     }
 
-    function sendClipboardWayland(deviceId) {
-        Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
-            let content = stdout || "";
-            content = content.trim();
-            if (content.length > 0) {
-                let isUrl = content.startsWith("http://") || content.startsWith("https://");
-                if (isUrl)
-                    PhoneConnectService.shareUrl(deviceId, content, function() {});
-                else
-                    PhoneConnectService.shareText(deviceId, content, function() {});
-                
-                if (typeof ToastService !== "undefined")
-                    ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
-            } else {
-                if (typeof ToastService !== "undefined")
-                    ToastService.showError(I18n.tr("Clipboard is empty or wl-paste failed."));
+    function sendClipboardToDevice(deviceId) {
+        PhoneConnectService.sendClipboard(deviceId, function(response) {
+            if (response.error) {
+                ToastService.showError(I18n.tr("Failed to send clipboard", "Phone Connect error"), response.error);
+                return;
             }
+            ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
         });
     }
 
@@ -575,7 +565,7 @@ PluginComponent {
             });
             break;
         case "clipboard":
-            root.sendClipboardWayland(deviceId);
+            root.sendClipboardToDevice(deviceId);
             break;
         case "share":
             showSmsDialog = false;
@@ -1471,7 +1461,7 @@ PluginComponent {
                                         width: 32
                                         height: 32
                                         visible: root.enableClipboardAction
-                                        enabled: root.activeDevice && root.activeDevice.isReachable
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "clipboard")
                                         DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
@@ -1570,8 +1560,8 @@ PluginComponent {
                     deviceId: root.shareDeviceId
                     parentPopout: popout.parentPopout
                     onClose: root.showShareDialog = false
-                    onShare: {
-                        if (isUrl) {
+                    onShare: function(content, isUri) {
+                        if (isUri) {
                             PhoneConnectService.shareUrl(root.shareDeviceId, content, function(response) {
                                 if (response.error) {
                                     ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
@@ -1590,9 +1580,8 @@ PluginComponent {
                         }
                         root.showShareDialog = false;
                     }
-                    onShareFile: {
-                        const fileUrl = "file://" + path;
-                        PhoneConnectService.shareUrl(root.shareDeviceId, fileUrl, function(response) {
+                    onShareFile: function(path) {
+                        PhoneConnectService.shareFile(root.shareDeviceId, path, function(response) {
                             if (response.error) {
                                 ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
                                 return;
@@ -1610,7 +1599,7 @@ PluginComponent {
                     width: parent.width
                     deviceId: root.shareDeviceId
                     onClose: root.showSmsDialog = false
-                    onSendSms: {
+                    onSendSms: function(phoneNumber, message) {
                         PhoneConnectService.sendSms(root.shareDeviceId, phoneNumber, message, [], function(response) {
                             if (response.error) {
                                 ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
@@ -2484,12 +2473,15 @@ PluginComponent {
 
                                     // Share/Send Button in the Corner (similar to the Pin button in QuickTote)
                                     Item {
+                                        id: recentImageSendButton
                                         width: 32
                                         height: 32
                                         anchors.top: parent.top
                                         anchors.right: parent.right
                                         anchors.topMargin: -6
                                         anchors.rightMargin: -6
+                                        readonly property bool isEnabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "share")
+                                        opacity: isEnabled ? 1.0 : 0.4
                                         scale: (imageItem.hovered) ? 1.0 : 0.0
                                         Behavior on scale { 
                                             SequentialAnimation {
@@ -2512,7 +2504,7 @@ PluginComponent {
                                             layer.effect: MultiEffect {
                                                 shadowEnabled: true
                                                 shadowBlur: 0.3
-                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", sendBtnMa.containsMouse ? 0.35 : 0)
+                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? 0.35 : 0)
                                                 Behavior on shadowColor { ColorAnimation { duration: 200 } }
                                             }
                                         }
@@ -2521,22 +2513,24 @@ PluginComponent {
                                             name: "send"
                                             size: 14
                                             anchors.centerIn: parent
-                                            color: sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
-                                            Behavior on color { ColorAnimation { duration: Theme.popoutAnimationDuration } }
+                                            color: recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
                                         }
 
                                         MouseArea {
                                             id: sendBtnMa
                                             anchors.fill: parent
-                                            hoverEnabled: true
+                                            hoverEnabled: recentImageSendButton.isEnabled
+                                            cursorShape: recentImageSendButton.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                             onClicked: {
-                                                Quickshell.execDetached([
-                                                    "sh",
-                                                    "-c",
-                                                    "gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Share.Share \"\" \"Share Image\" {} \"file://$1\" >/dev/null 2>&1 || dms open \"$1\"",
-                                                    "--",
-                                                    modelData.path
-                                                ]);
+                                                if (!recentImageSendButton.isEnabled)
+                                                    return;
+                                                PhoneConnectService.shareFile(root.activeDeviceId, modelData.path, function(response) {
+                                                    if (response.error) {
+                                                        ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
+                                                        return;
+                                                    }
+                                                    ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + modelData.name + "...");
+                                                });
                                                 root.closePopout();
                                             }
                                         }

@@ -226,6 +226,35 @@ Singleton {
         _backend.shareText(deviceId, text, callback);
     }
 
+    function shareFile(deviceId, path, callback) {
+        const url = localFileUrl(path);
+        if (url === "") {
+            callback?.({
+                error: "Invalid file path"
+            });
+            return;
+        }
+        shareUrl(deviceId, url, callback);
+    }
+
+    function localFileUrl(path) {
+        if (path === undefined || path === null)
+            return "";
+        const filePath = path.toString();
+        if (filePath === "")
+            return "";
+        if (filePath.startsWith("file://"))
+            return filePath;
+        if (!filePath.startsWith("/"))
+            return "";
+
+        const encoded = filePath.split("/").map(function(segment) {
+            return encodeURIComponent(segment);
+        }).join("/");
+
+        return "file://" + encoded;
+    }
+
     function sendClipboard(deviceId, callback) {
         if (!_backend) {
             callback?.({

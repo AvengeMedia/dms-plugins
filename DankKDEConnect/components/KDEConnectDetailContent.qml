@@ -45,31 +45,17 @@ Item {
     implicitHeight: contentColumn.implicitHeight + Theme.spacingM * 2
     height: contentColumn.implicitHeight + Theme.spacingM * 2
 
-    function sendClipboardWayland() {
-        Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
-            let content = stdout || "";
-            content = content.trim();
-            if (content.length > 0) {
-                if (typeof shareDialog !== "undefined" && shareDialog) {
-                    shareDialog.shareText = content;
-                }
-                
-                let isUrl = content.startsWith("http://") || content.startsWith("https://");
-                if (isUrl)
-                    PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
-                else
-                    PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
-                
-                if (typeof shareDialog !== "undefined" && shareDialog) {
-                    shareDialog.shareText = "";
-                }
-                
-                if (typeof ToastService !== "undefined")
-                    ToastService.showInfo(I18n.tr("Clipboard sent"));
-            } else {
-                if (typeof ToastService !== "undefined")
-                    ToastService.showError(I18n.tr("Clipboard is empty or wl-paste failed."));
+    function sendClipboardToDevice() {
+        sendClipboardToDeviceId(root.effectiveDeviceId);
+    }
+
+    function sendClipboardToDeviceId(deviceId) {
+        PhoneConnectService.sendClipboard(deviceId, function(response) {
+            if (response.error) {
+                ToastService.showError(I18n.tr("Failed to send clipboard", "Phone Connect error"), response.error);
+                return;
             }
+            ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
         });
     }
 
@@ -426,7 +412,7 @@ Item {
                                     } else if (action === "ping") {
                                         PhoneConnectService.sendPing(modelData, "", function() {});
                                     } else if (action === "clipboard") {
-                                        PhoneConnectService.sendClipboard(modelData, function() {});
+                                        root.sendClipboardToDeviceId(modelData);
                                     } else if (action === "share") {
                                         root.shareDeviceId = modelData;
                                     } else if (action === "sms") {
@@ -631,7 +617,7 @@ Item {
                                         width: 32
                                         height: 32
                                         visible: root.enableClipboardAction
-                                        enabled: root.activeDevice && root.activeDevice.isReachable
+                                        enabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "clipboard")
                                         DankKDEActionButton {
                                             anchors.fill: parent
                                             enabled: parent.enabled
@@ -641,7 +627,7 @@ Item {
                                             tooltipText: I18n.tr("Send Clipboard", "KDE Connect send clipboard tooltip")
                                             onClicked: {
                                                 if (!enabled) return;
-                                                root.sendClipboardWayland()
+                                                root.sendClipboardToDevice()
                                             }
                                         }
                                     }
@@ -733,19 +719,15 @@ Item {
                     deviceId: root.effectiveDeviceId
                     parentPopout: root.parentPopout
                     onClose: root.shareDeviceId = ""
-                    onShare: {
-                        if (isUrl)
+                    onShare: function(content, isUri) {
+                        if (isUri)
                             PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
                         else
                             PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
                         root.shareDeviceId = "";
                     }
-                    onShareFile: {
-                        PhoneConnectService.shareUrl(root.effectiveDeviceId, "file://" + path, function() {});
-                        root.shareDeviceId = "";
-                    }
-                    onShareClipboard: {
-                        root.sendClipboardWayland()
+                    onShareFile: function(path) {
+                        PhoneConnectService.shareFile(root.effectiveDeviceId, path, function() {});
                         root.shareDeviceId = "";
                     }
                 }
@@ -756,7 +738,7 @@ Item {
                     width: parent.width
                     deviceId: root.effectiveDeviceId
                     onClose: root.smsDeviceId = ""
-                    onSendSms: {
+                    onSendSms: function(phoneNumber, message) {
                         PhoneConnectService.sendSms(root.effectiveDeviceId, phoneNumber, message, [], function(response) {
                             if (response.error) {
                                 ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
@@ -1051,12 +1033,15 @@ Item {
 
                                     // Share/Send Button in the Corner
                                     Item {
+                                        id: recentImageSendButton
                                         width: 32
                                         height: 32
                                         anchors.top: parent.top
                                         anchors.right: parent.right
                                         anchors.topMargin: -6
                                         anchors.rightMargin: -6
+                                        readonly property bool isEnabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "share")
+                                        opacity: isEnabled ? 1.0 : 0.4
                                         scale: (imageItem.hovered) ? 1.0 : 0.0
                                         Behavior on scale { 
                                             SequentialAnimation {
@@ -1079,7 +1064,7 @@ Item {
                                             layer.effect: MultiEffect {
                                                 shadowEnabled: true
                                                 shadowBlur: 0.3
-                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", sendBtnMa.containsMouse ? 0.35 : 0)
+                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? 0.35 : 0)
                                                 Behavior on shadowColor { ColorAnimation { duration: 200 } }
                                             }
                                         }
@@ -1095,23 +1080,19 @@ Item {
                                             name: "send"
                                             size: 14
                                             anchors.centerIn: parent
-                                            color: sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
-                                            Behavior on color { ColorAnimation { duration: 200 } }
+                                            color: recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
                                         }
 
                                         MouseArea {
                                             id: sendBtnMa
                                             anchors.fill: parent
-                                            hoverEnabled: true
-                                            onPressed: function(m) { sendRipple.trigger(m.x, m.y) }
+                                            hoverEnabled: recentImageSendButton.isEnabled
+                                            cursorShape: recentImageSendButton.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                            onPressed: function(m) { if (recentImageSendButton.isEnabled) sendRipple.trigger(m.x, m.y) }
                                             onClicked: {
-                                                Quickshell.execDetached([
-                                                    "sh",
-                                                    "-c",
-                                                    "gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Share.Share \"\" \"Share Image\" {} \"file://$1\" >/dev/null 2>&1 || dms open \"$1\"",
-                                                    "--",
-                                                    modelData.path
-                                                ]);
+                                                if (!recentImageSendButton.isEnabled)
+                                                    return;
+                                                PhoneConnectService.shareFile(root.activeDeviceId, modelData.path, function() {});
                                                 PopoutService.closeControlCenter();
                                             }
                                         }

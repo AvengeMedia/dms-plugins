@@ -206,6 +206,7 @@ Singleton {
                 const id = extractDeviceIdFromPath(data.path);
                 if (!id)
                     break;
+                fetchDeviceActions(id);
                 const stateChanges = data.body?.[2];
                 if (stateChanges && typeof stateChanges === "object") {
                     if ("battery.state" in stateChanges)
@@ -338,6 +339,7 @@ Singleton {
         const newIsPairRequested = (state & statePairOutgoing) !== 0;
         const newIsPairRequestedByPeer = (state & statePairIncoming) !== 0;
         const newStatusIconName = iconName || "smartphone-symbolic";
+        const newSupportedPlugins = oldDev.supportedPlugins || [];
 
         const changed = !devices[deviceId] ||
                         oldDev.id !== deviceId ||
@@ -348,6 +350,7 @@ Singleton {
                         oldDev.isPairRequested !== newIsPairRequested ||
                         oldDev.isPairRequestedByPeer !== newIsPairRequestedByPeer ||
                         oldDev.statusIconName !== newStatusIconName ||
+                        JSON.stringify(oldDev.supportedPlugins) !== JSON.stringify(newSupportedPlugins) ||
                         oldDev._state !== state;
 
         if (changed) {
@@ -360,7 +363,7 @@ Singleton {
             dev.isPairRequested = newIsPairRequested;
             dev.isPairRequestedByPeer = newIsPairRequestedByPeer;
             dev.statusIconName = newStatusIconName;
-            dev.supportedPlugins = [];
+            dev.supportedPlugins = newSupportedPlugins;
             dev.verificationKey = "";
             dev._state = state;
 
@@ -372,6 +375,8 @@ Singleton {
 
         const currentDev = devices[deviceId];
         if (currentDev) {
+            fetchDeviceActions(deviceId);
+
             if (currentDev.isPairRequestedByPeer)
                 pairingRequestReceived(deviceId, "");
 
@@ -396,6 +401,88 @@ Singleton {
         if (iconName.includes("tv"))
             return "tv";
         return "phone";
+    }
+
+    function fetchDeviceActions(deviceId) {
+        const devicePath = getDevicePath(deviceId);
+
+        DMSService.dbusCall("session", service, devicePath, actionsInterface, "DescribeAll", [], function(response) {
+            if (response.error)
+                return;
+
+            const descriptions = response.result?.values?.[0] || {};
+            updateDeviceSupportedPlugins(deviceId, supportedPluginsFromActions(descriptions));
+        });
+    }
+
+    function supportedPluginsFromActions(actionDescriptions) {
+        actionDescriptions = extractVariant(actionDescriptions) || {};
+
+        const result = [];
+
+        function addPlugin(pluginName, actionNames) {
+            for (const actionName of actionNames) {
+                if (hasEnabledAction(actionDescriptions, actionName)) {
+                    result.push(pluginName);
+                    return;
+                }
+            }
+        }
+
+        addPlugin("findmyphone", ["findmyphone.ring"]);
+        addPlugin("ping", ["ping.ping", "ping.message"]);
+        addPlugin("share", ["share.uri", "share.uris", "share.text"]);
+        addPlugin("clipboard", ["clipboard.push"]);
+        addPlugin("sftp", ["sftp.browse"]);
+        addPlugin("sms", ["sms.sync"]);
+        addPlugin("battery", ["battery.state"]);
+        addPlugin("connectivity_report", ["connectivity_report.state"]);
+
+        return result;
+    }
+
+    function hasEnabledAction(actionDescriptions, actionName) {
+        if (Array.isArray(actionDescriptions)) {
+            for (const entry of actionDescriptions) {
+                if (entry?.[0] === actionName)
+                    return actionDescriptionEnabled(entry[1]);
+            }
+            return false;
+        }
+
+        return actionDescriptionEnabled(actionDescriptions[actionName]);
+    }
+
+    function actionDescriptionEnabled(description) {
+        description = extractVariant(description);
+
+        if (description === null || description === undefined)
+            return false;
+        if (Array.isArray(description))
+            return description[0] !== false;
+        if (typeof description === "object") {
+            if (description.enabled !== undefined)
+                return description.enabled;
+            if (description[0] !== undefined)
+                return description[0] !== false;
+        }
+        return true;
+    }
+
+    function updateDeviceSupportedPlugins(deviceId, supportedPlugins) {
+        const oldDev = devices[deviceId];
+        if (!oldDev)
+            return;
+        if (JSON.stringify(oldDev.supportedPlugins || []) === JSON.stringify(supportedPlugins))
+            return;
+
+        const dev = Object.assign({}, oldDev);
+        dev.supportedPlugins = supportedPlugins;
+
+        devices = Object.assign({}, devices, {
+            [deviceId]: dev
+        });
+        deviceUpdated(deviceId);
     }
 
     function fetchBatteryState(deviceId) {

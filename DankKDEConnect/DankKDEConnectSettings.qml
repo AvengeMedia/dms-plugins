@@ -34,6 +34,7 @@ PluginSettings {
 
         property var deviceTypeMap: ({})
         property var deviceImageMap: ({})
+        property bool hasDeviceImageMapSetting: false
 
         function refreshDeviceTypeMap() {
             const rawMap = loadValue("deviceTypeMap", "");
@@ -48,6 +49,7 @@ PluginSettings {
 
         function refreshDeviceImageMap() {
             const rawMap = loadValue("deviceImageMap", "");
+            hasDeviceImageMapSetting = rawMap !== undefined && rawMap !== null && rawMap !== "";
             if (rawMap) {
                 try {
                     deviceImageMap = JSON.parse(rawMap);
@@ -86,7 +88,7 @@ PluginSettings {
             if (!deviceId) return "";
             if (deviceImageMap[deviceId]) return deviceImageMap[deviceId];
             // Fallback to legacy single image if it's the first device
-            if (PhoneConnectService.deviceIds.length > 0 && deviceId === PhoneConnectService.deviceIds[0]) {
+            if (!hasDeviceImageMapSetting && PhoneConnectService.deviceIds.length > 0 && deviceId === PhoneConnectService.deviceIds[0]) {
                 return loadValue("customPhoneImage", "");
             }
             return "";
@@ -101,6 +103,7 @@ PluginSettings {
                 newMap[deviceId] = path;
             }
             deviceImageMap = newMap;
+            hasDeviceImageMapSetting = true;
             saveValue("deviceImageMap", JSON.stringify(newMap));
         }
 
@@ -432,8 +435,8 @@ PluginSettings {
                                         anchors.fill: parent
                                         topLeftRadius: Theme.cornerRadius
                                         bottomLeftRadius: Theme.cornerRadius
-                                        topRightRadius: clearBtnContainer.isShown ? 0 : Theme.cornerRadius
-                                        bottomRightRadius: clearBtnContainer.isShown ? 0 : Theme.cornerRadius
+                                        topRightRadius: Theme.cornerRadius
+                                        bottomRightRadius: Theme.cornerRadius
 
                                         color: browseMA.containsMouse 
                                             ? Theme.withAlpha(Theme.primary, 0.15) 
@@ -475,90 +478,6 @@ PluginSettings {
                                             imageBrowser.targetDeviceId = deviceSettingsRect.modelData;
                                             imageBrowser.targetField = customImageField;
                                             imageBrowser.open();
-                                        }
-                                    }
-                                }
-
-                                // Animated container for Clear Button
-                                Item {
-                                    id: clearBtnContainer
-                                    height: 36
-                                    property bool isShown: customImageField.text !== ""
-                                    width: isShown ? 88 : 0
-                                    opacity: isShown ? 1.0 : 0.0
-                                    scale: isShown ? 1.0 : 0.8
-                                    clip: true
-
-                                    Behavior on width {
-                                        NumberAnimation {
-                                            duration: Theme.shorterDuration
-                                            easing.type: Easing.OutCubic
-                                        }
-                                    }
-                                    Behavior on opacity {
-                                        NumberAnimation {
-                                            duration: Theme.shorterDuration
-                                            easing.type: Easing.OutCubic
-                                        }
-                                    }
-                                    Behavior on scale {
-                                        NumberAnimation {
-                                            duration: Theme.shorterDuration
-                                            easing.type: Easing.OutCubic
-                                        }
-                                    }
-
-                                    Item {
-                                        width: 88
-                                        height: 36
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            topLeftRadius: 0
-                                            bottomLeftRadius: 0
-                                            topRightRadius: Theme.cornerRadius
-                                            bottomRightRadius: Theme.cornerRadius
-
-                                            color: clearMA.containsMouse 
-                                                ? Theme.withAlpha(Theme.primary, 0.15) 
-                                                : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                                            border.width: 1
-                                            border.color: Theme.withAlpha(Theme.primary, clearMA.containsMouse ? 0.3 : 0.15)
-                                        }
-
-                                        DankRipple {
-                                            anchors.fill: parent
-                                            cornerRadius: Theme.cornerRadius
-                                            rippleColor: Theme.primary
-                                        }
-
-                                        Row {
-                                            anchors.centerIn: parent
-                                            spacing: Theme.spacingXXS
-                                            DankIcon {
-                                                name: "clear"
-                                                size: 16
-                                                color: Theme.primary
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-                                            StyledText {
-                                                text: "Clear"
-                                                font.pixelSize: Theme.fontSizeSmall
-                                                font.weight: Font.Medium
-                                                color: Theme.primary
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: clearMA
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                customImageField.text = "";
-                                                mainSettingsCol.saveDeviceImage(deviceSettingsRect.modelData, "");
-                                            }
                                         }
                                     }
                                 }
@@ -779,7 +698,6 @@ PluginSettings {
                                 color: limitResetMa.containsMouse ? Theme.primary : Theme.surfaceVariantText
                                 rotation: limitResetMa.containsMouse ? 90 : 0
                                 Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
-                                Behavior on color { ColorAnimation { duration: 150 } }
                             }
 
                             MouseArea {
