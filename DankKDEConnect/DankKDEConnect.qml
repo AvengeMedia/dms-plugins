@@ -1559,11 +1559,9 @@ PluginComponent {
                     width: parent.width
                     deviceId: root.shareDeviceId
                     parentPopout: popout.parentPopout
-                    // TODO: Consider switching this to read the clipboard and share it as text.
-                    shareClipboardAvailable: root.shareDeviceId !== "" && PhoneConnectService.hasPlugin(root.shareDeviceId, "clipboard")
                     onClose: root.showShareDialog = false
-                    onShare: function(content, isUrl) {
-                        if (isUrl) {
+                    onShare: function(content, isUri) {
+                        if (isUri) {
                             PhoneConnectService.shareUrl(root.shareDeviceId, content, function(response) {
                                 if (response.error) {
                                     ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
@@ -1591,10 +1589,6 @@ PluginComponent {
                             const filename = path.split("/").pop();
                             ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + filename + "...");
                         });
-                        root.showShareDialog = false;
-                    }
-                    onShareClipboard: {
-                        root.sendClipboardToDevice(root.shareDeviceId)
                         root.showShareDialog = false;
                     }
                 }

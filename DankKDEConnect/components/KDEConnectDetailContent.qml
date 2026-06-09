@@ -718,11 +718,9 @@ Item {
                     width: parent.width
                     deviceId: root.effectiveDeviceId
                     parentPopout: root.parentPopout
-                    // TODO: Consider switching this to read the clipboard and share it as text.
-                    shareClipboardAvailable: root.effectiveDeviceId !== "" && PhoneConnectService.hasPlugin(root.effectiveDeviceId, "clipboard")
                     onClose: root.shareDeviceId = ""
-                    onShare: function(content, isUrl) {
-                        if (isUrl)
+                    onShare: function(content, isUri) {
+                        if (isUri)
                             PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
                         else
                             PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
@@ -730,10 +728,6 @@ Item {
                     }
                     onShareFile: function(path) {
                         PhoneConnectService.shareFile(root.effectiveDeviceId, path, function() {});
-                        root.shareDeviceId = "";
-                    }
-                    onShareClipboard: {
-                        root.sendClipboardToDevice()
                         root.shareDeviceId = "";
                     }
                 }

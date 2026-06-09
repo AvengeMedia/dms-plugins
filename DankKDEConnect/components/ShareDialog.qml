@@ -19,15 +19,106 @@ StyledRect {
     property string deviceId: ""
     property var parentPopout: null
     property alias shareText: shareInput.text
-    property bool shareClipboardAvailable: true
 
     signal close
-    signal share(string content, bool isUrl)
+    signal share(string content, bool isUri)
     signal shareFile(string path)
-    signal shareClipboard()
 
-    function isUrl(text) {
-        return text.startsWith("http://") || text.startsWith("https://");
+    function isUri(text) {
+        const value = text.trim();
+        if (!/^[A-Za-z][A-Za-z0-9+.-]*:/.test(value))
+            return false;
+
+        return /^(([^:/?#]+):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$/.test(value);
+    }
+
+    function shareInputContent(asUri) {
+        const content = shareInput.text;
+        const value = content.trim();
+        if (value.length === 0 || (asUri && !root.isUri(value)))
+            return;
+
+        root.share(asUri ? value : content, asUri);
+        shareInput.text = "";
+    }
+
+    component ShareActionButton: StyledRect {
+        id: actionRoot
+
+        property string label: ""
+        property string iconName: ""
+        property bool isEnabled: true
+
+        signal clicked
+
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        height: 36
+        radius: Theme.cornerRadius
+        color: (isEnabled && actionArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+        border.width: 1
+        border.color: Theme.withAlpha(Theme.primary, (isEnabled && actionArea.containsMouse) ? 0.3 : 0.15)
+        opacity: isEnabled ? 1.0 : 0.4
+        activeFocusOnTab: isEnabled
+
+        Row {
+            anchors.centerIn: parent
+            spacing: Theme.spacingXS
+
+            DankIcon {
+                name: actionRoot.iconName
+                size: 16
+                color: (actionRoot.isEnabled && actionArea.containsMouse) ? Theme.primary : Theme.surfaceVariantText
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            StyledText {
+                text: actionRoot.label
+                font.pixelSize: Theme.fontSizeSmall
+                font.weight: Font.Medium
+                color: (actionRoot.isEnabled && actionArea.containsMouse) ? Theme.primary : Theme.surfaceText
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        DankRipple {
+            id: actionRipple
+            anchors.fill: parent
+            cornerRadius: parent.radius
+            rippleColor: Theme.primary
+            enabled: actionRoot.isEnabled
+        }
+
+        MouseArea {
+            id: actionArea
+            anchors.fill: parent
+            hoverEnabled: actionRoot.isEnabled
+            cursorShape: actionRoot.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onPressed: function(m) { if (actionRoot.isEnabled) actionRipple.trigger(m.x, m.y) }
+            onClicked: {
+                if (actionRoot.isEnabled)
+                    actionRoot.clicked();
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -1
+            color: "transparent"
+            border.color: Theme.primary
+            border.width: 2
+            radius: Theme.cornerRadius
+            visible: parent.activeFocus
+        }
+
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                if (actionRoot.isEnabled) {
+                    actionRoot.clicked();
+                    event.accepted = true;
+                }
+            }
+        }
     }
 
     property bool isOpen: false
@@ -227,74 +318,15 @@ StyledRect {
             DankTextField {
                 id: shareInput
                 Layout.fillWidth: true
-                placeholderText: I18n.tr("Enter URL or text to share", "KDE Connect share input placeholder") + "..."
+                placeholderText: I18n.tr("Enter URI or text to share", "KDE Connect share input placeholder") + "..."
                 activeFocusOnTab: true
 
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
                         if (text.trim().length > 0) {
-                            root.share(text, root.isUrl(text));
-                            text = "";
+                            root.shareInputContent(root.isUri(text));
                             event.accepted = true;
                         }
-                    }
-                }
-            }
-
-            Rectangle {
-                id: quickClipboardBtn
-                width: 36
-                height: shareInput.height
-                radius: Theme.cornerRadius
-                readonly property bool isEnabled: root.shareClipboardAvailable
-                color: (isEnabled && quickClipboardBtnArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                border.width: 1
-                border.color: Theme.withAlpha(Theme.primary, (isEnabled && quickClipboardBtnArea.containsMouse) ? 0.3 : 0.15)
-                opacity: isEnabled ? 1.0 : 0.4
-                activeFocusOnTab: isEnabled
-                
-                function triggerClipboardShare() {
-                    if (isEnabled)
-                        root.shareClipboard();
-                }
-
-                DankIcon {
-                    anchors.centerIn: parent
-                    name: "content_paste"
-                    size: 16
-                    color: (quickClipboardBtn.isEnabled && quickClipboardBtnArea.containsMouse) ? Theme.primary : Theme.surfaceVariantText
-                }
-
-                DankRipple {
-                    id: clipboardRipple
-                    anchors.fill: parent
-                    cornerRadius: parent.radius
-                    rippleColor: Theme.primary
-                }
-
-                MouseArea {
-                    id: quickClipboardBtnArea
-                    anchors.fill: parent
-                    hoverEnabled: quickClipboardBtn.isEnabled
-                    cursorShape: quickClipboardBtn.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onPressed: function(m) { if (quickClipboardBtn.isEnabled) clipboardRipple.trigger(m.x, m.y) }
-                    onClicked: quickClipboardBtn.triggerClipboardShare()
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: -1
-                    color: "transparent"
-                    border.color: Theme.primary
-                    border.width: 2
-                    radius: Theme.cornerRadius
-                    visible: parent.activeFocus
-                }
-
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
-                        quickClipboardBtn.triggerClipboardShare();
-                        event.accepted = quickClipboardBtn.isEnabled;
                     }
                 }
             }
@@ -304,262 +336,24 @@ StyledRect {
             width: parent.width
             spacing: Theme.spacingS
 
-            Rectangle {
-                id: shareTextBtn
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                height: 36
-                color: "transparent"
-                border.width: 0
-                
-                readonly property bool isEnabled: shareInput.text.length > 0
-                opacity: isEnabled ? 1.0 : 0.4
-                activeFocusOnTab: isEnabled
-
-                Canvas {
-                    id: shareTextBtnBg
-                    anchors.fill: parent
-                    
-                    readonly property real topLeftRadius: Theme.cornerRadius
-                    readonly property real bottomLeftRadius: Theme.cornerRadius
-                    readonly property real topRightRadius: 4
-                    readonly property real bottomRightRadius: 4
-                    
-                    property color fillColor: (shareTextBtn.isEnabled && shareTextArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                    property color borderColor: (shareTextBtn.isEnabled && shareTextArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
-                    readonly property real borderWidth: 1
-
-                    Behavior on fillColor { ColorAnimation { duration: 200 } }
-                    Behavior on borderColor { ColorAnimation { duration: 200 } }
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.reset();
-                        
-                        var w = width;
-                        var h = height;
-                        var r = borderWidth / 2;
-                        var x = r;
-                        var y = r;
-                        w -= borderWidth;
-                        h -= borderWidth;
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(x + topLeftRadius, y);
-                        ctx.lineTo(x + w - topRightRadius, y);
-                        ctx.arcTo(x + w, y, x + w, y + topRightRadius, topRightRadius);
-                        ctx.lineTo(x + w, y + h - bottomRightRadius);
-                        ctx.arcTo(x + w, y + h, x + w - bottomRightRadius, y + h, bottomRightRadius);
-                        ctx.lineTo(x + bottomLeftRadius, y + h);
-                        ctx.arcTo(x, y + h, x, y + h - bottomLeftRadius, bottomLeftRadius);
-                        ctx.lineTo(x, y + h - bottomLeftRadius);
-                        ctx.lineTo(x, y + topLeftRadius);
-                        ctx.arcTo(x, y, x + topLeftRadius, y, topLeftRadius);
-                        ctx.closePath();
-                        
-                        ctx.fillStyle = fillColor;
-                        ctx.fill();
-                        
-                        ctx.lineWidth = borderWidth;
-                        ctx.strokeStyle = borderColor;
-                        ctx.stroke();
-                    }
-                    
-                    onFillColorChanged: requestPaint()
-                    onBorderColorChanged: requestPaint()
-                    onWidthChanged: requestPaint()
-                    onHeightChanged: requestPaint()
-                }
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: Theme.spacingXS
-
-                    DankIcon {
-                        name: root.isUrl(shareInput.text) ? "link" : "share"
-                        size: 16
-                        color: (shareTextBtn.isEnabled && shareTextArea.containsMouse) ? Theme.primary : Theme.surfaceVariantText
-                        scale: (shareTextBtn.isEnabled && shareTextArea.containsMouse) ? 1.15 : 1.0
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                    }
-
-                    StyledText {
-                        text: root.isUrl(shareInput.text) ? I18n.tr("Share URL", "KDE Connect share URL button") : I18n.tr("Share Text", "KDE Connect share button")
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.weight: Font.Medium
-                        color: (shareTextBtn.isEnabled && shareTextArea.containsMouse) ? Theme.primary : Theme.surfaceText
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-                }
-
-                DankRipple {
-                    id: shareTextRipple
-                    anchors.fill: parent
-                    cornerRadius: Theme.cornerRadius
-                    rippleColor: Theme.primary
-                    enabled: shareTextBtn.isEnabled
-                }
-
-                MouseArea {
-                    id: shareTextArea
-                    anchors.fill: parent
-                    hoverEnabled: shareTextBtn.isEnabled
-                    cursorShape: shareTextBtn.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onPressed: function(m) { if (shareTextBtn.isEnabled) shareTextRipple.trigger(m.x, m.y) }
-                    onClicked: {
-                        if (shareTextBtn.isEnabled) {
-                            root.share(shareInput.text, root.isUrl(shareInput.text));
-                            shareInput.text = "";
-                        }
-                    }
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: -1
-                    color: "transparent"
-                    border.color: Theme.primary
-                    border.width: 2
-                    radius: Theme.cornerRadius
-                    visible: parent.activeFocus
-                }
-
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
-                        if (shareTextBtn.isEnabled) {
-                            root.share(shareInput.text, root.isUrl(shareInput.text));
-                            shareInput.text = "";
-                            event.accepted = true;
-                        }
-                    }
-                }
+            ShareActionButton {
+                label: I18n.tr("URI", "KDE Connect share URI button")
+                iconName: "link"
+                isEnabled: root.isUri(shareInput.text)
+                onClicked: root.shareInputContent(true)
             }
 
-            Rectangle {
-                id: sendFileBtn
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                height: 36
-                color: "transparent"
-                border.width: 0
-                activeFocusOnTab: true
+            ShareActionButton {
+                label: I18n.tr("Text", "KDE Connect share text button")
+                iconName: "notes"
+                isEnabled: shareInput.text.trim().length > 0
+                onClicked: root.shareInputContent(false)
+            }
 
-                Canvas {
-                    id: sendFileBtnBg
-                    anchors.fill: parent
-                    
-                    readonly property real topLeftRadius: 4
-                    readonly property real bottomLeftRadius: 4
-                    readonly property real topRightRadius: Theme.cornerRadius
-                    readonly property real bottomRightRadius: Theme.cornerRadius
-                    
-                    property color fillColor: sendFileArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                    property color borderColor: sendFileArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
-                    readonly property real borderWidth: 1
-
-                    Behavior on fillColor { ColorAnimation { duration: 200 } }
-                    Behavior on borderColor { ColorAnimation { duration: 200 } }
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.reset();
-                        
-                        var w = width;
-                        var h = height;
-                        var r = borderWidth / 2;
-                        var x = r;
-                        var y = r;
-                        w -= borderWidth;
-                        h -= borderWidth;
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(x + topLeftRadius, y);
-                        ctx.lineTo(x + w - topRightRadius, y);
-                        ctx.arcTo(x + w, y, x + w, y + topRightRadius, topRightRadius);
-                        ctx.lineTo(x + w, y + h - bottomRightRadius);
-                        ctx.arcTo(x + w, y + h, x + w - bottomRightRadius, y + h, bottomRightRadius);
-                        ctx.lineTo(x + bottomLeftRadius, y + h);
-                        ctx.arcTo(x, y + h, x, y + h - bottomLeftRadius, bottomLeftRadius);
-                        ctx.lineTo(x, y + h - bottomLeftRadius);
-                        ctx.lineTo(x, y + topLeftRadius);
-                        ctx.arcTo(x, y, x + topLeftRadius, y, topLeftRadius);
-                        ctx.closePath();
-                        
-                        ctx.fillStyle = fillColor;
-                        ctx.fill();
-                        
-                        ctx.lineWidth = borderWidth;
-                        ctx.strokeStyle = borderColor;
-                        ctx.stroke();
-                    }
-                    
-                    onFillColorChanged: requestPaint()
-                    onBorderColorChanged: requestPaint()
-                    onWidthChanged: requestPaint()
-                    onHeightChanged: requestPaint()
-                }
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: Theme.spacingXS
-
-                    DankIcon {
-                        name: "upload_file"
-                        size: 16
-                        color: sendFileArea.containsMouse ? Theme.primary : Theme.surfaceVariantText
-                        scale: sendFileArea.containsMouse ? 1.15 : 1.0
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                    }
-
-                    StyledText {
-                        text: I18n.tr("Send File", "KDE Connect send file button")
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.weight: Font.Medium
-                        color: sendFileArea.containsMouse ? Theme.primary : Theme.surfaceText
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-                }
-
-                DankRipple {
-                    id: sendFileRipple
-                    anchors.fill: parent
-                    cornerRadius: Theme.cornerRadius
-                    rippleColor: Theme.primary
-                }
-
-                MouseArea {
-                    id: sendFileArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onPressed: function(m) { sendFileRipple.trigger(m.x, m.y) }
-                    onClicked: fileBrowser.open()
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: -1
-                    color: "transparent"
-                    border.color: Theme.primary
-                    border.width: 2
-                    radius: Theme.cornerRadius
-                    visible: parent.activeFocus
-                }
-
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
-                        fileBrowser.open();
-                        event.accepted = true;
-                    }
-                }
+            ShareActionButton {
+                label: I18n.tr("File", "KDE Connect send file button")
+                iconName: "upload_file"
+                onClicked: fileBrowser.open()
             }
         }
     }
