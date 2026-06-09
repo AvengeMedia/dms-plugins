@@ -19,6 +19,7 @@ StyledRect {
     property string deviceId: ""
     property var parentPopout: null
     property alias shareText: shareInput.text
+    property bool shareClipboardAvailable: true
 
     signal close
     signal share(string content, bool isUrl)
@@ -245,20 +246,23 @@ StyledRect {
                 width: 36
                 height: shareInput.height
                 radius: Theme.cornerRadius
-                color: quickClipboardBtnArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                readonly property bool isEnabled: root.shareClipboardAvailable
+                color: (isEnabled && quickClipboardBtnArea.containsMouse) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
                 border.width: 1
-                border.color: Theme.withAlpha(Theme.primary, quickClipboardBtnArea.containsMouse ? 0.3 : 0.15)
-                activeFocusOnTab: true
+                border.color: Theme.withAlpha(Theme.primary, (isEnabled && quickClipboardBtnArea.containsMouse) ? 0.3 : 0.15)
+                opacity: isEnabled ? 1.0 : 0.4
+                activeFocusOnTab: isEnabled
                 
                 function triggerClipboardShare() {
-                    root.shareClipboard();
+                    if (isEnabled)
+                        root.shareClipboard();
                 }
 
                 DankIcon {
                     anchors.centerIn: parent
                     name: "content_paste"
                     size: 16
-                    color: quickClipboardBtnArea.containsMouse ? Theme.primary : Theme.surfaceVariantText
+                    color: (quickClipboardBtn.isEnabled && quickClipboardBtnArea.containsMouse) ? Theme.primary : Theme.surfaceVariantText
                 }
 
                 DankRipple {
@@ -271,9 +275,9 @@ StyledRect {
                 MouseArea {
                     id: quickClipboardBtnArea
                     anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onPressed: function(m) { clipboardRipple.trigger(m.x, m.y) }
+                    hoverEnabled: quickClipboardBtn.isEnabled
+                    cursorShape: quickClipboardBtn.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onPressed: function(m) { if (quickClipboardBtn.isEnabled) clipboardRipple.trigger(m.x, m.y) }
                     onClicked: quickClipboardBtn.triggerClipboardShare()
                 }
 
@@ -290,7 +294,7 @@ StyledRect {
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
                         quickClipboardBtn.triggerClipboardShare();
-                        event.accepted = true;
+                        event.accepted = quickClipboardBtn.isEnabled;
                     }
                 }
             }

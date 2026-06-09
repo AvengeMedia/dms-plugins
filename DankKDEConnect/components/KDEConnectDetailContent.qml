@@ -718,15 +718,17 @@ Item {
                     width: parent.width
                     deviceId: root.effectiveDeviceId
                     parentPopout: root.parentPopout
+                    // TODO: Consider switching this to read the clipboard and share it as text.
+                    shareClipboardAvailable: root.effectiveDeviceId !== "" && PhoneConnectService.hasPlugin(root.effectiveDeviceId, "clipboard")
                     onClose: root.shareDeviceId = ""
-                    onShare: {
+                    onShare: function(content, isUrl) {
                         if (isUrl)
                             PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
                         else
                             PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
                         root.shareDeviceId = "";
                     }
-                    onShareFile: {
+                    onShareFile: function(path) {
                         PhoneConnectService.shareUrl(root.effectiveDeviceId, "file://" + path, function() {});
                         root.shareDeviceId = "";
                     }
@@ -742,7 +744,7 @@ Item {
                     width: parent.width
                     deviceId: root.effectiveDeviceId
                     onClose: root.smsDeviceId = ""
-                    onSendSms: {
+                    onSendSms: function(phoneNumber, message) {
                         PhoneConnectService.sendSms(root.effectiveDeviceId, phoneNumber, message, [], function(response) {
                             if (response.error) {
                                 ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
