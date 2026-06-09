@@ -1583,8 +1583,7 @@ PluginComponent {
                         root.showShareDialog = false;
                     }
                     onShareFile: function(path) {
-                        const fileUrl = "file://" + path;
-                        PhoneConnectService.shareUrl(root.shareDeviceId, fileUrl, function(response) {
+                        PhoneConnectService.shareFile(root.shareDeviceId, path, function(response) {
                             if (response.error) {
                                 ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
                                 return;

@@ -729,7 +729,7 @@ Item {
                         root.shareDeviceId = "";
                     }
                     onShareFile: function(path) {
-                        PhoneConnectService.shareUrl(root.effectiveDeviceId, "file://" + path, function() {});
+                        PhoneConnectService.shareFile(root.effectiveDeviceId, path, function() {});
                         root.shareDeviceId = "";
                     }
                     onShareClipboard: {
