@@ -45,31 +45,17 @@ Item {
     implicitHeight: contentColumn.implicitHeight + Theme.spacingM * 2
     height: contentColumn.implicitHeight + Theme.spacingM * 2
 
-    function sendClipboardWayland() {
-        Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
-            let content = stdout || "";
-            content = content.trim();
-            if (content.length > 0) {
-                if (typeof shareDialog !== "undefined" && shareDialog) {
-                    shareDialog.shareText = content;
-                }
-                
-                let isUrl = content.startsWith("http://") || content.startsWith("https://");
-                if (isUrl)
-                    PhoneConnectService.shareUrl(root.effectiveDeviceId, content, function() {});
-                else
-                    PhoneConnectService.shareText(root.effectiveDeviceId, content, function() {});
-                
-                if (typeof shareDialog !== "undefined" && shareDialog) {
-                    shareDialog.shareText = "";
-                }
-                
-                if (typeof ToastService !== "undefined")
-                    ToastService.showInfo(I18n.tr("Clipboard sent"));
-            } else {
-                if (typeof ToastService !== "undefined")
-                    ToastService.showError(I18n.tr("Clipboard is empty or wl-paste failed."));
+    function sendClipboardToDevice() {
+        sendClipboardToDeviceId(root.effectiveDeviceId);
+    }
+
+    function sendClipboardToDeviceId(deviceId) {
+        PhoneConnectService.sendClipboard(deviceId, function(response) {
+            if (response.error) {
+                ToastService.showError(I18n.tr("Failed to send clipboard", "Phone Connect error"), response.error);
+                return;
             }
+            ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
         });
     }
 
@@ -426,7 +412,7 @@ Item {
                                     } else if (action === "ping") {
                                         PhoneConnectService.sendPing(modelData, "", function() {});
                                     } else if (action === "clipboard") {
-                                        PhoneConnectService.sendClipboard(modelData, function() {});
+                                        root.sendClipboardToDeviceId(modelData);
                                     } else if (action === "share") {
                                         root.shareDeviceId = modelData;
                                     } else if (action === "sms") {
@@ -641,7 +627,7 @@ Item {
                                             tooltipText: I18n.tr("Send Clipboard", "KDE Connect send clipboard tooltip")
                                             onClicked: {
                                                 if (!enabled) return;
-                                                root.sendClipboardWayland()
+                                                root.sendClipboardToDevice()
                                             }
                                         }
                                     }
@@ -745,7 +731,7 @@ Item {
                         root.shareDeviceId = "";
                     }
                     onShareClipboard: {
-                        root.sendClipboardWayland()
+                        root.sendClipboardToDevice()
                         root.shareDeviceId = "";
                     }
                 }

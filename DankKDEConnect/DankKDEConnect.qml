@@ -532,23 +532,13 @@ PluginComponent {
             pluginService.savePluginData("dankKDEConnect", "selectedDeviceId", deviceId);
     }
 
-    function sendClipboardWayland(deviceId) {
-        Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
-            let content = stdout || "";
-            content = content.trim();
-            if (content.length > 0) {
-                let isUrl = content.startsWith("http://") || content.startsWith("https://");
-                if (isUrl)
-                    PhoneConnectService.shareUrl(deviceId, content, function() {});
-                else
-                    PhoneConnectService.shareText(deviceId, content, function() {});
-                
-                if (typeof ToastService !== "undefined")
-                    ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
-            } else {
-                if (typeof ToastService !== "undefined")
-                    ToastService.showError(I18n.tr("Clipboard is empty or wl-paste failed."));
+    function sendClipboardToDevice(deviceId) {
+        PhoneConnectService.sendClipboard(deviceId, function(response) {
+            if (response.error) {
+                ToastService.showError(I18n.tr("Failed to send clipboard", "Phone Connect error"), response.error);
+                return;
             }
+            ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
         });
     }
 
@@ -575,7 +565,7 @@ PluginComponent {
             });
             break;
         case "clipboard":
-            root.sendClipboardWayland(deviceId);
+            root.sendClipboardToDevice(deviceId);
             break;
         case "share":
             showSmsDialog = false;
@@ -1600,6 +1590,10 @@ PluginComponent {
                             const filename = path.split("/").pop();
                             ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + filename + "...");
                         });
+                        root.showShareDialog = false;
+                    }
+                    onShareClipboard: {
+                        root.sendClipboardToDevice(root.shareDeviceId)
                         root.showShareDialog = false;
                     }
                 }

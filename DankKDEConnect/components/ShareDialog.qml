@@ -251,18 +251,7 @@ StyledRect {
                 activeFocusOnTab: true
                 
                 function triggerClipboardShare() {
-                    Proc.runCommand(null, ["wl-paste"], function(stdout, exitCode) {
-                        let content = stdout || "";
-                        content = content.trim();
-                        if (content.length > 0) {
-                            shareInput.text = content;
-                            root.share(shareInput.text, root.isUrl(shareInput.text));
-                            shareInput.text = "";
-                        } else {
-                            if (typeof ToastService !== "undefined")
-                                ToastService.showError(I18n.tr("Clipboard is empty or wl-paste failed."));
-                        }
-                    });
+                    root.shareClipboard();
                 }
 
                 DankIcon {
