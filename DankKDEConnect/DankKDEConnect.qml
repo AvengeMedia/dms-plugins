@@ -2479,12 +2479,15 @@ PluginComponent {
 
                                     // Share/Send Button in the Corner (similar to the Pin button in QuickTote)
                                     Item {
+                                        id: recentImageSendButton
                                         width: 32
                                         height: 32
                                         anchors.top: parent.top
                                         anchors.right: parent.right
                                         anchors.topMargin: -6
                                         anchors.rightMargin: -6
+                                        readonly property bool isEnabled: root.activeDevice && root.activeDevice.isReachable && PhoneConnectService.hasPlugin(root.activeDeviceId, "share")
+                                        opacity: isEnabled ? 1.0 : 0.4
                                         scale: (imageItem.hovered) ? 1.0 : 0.0
                                         Behavior on scale { 
                                             SequentialAnimation {
@@ -2507,7 +2510,7 @@ PluginComponent {
                                             layer.effect: MultiEffect {
                                                 shadowEnabled: true
                                                 shadowBlur: 0.3
-                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", sendBtnMa.containsMouse ? 0.35 : 0)
+                                                shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? 0.35 : 0)
                                                 Behavior on shadowColor { ColorAnimation { duration: 200 } }
                                             }
                                         }
@@ -2516,21 +2519,24 @@ PluginComponent {
                                             name: "send"
                                             size: 14
                                             anchors.centerIn: parent
-                                            color: sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
+                                            color: recentImageSendButton.isEnabled && sendBtnMa.containsMouse ? Theme.primary : Theme.surfaceText
                                         }
 
                                         MouseArea {
                                             id: sendBtnMa
                                             anchors.fill: parent
-                                            hoverEnabled: true
+                                            hoverEnabled: recentImageSendButton.isEnabled
+                                            cursorShape: recentImageSendButton.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                             onClicked: {
-                                                Quickshell.execDetached([
-                                                    "sh",
-                                                    "-c",
-                                                    "gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Share.Share \"\" \"Share Image\" {} \"file://$1\" >/dev/null 2>&1 || dms open \"$1\"",
-                                                    "--",
-                                                    modelData.path
-                                                ]);
+                                                if (!recentImageSendButton.isEnabled)
+                                                    return;
+                                                PhoneConnectService.shareFile(root.activeDeviceId, modelData.path, function(response) {
+                                                    if (response.error) {
+                                                        ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
+                                                        return;
+                                                    }
+                                                    ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + modelData.name + "...");
+                                                });
                                                 root.closePopout();
                                             }
                                         }
