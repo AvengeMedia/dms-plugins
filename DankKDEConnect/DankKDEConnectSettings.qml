@@ -514,7 +514,15 @@ PluginSettings {
                                 placeholderText: "e.g. ~/Pictures or ~/Screenshots"
                                 text: mainSettingsCol.getDeviceRecentImagesPath(deviceSettingsRect.modelData)
                                 onEditingFinished: {
-                                    mainSettingsCol.saveDeviceRecentImagesPath(deviceSettingsRect.modelData, text)
+                                    let newText = text;
+                                    PhoneConnectService.getSftpMountPoint(deviceSettingsRect.modelData, function(mountPoint) {
+                                        if (mountPoint && newText && !newText.startsWith(mountPoint)) {
+                                            ToastService.showError("Invalid Path", "Path must be located on the remote device.");
+                                            recentImagesPathField.text = mainSettingsCol.getDeviceRecentImagesPath(deviceSettingsRect.modelData);
+                                        } else {
+                                            mainSettingsCol.saveDeviceRecentImagesPath(deviceSettingsRect.modelData, newText);
+                                        }
+                                    });
                                 }
                             }
 
@@ -523,9 +531,17 @@ PluginSettings {
                                 text: "Browse"
                                 Layout.alignment: Qt.AlignVCenter
                                 onClicked: {
-                                    recentImagesBrowser.targetDeviceId = deviceSettingsRect.modelData;
-                                    recentImagesBrowser.targetField = recentImagesPathField;
-                                    recentImagesBrowser.open();
+                                    PhoneConnectService.mountAndWait(deviceSettingsRect.modelData, function(success) {
+                                        PhoneConnectService.getSftpMountPoint(deviceSettingsRect.modelData, function(mountPoint) {
+                                            recentImagesBrowser.targetDeviceId = deviceSettingsRect.modelData;
+                                            recentImagesBrowser.targetField = recentImagesPathField;
+                                            recentImagesBrowser.remoteMountPoint = mountPoint;
+                                            if (mountPoint) {
+                                                recentImagesBrowser.currentFolder = "file://" + mountPoint;
+                                            }
+                                            recentImagesBrowser.open();
+                                        });
+                                    });
                                 }
                             }
                         }
@@ -644,6 +660,20 @@ PluginSettings {
                         onToggled: function(newChecked) {
                             checked = newChecked;
                             mainSettingsCol.saveValue("showDevicePlaceholder", newChecked);
+                        }
+                    }
+
+                    DankToggle {
+                        id: scanSubdirectoriesToggle
+                        width: parent.width
+                        text: "Scan Subdirectories for Images"
+                        description: "Scan all directories inside the selected recent images path recursively."
+                        Component.onCompleted: {
+                            checked = mainSettingsCol.loadValue("scanSubdirectories", false);
+                        }
+                        onToggled: function(newChecked) {
+                            checked = newChecked;
+                            mainSettingsCol.saveValue("scanSubdirectories", newChecked);
                         }
                     }
                 }
@@ -972,6 +1002,7 @@ PluginSettings {
         id: recentImagesBrowser
         property string targetDeviceId: ""
         property var targetField: null
+        property string remoteMountPoint: ""
 
         title: "Select Recent Images Folder"
         
@@ -979,6 +1010,10 @@ PluginSettings {
             var path = selectedFolder.toString();
             if (path.startsWith("file://")) {
                 path = path.substring(7);
+            }
+            if (remoteMountPoint && !path.startsWith(remoteMountPoint)) {
+                ToastService.showError("Invalid Directory", "Path must be located on the remote device.\nSelected: " + path);
+                return;
             }
             if (targetField) {
                 targetField.text = path

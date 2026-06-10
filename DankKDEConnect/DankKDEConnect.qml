@@ -62,6 +62,16 @@ PluginComponent {
     }
 
     PluginGlobalVar {
+        id: recentImagesCacheMapVar
+        varName: "recentImagesCacheMap"
+    }
+
+    PluginGlobalVar {
+        id: scanSubdirectoriesVar
+        varName: "scanSubdirectories"
+    }
+
+    PluginGlobalVar {
         id: showDevicePlaceholderVar
         varName: "showDevicePlaceholder"
     }
@@ -210,6 +220,38 @@ PluginComponent {
             }
         }
         return "";
+    }
+
+    function loadRecentImagesCache(path) {
+        if (!path) return [];
+        const savedVal = recentImagesCacheMapVar.value;
+        if (savedVal) {
+            try {
+                const map = JSON.parse(savedVal);
+                if (map[path]) return map[path];
+            } catch(e) {}
+        }
+        const data = SettingsData.pluginSettings["dankKDEConnect"];
+        if (data && data.recentImagesCacheMap) {
+            try {
+                const map = JSON.parse(data.recentImagesCacheMap);
+                if (map[path]) return map[path];
+            } catch(e) {}
+        }
+        return [];
+    }
+
+    function saveRecentImagesCache() {
+        if (!root.recentImagesPath || root.recentImages.length === 0) return;
+        const savedVal = recentImagesCacheMapVar.value;
+        let map = {};
+        if (savedVal) {
+            try { map = JSON.parse(savedVal); } catch(e) {}
+        }
+        map[root.recentImagesPath] = root.recentImages;
+        let str = JSON.stringify(map);
+        recentImagesCacheMapVar.set(str);
+        PluginService.savePluginData("dankKDEConnect", "recentImagesCacheMap", str);
     }
 
     function loadMaxRecentImages() {
@@ -370,6 +412,7 @@ PluginComponent {
     readonly property string pluginId: "dankKDEConnect"
     property bool enableClipboardAction: (enableClipboardActionVar.value !== undefined && enableClipboardActionVar.value !== null) ? (enableClipboardActionVar.value === true || enableClipboardActionVar.value === "true") : ((SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction !== undefined) ? (SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction === true || SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction === "true") : true)
     property bool showOngoingMedia: (showOngoingMediaVar.value !== undefined && showOngoingMediaVar.value !== null) ? (showOngoingMediaVar.value === true || showOngoingMediaVar.value === "true") : ((SettingsData.pluginSettings["dankKDEConnect"]?.showOngoingMedia !== undefined) ? (SettingsData.pluginSettings["dankKDEConnect"]?.showOngoingMedia === true || SettingsData.pluginSettings["dankKDEConnect"]?.showOngoingMedia === "true") : true)
+    property bool scanSubdirectories: (scanSubdirectoriesVar.value !== undefined && scanSubdirectoriesVar.value !== null) ? (scanSubdirectoriesVar.value === true || scanSubdirectoriesVar.value === "true") : ((SettingsData.pluginSettings["dankKDEConnect"]?.scanSubdirectories !== undefined) ? (SettingsData.pluginSettings["dankKDEConnect"]?.scanSubdirectories === true || SettingsData.pluginSettings["dankKDEConnect"]?.scanSubdirectories === "true") : false)
     property int stateUpdateInterval: (stateUpdateIntervalVar.value !== undefined && stateUpdateIntervalVar.value !== null && stateUpdateIntervalVar.value !== "") ? (parseInt(stateUpdateIntervalVar.value) || 30) : (parseInt(SettingsData.pluginSettings["dankKDEConnect"]?.stateUpdateInterval) || 30)
 
     readonly property bool isDarkTheme: (Theme.surface.r * 0.299 + Theme.surface.g * 0.587 + Theme.surface.b * 0.114) < 0.5
@@ -2407,6 +2450,9 @@ PluginComponent {
         
         const doScan = function() {
             if (imagesScanner) {
+                if (!clearFirst && imagesScanner.running) {
+                    return; // Avoid aborting an ongoing scan, which causes flickering
+                }
                 imagesScanner.running = false;
                 Qt.callLater(function() {
                     if (root.recentImagesPath) imagesScanner.running = true;
@@ -2424,14 +2470,20 @@ PluginComponent {
     }
 
     onRecentImagesPathChanged: {
-        // Only act when path has a real value or just became empty (device switched away)
-        refreshImages(true);
+        const cached = loadRecentImagesCache(root.recentImagesPath);
+        if (cached && cached.length > 0) {
+            root.recentImages = cached;
+            refreshImages(false);
+        } else {
+            refreshImages(true);
+        }
     }
     onMaxRecentImagesChanged: refreshImages(true)
+    onScanSubdirectoriesChanged: refreshImages(true)
 
     Timer {
         id: imageRefreshTimer
-        interval: 10000
+        interval: root.stateUpdateInterval > 0 ? (root.stateUpdateInterval * 1000) : 30000
         running: root.activeDeviceId !== "" && PhoneConnectService.hasPlugin(root.activeDeviceId, "sftp")
         repeat: true
         triggeredOnStart: true
@@ -2475,13 +2527,14 @@ PluginComponent {
     Process {
         id: imagesScanner
         running: false
-        command: ["bash", "-c", `d="${root.recentImagesPath}"; d=\${d#file://}; d=\${d#localhost}; d=\${d/#\\~/$HOME}; [ -d "$d" ] && find "$d" -maxdepth 1 -type f -not -name ".*" -not -name "*trashed*" \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \\) -printf '%T@|%p\\n' | sort -rn | head -n ${root.maxRecentImages}`]
+        command: ["bash", "-c", `d="${root.recentImagesPath}"; d=\${d#file://}; d=\${d#localhost}; d=\${d/#\\~/$HOME}; [ -d "$d" ] && find "$d" ${root.scanSubdirectories ? "-maxdepth 4" : "-maxdepth 1"} -type f -not -name ".*" -not -name "*trashed*" \\( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" \\) -printf '%T@|%p\\n' 2>/dev/null | sort -rn | head -n ${root.maxRecentImages}`]
         stdout: StdioCollector {
             onStreamFinished: {
                 let lines = text.trim().split('\n').filter(function(l) { return l !== ""; });
                 let newImages = lines.map(root.getFileInfo).filter(function(f) { return f !== null; });
                 if (newImages.length !== root.recentImages.length) {
                     root.recentImages = newImages;
+                    saveRecentImagesCache();
                 } else {
                     let changed = false;
                     for (let i = 0; i < newImages.length; i++) {
@@ -2492,6 +2545,7 @@ PluginComponent {
                     }
                     if (changed) {
                         root.recentImages = newImages;
+                        saveRecentImagesCache();
                     }
                 }
             }
