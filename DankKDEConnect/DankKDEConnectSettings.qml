@@ -5,7 +5,9 @@ import qs.Modules.Plugins
 import qs.Modals.FileBrowser
 import QtQuick.Layouts
 import qs.Services
+import qs.Services
 import "./services"
+import QtQuick.Dialogs
 
 PluginSettings {
     id: root
@@ -772,8 +774,63 @@ PluginSettings {
                             Layout.alignment: Qt.AlignVCenter
                             spacing: Theme.spacingXXS
                             StyledText { text: "State Update Interval"; width: parent.width; font.weight: Font.Medium; color: Theme.surfaceText }
-                            StyledText { text: "How often to automatically update/refresh the plugin state (0 to disable)."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
+                            StyledText { text: "How often to automatically update/refresh the plugin state."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
                         }
+
+                        Rectangle {
+                            id: intervalResetBtn
+                            width: 32; height: 32
+                            radius: Theme.cornerRadius
+                            Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                            color: intervalResetMa.containsMouse ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh
+                            border.color: intervalResetMa.containsMouse ? Theme.primary : Theme.outline
+                            border.width: 1
+                            opacity: updateIntervalSlider.value !== updateIntervalSlider.defaultValue ? (intervalResetMa.containsMouse ? 1.0 : 0.9) : 0.0
+                            visible: opacity > 0
+                            scale: intervalResetMa.containsMouse ? 1.1 : 1.0
+                            
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            Behavior on opacity { NumberAnimation { duration: 250 } }
+                            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+
+                            DankRipple {
+                                id: intervalRip
+                                anchors.fill: parent
+                                cornerRadius: parent.radius
+                                rippleColor: Theme.primary 
+                            }
+
+                            DankIcon {
+                                name: "restart_alt"
+                                size: 18
+                                anchors.centerIn: parent
+                                color: intervalResetMa.containsMouse ? Theme.primary : Theme.surfaceVariantText
+                                rotation: intervalResetMa.containsMouse ? 90 : 0
+                                Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                            }
+
+                            MouseArea {
+                                id: intervalResetMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    intervalResetAnim.restart();
+                                    mainSettingsCol.saveValue(updateIntervalSlider.settingKey, updateIntervalSlider.defaultValue);
+                                }
+                                onPressed: function(m) { intervalRip.trigger(m.x, m.y) }
+                            }
+                        }
+                    }
+
+                    NumberAnimation {
+                        id: intervalResetAnim
+                        target: updateIntervalSlider
+                        property: "value"
+                        to: updateIntervalSlider.defaultValue
+                        duration: 300
+                        easing.type: Easing.OutCubic
                     }
 
                     DankSlider {
@@ -784,7 +841,7 @@ PluginSettings {
                         minimum: 0
                         maximum: 300
                         step: 5
-                        unit: value === 0 ? " (Disabled)" : " seconds"
+                        unit: value === 0 ? " Disabled" : " seconds"
                         wheelEnabled: false
                         
                         function loadValue() {
@@ -911,17 +968,18 @@ PluginSettings {
         }
     }
 
-    FileBrowserSurfaceModal {
+    FolderDialog {
         id: recentImagesBrowser
         property string targetDeviceId: ""
         property var targetField: null
 
-        browserTitle: "Select Recent Images Folder"
-        browserIcon: "folder"
-        browserType: "folder"
-        showHiddenFiles: false
+        title: "Select Recent Images Folder"
         
-        onFileSelected: function(path) {
+        onAccepted: function() {
+            var path = selectedFolder.toString();
+            if (path.startsWith("file://")) {
+                path = path.substring(7);
+            }
             if (targetField) {
                 targetField.text = path
             }

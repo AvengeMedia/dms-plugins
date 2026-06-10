@@ -408,7 +408,7 @@ PluginComponent {
             anchors.fill: parent
             clip: false
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+            ScrollBar.vertical.policy: ScrollBar.AlwaysOff
 
             KDEConnectDetailContent {
                 width: parent.width
@@ -2372,13 +2372,13 @@ PluginComponent {
                                             onClicked: {
                                                 if (!recentImageSendButton.isEnabled)
                                                     return;
-                                                PhoneConnectService.shareFile(root.activeDeviceId, modelData.path, function(response) {
-                                                    if (response.error) {
-                                                        ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
-                                                        return;
-                                                    }
-                                                    ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + modelData.name + "...");
-                                                });
+                                                Quickshell.execDetached([
+                                                    "sh",
+                                                    "-c",
+                                                    "gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Share.Share \"\" \"Share Image\" {} \"file://$1\" >/dev/null 2>&1 || dms open \"$1\"",
+                                                    "--",
+                                                    modelData.path
+                                                ]);
                                                 root.closePopout();
                                             }
                                         }

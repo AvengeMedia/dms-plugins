@@ -757,14 +757,6 @@ Item {
                     border.width: 1
                     border.color: root.cardBorderColor
 
-                    layer.enabled: shouldBeVisible || height > 0
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 4
-                        shadowBlur: 0.6
-                        shadowColor: Theme.withAlpha(Theme.shadowColor || "#000000", 0.25)
-                    }
 
                     Column {
                         id: recentImagesCol
@@ -1053,7 +1045,13 @@ Item {
                                             onClicked: {
                                                 if (!recentImageSendButton.isEnabled)
                                                     return;
-                                                PhoneConnectService.shareFile(root.activeDeviceId, modelData.path, function() {});
+                                                Quickshell.execDetached([
+                                                    "sh",
+                                                    "-c",
+                                                    "gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Share.Share \"\" \"Share Image\" {} \"file://$1\" >/dev/null 2>&1 || dms open \"$1\"",
+                                                    "--",
+                                                    modelData.path
+                                                ]);
                                                 PopoutService.closeControlCenter();
                                             }
                                         }
@@ -1068,206 +1066,380 @@ Item {
                 StyledRect {
                     id: mprisContainer
                     width: parent.width
-                    height: Math.max(80, mprisCol.implicitHeight) + Theme.spacingM * 2
-                    visible: root.hasDevice && root.showOngoingMedia && (root.selectedDevice?.mediaTitle || "") !== ""
+                    height: mprisMainLayout.implicitHeight + Theme.spacingM * 4
+                    visible: root.pluginRoot.hasOngoingMediaActive
                     radius: Theme.cornerRadius
                     color: root.cardColor
                     border.width: 1
                     border.color: root.cardBorderColor
+                    clip: true
 
-
-                    // --- Ocean Wave Background ---
-                    Canvas {
-                        id: waveCanvas
-                        anchors.fill: parent
-                        z: 1
-                        opacity: root.selectedDevice?.mediaIsPlaying ? 0.35 : 0.1
-                        
-                        property real phase: 0
-                        
-                        Timer {
-                            interval: 16
-                            running: root.selectedDevice?.mediaIsPlaying || false
-                            repeat: true
-                            onTriggered: {
-                                waveCanvas.phase += 0.05;
-                                waveCanvas.requestPaint();
+                    Timer {
+                        interval: 1000
+                        running: (root.pluginRoot.phoneMprisPlayer ? (root.pluginRoot.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false)) && !root.pluginRoot.isSeeking
+                        repeat: true
+                        onTriggered: {
+                            if (root.pluginRoot.phoneMprisPlayer) {
+                                root.pluginRoot.phoneMprisPlayer.positionChanged();
                             }
-                        }
-
-                        onPaint: {
-                            var ctx = getContext("2d");
-                            ctx.clearRect(0, 0, width, height);
-                            
-                            drawWave(ctx, Theme.withAlpha(Theme.primary, 0.15), 0.5, 12, phase);
-                            drawWave(ctx, Theme.withAlpha(Theme.primary, 0.25), 0.8, 8, phase * 0.7);
-                            drawWave(ctx, Theme.withAlpha(Theme.primary, 0.30), 0.8, 8, phase * 0.9);
-                        }
-
-                        function drawWave(ctx, color, speed, amplitude, currentPhase) {
-                            ctx.beginPath();
-                            ctx.fillStyle = color;
-                            
-                            var waveHeight = height * 0.75;
-                            ctx.moveTo(0, height);
-                            
-                            for (var x = 0; x <= width; x += 5) {
-                                var y = waveHeight + Math.sin(x * 0.025 + currentPhase) * amplitude;
-                                ctx.lineTo(x, y);
-                            }
-                            
-                            ctx.lineTo(width, height);
-                            ctx.closePath();
-                            ctx.fill();
                         }
                     }
 
-                    RowLayout {
+                    ColumnLayout {
+                        id: mprisMainLayout
                         anchors.fill: parent
                         anchors.margins: Theme.spacingM
                         spacing: Theme.spacingM
                         z: 2
 
-                        // Rotating Vinyl Record / CD
-                        Rectangle {
-                            id: thumbnailContainer
-                            width: 80
-                            height: 80
-                            radius: 40
-                            color: Theme.withAlpha(Theme.surfaceContainerHighest || "#000000", 0.4)
-                            border.color: Theme.withAlpha(Theme.primary, 0.2)
-                            border.width: 1
-                            clip: true
-                            Layout.alignment: Qt.AlignVCenter
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingXS
+                            
+                            Item {
+                                width: 16
+                                height: 16
+                                
+                                property string serviceIdStr: (root.pluginRoot.phoneMprisPlayer && root.pluginRoot.phoneMprisPlayer.identity) ? root.pluginRoot.phoneMprisPlayer.identity.toLowerCase() : ""
+                                property string serviceIconSvg: {
+                                    if (serviceIdStr.includes("spotify")) return "assets/icons/spotify.svg";
+                                    if (serviceIdStr.includes("youtube")) return "assets/icons/youtube.svg";
+                                    if (serviceIdStr.includes("soundcloud")) return "assets/icons/soundcloud.svg";
+                                    if (serviceIdStr.includes("apple")) return "assets/icons/applemusic.svg";
+                                    return "";
+                                }
 
-                            property real albumRotation: 0
+                                DankIcon {
+                                    anchors.centerIn: parent
+                                    name: "music_note"
+                                    size: 16
+                                    color: Theme.primary
+                                    visible: parent.serviceIconSvg === ""
+                                }
 
-                            NumberAnimation {
-                                id: rotationAnimation
-                                target: thumbnailContainer
-                                property: "albumRotation"
-                                from: 0
-                                to: 360
-                                duration: 20000
-                                running: root.selectedDevice?.mediaIsPlaying || false
-                                loops: Animation.Infinite
+                                Image {
+                                    id: svcIconImage
+                                    anchors.fill: parent
+                                    source: parent.serviceIconSvg !== "" ? Qt.resolvedUrl(parent.serviceIconSvg) : ""
+                                    sourceSize: Qt.size(16, 16)
+                                    visible: false
+                                }
+
+                                Rectangle {
+                                    id: svcIconColorRect
+                                    anchors.fill: parent
+                                    color: Theme.primary
+                                    visible: false
+                                }
+
+                                MultiEffect {
+                                    anchors.fill: parent
+                                    source: svcIconColorRect
+                                    maskEnabled: true
+                                    maskSource: svcIconImage
+                                    visible: parent.serviceIconSvg !== ""
+                                }
+                            }
+                            
+                            StyledText {
+                                text: {
+                                    if (root.pluginRoot.phoneMprisPlayer && root.pluginRoot.phoneMprisPlayer.identity) {
+                                        return root.pluginRoot.phoneMprisPlayer.identity.split(" - ")[0];
+                                    }
+                                    return root.activeDevice?.mediaPlayer || I18n.tr("Media Player");
+                                }
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.DemiBold
+                                color: Theme.primary
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
                             }
 
-                            Item {
-                                anchors.fill: parent
-                                rotation: thumbnailContainer.albumRotation
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    anchors.margins: 6
-                                    radius: width / 2
-                                    color: "transparent"
-                                    border.color: Theme.withAlpha(Theme.surfaceText, 0.15)
-                                    border.width: 1
-                                }
-                                Rectangle {
-                                    anchors.fill: parent
-                                    anchors.margins: 14
-                                    radius: width / 2
-                                    color: "transparent"
-                                    border.color: Theme.withAlpha(Theme.surfaceText, 0.1)
-                                    border.width: 1
-                                }
-
-                                Rectangle {
-                                    width: 28
-                                    height: 28
-                                    radius: 14
-                                    anchors.centerIn: parent
-                                    color: Theme.primary
-                                    
-                                    DankIcon {
-                                        anchors.centerIn: parent
-                                        name: "music_note"
-                                        size: 16
-                                        color: Theme.surface
-                                    }
-                                }
+                            DankKDEActionButton {
+                                iconName: "speaker"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 24
+                                tooltipText: I18n.tr("Audio Output")
                             }
                         }
 
-                        ColumnLayout {
-                            id: mprisCol
+                        RowLayout {
                             Layout.fillWidth: true
-                            spacing: Theme.spacingXS
+                            spacing: Theme.spacingM
+                            
+                            Rectangle {
+                                id: smallThumbnailContainer
+                                width: 72
+                                height: 72
+                                radius: 36
+                                color: Theme.withAlpha(Theme.surfaceContainerHighest || "#000000", 0.4)
+                                border.color: Theme.withAlpha(Theme.primary, 0.2)
+                                border.width: 1
+                                clip: true
 
-                            // Header with Player Name
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: Theme.spacingXS
+                                property string activeArtUrl: root.pluginRoot.phoneMprisPlayer ? TrackArtService.getArtworkUrl(root.pluginRoot.phoneMprisPlayer) : ""
 
+                                DankCircularImage {
+                                    id: albumArt
+                                    anchors.fill: parent
+                                    imageSource: smallThumbnailContainer.activeArtUrl
+                                    fallbackIcon: "album"
+                                    visible: smallThumbnailContainer.activeArtUrl !== ""
+                                }
+                                
                                 DankIcon {
+                                    anchors.centerIn: parent
                                     name: "music_note"
-                                    size: 14
-                                    color: Theme.primary
+                                    size: 32
+                                    color: Theme.surfaceText
+                                    visible: !albumArt.visible
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                
+                                StyledText {
+                                    text: root.pluginRoot.phoneMprisPlayer ? (root.pluginRoot.phoneMprisPlayer.trackTitle || "Unknown Track") : (root.activeDevice?.mediaTitle || "Unknown Track")
+                                    font.pixelSize: Theme.fontSizeMedium
+                                    font.weight: Font.Bold
+                                    color: Theme.surfaceText
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
                                 }
 
                                 StyledText {
-                                    text: root.selectedDevice?.mediaPlayer || I18n.tr("Media Player")
+                                    text: {
+                                        if (root.pluginRoot.phoneMprisPlayer) {
+                                            let artist = root.pluginRoot.phoneMprisPlayer.trackArtist || "";
+                                            let album = root.pluginRoot.phoneMprisPlayer.trackAlbum || "";
+                                            if (artist && album) return artist + " — " + album;
+                                            return artist || album || I18n.tr("Unknown Artist");
+                                        } else {
+                                            let artist = root.activeDevice?.mediaArtist || "";
+                                            let album = root.activeDevice?.mediaAlbum || "";
+                                            if (artist && album) return artist + " — " + album;
+                                            return artist || album || I18n.tr("Unknown Artist");
+                                        }
+                                    }
                                     font.pixelSize: Theme.fontSizeSmall
-                                    font.weight: Font.DemiBold
-                                    color: Theme.primary
+                                    color: Theme.withAlpha(Theme.surfaceText, 0.6)
                                     Layout.fillWidth: true
                                     elide: Text.ElideRight
                                 }
                             }
 
-                            // Track details
-                            StyledText {
-                                text: root.selectedDevice?.mediaTitle || ""
-                                font.pixelSize: Theme.fontSizeMedium
-                                font.weight: Font.Bold
-                                color: Theme.surfaceText
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
+                            DankKDEActionButton {
+                                iconName: (root.pluginRoot.phoneMprisPlayer ? (root.pluginRoot.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) : (root.activeDevice?.mediaIsPlaying ?? false)) ? "pause" : "play_arrow"
+                                iconColor: Theme.primary
+                                backgroundColor: Theme.withAlpha(Theme.primary, 0.1)
+                                buttonSize: 48
+                                iconSize: 28
+                                tooltipText: iconName === "pause" ? I18n.tr("Pause", "Media pause tooltip") : I18n.tr("Play", "Media play tooltip")
+                                onClicked: {
+                                    if (root.pluginRoot.phoneMprisPlayer) {
+                                        root.pluginRoot.phoneMprisPlayer.playPause();
+                                    } else {
+                                        PhoneConnectService.mprisAction(root.activeDeviceId, "PlayPause", function() {});
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.spacingS
+
+                            DankKDEActionButton {
+                                iconName: "skip_previous"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Previous", "Media previous tooltip")
+                                onClicked: root.pluginRoot.phoneMprisPlayer ? root.pluginRoot.phoneMprisPlayer.previous() : PhoneConnectService.mprisAction(root.activeDeviceId, "previous", function() {})
+                            }
+                            
+                            DankKDEActionButton {
+                                iconName: "replay_10"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Rewind 10s", "Media rewind tooltip")
+                                onClicked: {
+                                    if (root.pluginRoot.phoneMprisPlayer && root.pluginRoot.phoneMprisPlayer.canSeek) {
+                                        root.pluginRoot.phoneMprisPlayer.position = Math.max(0, (root.pluginRoot.phoneMprisPlayer.position || 0) - 10);
+                                    }
+                                }
                             }
 
-                            StyledText {
-                                text: {
-                                    let artist = root.selectedDevice?.mediaArtist || "";
-                                    let album = root.selectedDevice?.mediaAlbum || "";
-                                    if (artist && album) return artist + " — " + album;
-                                    return artist || album || I18n.tr("Unknown Artist");
-                                }
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                elide: Text.ElideRight
+                                spacing: 2
+                                visible: root.pluginRoot.phoneMprisPlayer !== null && root.pluginRoot.phoneMprisPlayer.length > 0
+                                
+                                Item {
+                                    id: customSeekbar
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 16
+
+                                    readonly property real stableLength: root.pluginRoot.phoneMprisPlayer ? Math.max(1, root.pluginRoot.phoneMprisPlayer.length) : 1
+                                    readonly property real playerValue: {
+                                        if (!root.pluginRoot.phoneMprisPlayer || stableLength <= 0) return 0;
+                                        return Math.max(0, Math.min(1, (root.pluginRoot.phoneMprisPlayer.position || 0) / stableLength));
+                                    }
+                                    
+                                    property real seekPreviewRatio: -1
+                                    property real value: seekPreviewRatio >= 0 ? seekPreviewRatio : playerValue
+
+                                    Loader {
+                                        anchors.fill: parent
+                                        visible: root.pluginRoot.phoneMprisPlayer && stableLength > 0
+                                        sourceComponent: SettingsData.waveProgressEnabled ? waveComponent : flatComponent
+                                        
+                                        Component {
+                                            id: waveComponent
+                                            M3WaveProgress {
+                                                value: customSeekbar.value
+                                                actualValue: customSeekbar.playerValue
+                                                showActualPlaybackState: root.pluginRoot.isSeeking
+                                                actualProgressColor: Theme.withAlpha(Theme.surfaceText, 0.45)
+                                                isPlaying: root.pluginRoot.phoneMprisPlayer && root.pluginRoot.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing
+
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    enabled: root.pluginRoot.phoneMprisPlayer && root.pluginRoot.phoneMprisPlayer.canSeek && customSeekbar.stableLength > 0
+
+                                                    onPressed: mouse => {
+                                                        root.pluginRoot.isSeeking = true;
+                                                        customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                    }
+                                                    onPositionChanged: mouse => {
+                                                        if (pressed && root.pluginRoot.isSeeking) {
+                                                            customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                        }
+                                                    }
+                                                    onReleased: {
+                                                        root.pluginRoot.isSeeking = false;
+                                                        if (customSeekbar.seekPreviewRatio >= 0 && root.pluginRoot.phoneMprisPlayer) {
+                                                            root.pluginRoot.phoneMprisPlayer.position = Math.max(0.1, customSeekbar.seekPreviewRatio * customSeekbar.stableLength);
+                                                        }
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                    onCanceled: {
+                                                        root.pluginRoot.isSeeking = false;
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Component {
+                                            id: flatComponent
+                                            Item {
+                                                Rectangle {
+                                                    width: parent.width
+                                                    height: 4
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    color: Theme.withAlpha(Theme.surfaceText, 0.15)
+                                                    radius: 2
+                                                }
+                                                Rectangle {
+                                                    width: Math.max(0, Math.min(parent.width, parent.width * customSeekbar.value))
+                                                    height: 4
+                                                    anchors.left: parent.left
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    color: Theme.primary
+                                                    radius: 2
+                                                }
+                                                Rectangle {
+                                                    x: Math.max(0, Math.min(parent.width - width, parent.width * customSeekbar.value - width/2))
+                                                    width: 10
+                                                    height: 10
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    radius: 5
+                                                    color: Theme.primary
+                                                    visible: flatMouseArea.containsMouse || flatMouseArea.pressed
+                                                }
+                                                MouseArea {
+                                                    id: flatMouseArea
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    enabled: root.pluginRoot.phoneMprisPlayer && root.pluginRoot.phoneMprisPlayer.canSeek && customSeekbar.stableLength > 0
+
+                                                    onPressed: mouse => {
+                                                        root.pluginRoot.isSeeking = true;
+                                                        customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                    }
+                                                    onPositionChanged: mouse => {
+                                                        if (pressed && root.pluginRoot.isSeeking) {
+                                                            customSeekbar.seekPreviewRatio = Math.max(0, Math.min(1, mouse.x / width));
+                                                        }
+                                                    }
+                                                    onReleased: {
+                                                        root.pluginRoot.isSeeking = false;
+                                                        if (customSeekbar.seekPreviewRatio >= 0 && root.pluginRoot.phoneMprisPlayer) {
+                                                            root.pluginRoot.phoneMprisPlayer.position = Math.max(0.1, customSeekbar.seekPreviewRatio * customSeekbar.stableLength);
+                                                        }
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                    onCanceled: {
+                                                        root.pluginRoot.isSeeking = false;
+                                                        customSeekbar.seekPreviewRatio = -1;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    StyledText {
+                                        text: {
+                                            if (!root.pluginRoot.phoneMprisPlayer) return "0:00";
+                                            const seconds = root.pluginRoot.phoneMprisPlayer.position || 0;
+                                            const minutes = Math.floor(seconds / 60);
+                                            const secs = Math.floor(seconds % 60);
+                                            return minutes + ":" + (secs < 10 ? "0" : "") + secs;
+                                        }
+                                        font.pixelSize: Theme.fontSizeSmall * 0.8
+                                        color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                    StyledText {
+                                        text: {
+                                            if (!root.pluginRoot.phoneMprisPlayer || !root.pluginRoot.phoneMprisPlayer.length) return "0:00";
+                                            const seconds = root.pluginRoot.phoneMprisPlayer.length;
+                                            const minutes = Math.floor(seconds / 60);
+                                            const secs = Math.floor(seconds % 60);
+                                            return minutes + ":" + (secs < 10 ? "0" : "") + secs;
+                                        }
+                                        font.pixelSize: Theme.fontSizeSmall * 0.8
+                                        color: Theme.withAlpha(Theme.surfaceText, 0.6)
+                                    }
+                                }
                             }
 
-                            // Playback Controls
-                            RowLayout {
-                                spacing: Theme.spacingM
-                                Layout.alignment: Qt.AlignLeft
-
-                                DankKDEActionButton {
-                                    iconName: "skip_previous"
-                                    iconColor: Theme.surfaceText
-                                    buttonSize: 28
-                                    tooltipText: I18n.tr("Previous")
-                                    onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "previous", function() {})
+                            DankKDEActionButton {
+                                iconName: "forward_10"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Forward 10s", "Media forward tooltip")
+                                onClicked: {
+                                    if (root.pluginRoot.phoneMprisPlayer && root.pluginRoot.phoneMprisPlayer.canSeek) {
+                                        root.pluginRoot.phoneMprisPlayer.position = Math.min(root.pluginRoot.phoneMprisPlayer.length, (root.pluginRoot.phoneMprisPlayer.position || 0) + 10);
+                                    }
                                 }
+                            }
 
-                                DankKDEActionButton {
-                                    iconName: root.selectedDevice?.mediaIsPlaying ? "pause" : "play_arrow"
-                                    iconColor: Theme.primary
-                                    buttonSize: 32
-                                    tooltipText: root.selectedDevice?.mediaIsPlaying ? I18n.tr("Pause") : I18n.tr("Play")
-                                    onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "playpause", function() {})
-                                }
-
-                                DankKDEActionButton {
-                                    iconName: "skip_next"
-                                    iconColor: Theme.surfaceText
-                                    buttonSize: 28
-                                    tooltipText: I18n.tr("Next")
-                                    onClicked: PhoneConnectService.mprisAction(root.effectiveDeviceId, "next", function() {})
-                                }
+                            DankKDEActionButton {
+                                iconName: "skip_next"
+                                iconColor: Theme.surfaceText
+                                buttonSize: 28
+                                tooltipText: I18n.tr("Next", "Media next tooltip")
+                                onClicked: root.pluginRoot.phoneMprisPlayer ? root.pluginRoot.phoneMprisPlayer.next() : PhoneConnectService.mprisAction(root.activeDeviceId, "next", function() {})
                             }
                         }
                     }
