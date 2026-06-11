@@ -58,3 +58,5 @@ convert.py
 sync.sh
 dms_errors*.txt
 dms_journal*.txt
+UI_Modernization_Guidelines.md
+.gitignore

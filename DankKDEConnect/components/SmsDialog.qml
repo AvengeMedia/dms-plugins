@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import QtQuick.Effects
 import qs.Common
 import qs.Widgets
@@ -234,74 +235,30 @@ StyledRect {
 
         RowLayout {
             width: parent.width
-            spacing: Theme.spacingS
+            spacing: 2
 
-            Rectangle {
+            StyledRect {
                 id: sendSmsBtn
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 height: 36
-                color: "transparent"
-                border.width: 0
                 activeFocusOnTab: isEnabled
                 
                 readonly property bool isEnabled: phoneInput.text.length > 0 && messageInput.text.length > 0
                 opacity: isEnabled ? 1.0 : 0.4
+                
+                radius: 0
+                topLeftRadius: Theme.cornerRadius
+                bottomLeftRadius: Theme.cornerRadius
+                topRightRadius: 4
+                bottomRightRadius: 4
 
-                Canvas {
-                    id: sendSmsBtnBg
-                    anchors.fill: parent
-                    
-                    readonly property real topLeftRadius: Theme.cornerRadius
-                    readonly property real bottomLeftRadius: Theme.cornerRadius
-                    readonly property real topRightRadius: 4
-                    readonly property real bottomRightRadius: 4
-                    
-                    property color fillColor: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                    property color borderColor: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
-                    readonly property real borderWidth: 1
+                color: (isEnabled && (sendSmsArea.containsMouse || activeFocus)) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                border.width: 1
+                border.color: (isEnabled && (sendSmsArea.containsMouse || activeFocus)) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
 
-                    Behavior on fillColor { ColorAnimation { duration: 200 } }
-                    Behavior on borderColor { ColorAnimation { duration: 200 } }
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.reset();
-                        
-                        var w = width;
-                        var h = height;
-                        var r = borderWidth / 2;
-                        var x = r;
-                        var y = r;
-                        w -= borderWidth;
-                        h -= borderWidth;
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(x + topLeftRadius, y);
-                        ctx.lineTo(x + w - topRightRadius, y);
-                        ctx.arcTo(x + w, y, x + w, y + topRightRadius, topRightRadius);
-                        ctx.lineTo(x + w, y + h - bottomRightRadius);
-                        ctx.arcTo(x + w, y + h, x + w - bottomRightRadius, y + h, bottomRightRadius);
-                        ctx.lineTo(x + bottomLeftRadius, y + h);
-                        ctx.arcTo(x, y + h, x, y + h - bottomLeftRadius, bottomLeftRadius);
-                        ctx.lineTo(x, y + h - bottomLeftRadius);
-                        ctx.lineTo(x, y + topLeftRadius);
-                        ctx.arcTo(x, y, x + topLeftRadius, y, topLeftRadius);
-                        ctx.closePath();
-                        
-                        ctx.fillStyle = fillColor;
-                        ctx.fill();
-                        
-                        ctx.lineWidth = borderWidth;
-                        ctx.strokeStyle = borderColor;
-                        ctx.stroke();
-                    }
-                    
-                    onFillColorChanged: requestPaint()
-                    onBorderColorChanged: requestPaint()
-                    onWidthChanged: requestPaint()
-                    onHeightChanged: requestPaint()
-                }
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
 
                 Row {
                     anchors.centerIn: parent
@@ -324,16 +281,16 @@ StyledRect {
                         color: (sendSmsBtn.isEnabled && (sendSmsArea.containsMouse || sendSmsBtn.activeFocus)) ? Theme.primary : Theme.surfaceText
                         anchors.verticalCenter: parent.verticalCenter
 
-                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on color { ColorAnimation { duration: 150 } }
                     }
                 }
 
                 DankRipple {
                     id: sendSmsRipple
                     anchors.fill: parent
-                    cornerRadius: Theme.cornerRadius
+                    cornerRadius: parent.radius // Fallback, StyledRect handles corners manually but ripple needs it
+                    visible: sendSmsBtn.isEnabled
                     rippleColor: Theme.primary
-                    enabled: sendSmsBtn.isEnabled
                 }
 
                 MouseArea {
@@ -373,69 +330,25 @@ StyledRect {
                 }
             }
 
-            Rectangle {
+            StyledRect {
                 id: openAppBtn
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 height: 36
-                color: "transparent"
-                border.width: 0
                 activeFocusOnTab: true
+                
+                radius: 0
+                topLeftRadius: 4
+                bottomLeftRadius: 4
+                topRightRadius: Theme.cornerRadius
+                bottomRightRadius: Theme.cornerRadius
 
-                Canvas {
-                    id: openAppBtnBg
-                    anchors.fill: parent
-                    
-                    readonly property real topLeftRadius: 4
-                    readonly property real bottomLeftRadius: 4
-                    readonly property real topRightRadius: Theme.cornerRadius
-                    readonly property real bottomRightRadius: Theme.cornerRadius
-                    
-                    property color fillColor: (openAppArea.containsMouse || openAppBtn.activeFocus) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                    property color borderColor: (openAppArea.containsMouse || openAppBtn.activeFocus) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
-                    readonly property real borderWidth: 1
+                color: (openAppArea.containsMouse || activeFocus) ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                border.width: 1
+                border.color: (openAppArea.containsMouse || activeFocus) ? Theme.withAlpha(Theme.primary, 0.3) : Theme.withAlpha(Theme.primary, 0.15)
 
-                    Behavior on fillColor { ColorAnimation { duration: 200 } }
-                    Behavior on borderColor { ColorAnimation { duration: 200 } }
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.reset();
-                        
-                        var w = width;
-                        var h = height;
-                        var r = borderWidth / 2;
-                        var x = r;
-                        var y = r;
-                        w -= borderWidth;
-                        h -= borderWidth;
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(x + topLeftRadius, y);
-                        ctx.lineTo(x + w - topRightRadius, y);
-                        ctx.arcTo(x + w, y, x + w, y + topRightRadius, topRightRadius);
-                        ctx.lineTo(x + w, y + h - bottomRightRadius);
-                        ctx.arcTo(x + w, y + h, x + w - bottomRightRadius, y + h, bottomRightRadius);
-                        ctx.lineTo(x + bottomLeftRadius, y + h);
-                        ctx.arcTo(x, y + h, x, y + h - bottomLeftRadius, bottomLeftRadius);
-                        ctx.lineTo(x, y + h - bottomLeftRadius);
-                        ctx.lineTo(x, y + topLeftRadius);
-                        ctx.arcTo(x, y, x + topLeftRadius, y, topLeftRadius);
-                        ctx.closePath();
-                        
-                        ctx.fillStyle = fillColor;
-                        ctx.fill();
-                        
-                        ctx.lineWidth = borderWidth;
-                        ctx.strokeStyle = borderColor;
-                        ctx.stroke();
-                    }
-                    
-                    onFillColorChanged: requestPaint()
-                    onBorderColorChanged: requestPaint()
-                    onWidthChanged: requestPaint()
-                    onHeightChanged: requestPaint()
-                }
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
 
                 Row {
                     anchors.centerIn: parent
@@ -458,14 +371,14 @@ StyledRect {
                         color: (openAppArea.containsMouse || openAppBtn.activeFocus) ? Theme.primary : Theme.surfaceText
                         anchors.verticalCenter: parent.verticalCenter
 
-                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on color { ColorAnimation { duration: 150 } }
                     }
                 }
 
                 DankRipple {
                     id: openAppRipple
                     anchors.fill: parent
-                    cornerRadius: Theme.cornerRadius
+                    cornerRadius: parent.radius
                     rippleColor: Theme.primary
                 }
 

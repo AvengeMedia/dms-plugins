@@ -20,19 +20,19 @@ StyledRect {
 
     height: contentColumn.implicitHeight + Theme.spacingM * 2
     radius: 0
-    topLeftRadius: isSelected ? Theme.cornerRadius : (isFirst ? Theme.cornerRadius : 4)
-    topRightRadius: isSelected ? Theme.cornerRadius : (isFirst ? Theme.cornerRadius : 4)
-    bottomLeftRadius: isSelected ? Theme.cornerRadius : (isLast ? Theme.cornerRadius : 4)
-    bottomRightRadius: isSelected ? Theme.cornerRadius : (isLast ? Theme.cornerRadius : 4)
+    topLeftRadius: isSelected ? root.height / 2 : (isFirst ? Theme.cornerRadius : 4)
+    topRightRadius: isSelected ? root.height / 2 : (isFirst ? Theme.cornerRadius : 4)
+    bottomLeftRadius: isSelected ? root.height / 2 : (isLast ? Theme.cornerRadius : 4)
+    bottomRightRadius: isSelected ? root.height / 2 : (isLast ? Theme.cornerRadius : 4)
 
     Behavior on topLeftRadius { NumberAnimation { duration: 200 } }
     Behavior on topRightRadius { NumberAnimation { duration: 200 } }
     Behavior on bottomLeftRadius { NumberAnimation { duration: 200 } }
     Behavior on bottomRightRadius { NumberAnimation { duration: 200 } }
 
-    color: isSelected ? Theme.withAlpha(Theme.primary, 0.12) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.surfaceContainerHighest, 0.8) : Theme.withAlpha(Theme.surfaceContainerHighest, 0.4))
-    border.width: isSelected ? 1 : 0
-    border.color: Theme.primary
+    color: isSelected ? Theme.withAlpha(Theme.primary, 0.18) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.10) : Theme.withAlpha(Theme.secondary, 0.04))
+    border.width: 1
+    border.color: isSelected ? Theme.withAlpha(Theme.primary, 0.60) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.40) : Theme.withAlpha(Theme.secondary, 0.15))
 
     Behavior on color { ColorAnimation { duration: 200 } }
     Behavior on border.color { ColorAnimation { duration: 200 } }
@@ -53,7 +53,7 @@ StyledRect {
     DankRipple {
         id: cardRipple
         anchors.fill: parent
-        cornerRadius: root.isSelected ? Theme.cornerRadius : (root.isFirst || root.isLast ? Theme.cornerRadius : 4)
+        cornerRadius: root.isSelected ? root.height / 2 : (root.isFirst || root.isLast ? Theme.cornerRadius : 4)
         rippleColor: Theme.primary
         visible: root.selectable
     }
@@ -80,7 +80,7 @@ StyledRect {
             Column {
                 spacing: 2
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - Theme.iconSize - Theme.spacingM * 2 - statusRow.width - 8
+                width: Math.max(0, parent.width - Theme.iconSize - Theme.spacingM * 2 - statusRow.width - 8)
 
                 StyledText {
                     text: root.device?.name || root.deviceId
@@ -134,7 +134,7 @@ StyledRect {
         }
 
         Row {
-            visible: root.device?.isReachable && root.device?.isPaired
+            visible: !root.selectable && root.device?.isReachable && root.device?.isPaired
             spacing: Theme.spacingXS
             anchors.horizontalCenter: parent.horizontalCenter
 

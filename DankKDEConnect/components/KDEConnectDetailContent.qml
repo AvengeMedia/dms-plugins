@@ -6,7 +6,9 @@ import qs.Services
 import qs.Widgets
 import "../services"
 import QtQuick.Effects
+import QtQuick.Shapes
 import qs.Modules.Plugins
+import Quickshell.Services.Mpris
 
 // Self-contained CC detail content — reads device from PhoneConnectService directly
 // so it works in the CC panel where the plugin instance has no pluginService/pluginData.
@@ -760,7 +762,7 @@ Item {
 
                     Column {
                         id: recentImagesCol
-                        width: parent.width - Theme.spacingM * 2
+                        width: Math.max(0, parent.width - Theme.spacingM * 2)
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         anchors.topMargin: Theme.spacingM
@@ -892,38 +894,28 @@ Item {
                                     }
 
                                     // Mask for the Image
-                                    Canvas {
+                                    Shape {
                                         id: imageMask
                                         anchors.fill: parent
                                         visible: false
-                                        antialiasing: true
-                                        onPaint: {
-                                            var ctx = getContext("2d");
-                                            ctx.reset();
-                                            ctx.beginPath();
-                                            ctx.moveTo(imageItem.tlr, 0);
-                                            ctx.lineTo(width - imageItem.trr, 0);
-                                            ctx.arcTo(width, 0, width, imageItem.trr, imageItem.trr);
-                                            ctx.lineTo(width, height - imageItem.brr);
-                                            ctx.arcTo(width, height, width - imageItem.brr, height, imageItem.brr);
-                                            ctx.lineTo(imageItem.blr, height);
-                                            ctx.arcTo(0, height, 0, height - imageItem.blr, imageItem.blr);
-                                            ctx.lineTo(0, imageItem.tlr);
-                                            ctx.arcTo(0, 0, imageItem.tlr, 0, imageItem.tlr);
-                                            ctx.closePath();
-                                            ctx.fillStyle = "black";
-                                            ctx.fill();
+                                        layer.enabled: true
+
+                                        ShapePath {
+                                            fillColor: "black"
+                                            strokeColor: "transparent"
+
+                                            startX: imageItem.tlr
+                                            startY: 0
+
+                                            PathLine { x: imageMask.width - imageItem.trr; y: 0 }
+                                            PathArc { x: imageMask.width; y: imageItem.trr; radiusX: imageItem.trr; radiusY: imageItem.trr; direction: PathArc.Clockwise }
+                                            PathLine { x: imageMask.width; y: imageMask.height - imageItem.brr }
+                                            PathArc { x: imageMask.width - imageItem.brr; y: imageMask.height; radiusX: imageItem.brr; radiusY: imageItem.brr; direction: PathArc.Clockwise }
+                                            PathLine { x: imageItem.blr; y: imageMask.height }
+                                            PathArc { x: 0; y: imageMask.height - imageItem.blr; radiusX: imageItem.blr; radiusY: imageItem.blr; direction: PathArc.Clockwise }
+                                            PathLine { x: 0; y: imageItem.tlr }
+                                            PathArc { x: imageItem.tlr; y: 0; radiusX: imageItem.tlr; radiusY: imageItem.tlr; direction: PathArc.Clockwise }
                                         }
-                                        function refresh() { requestPaint(); }
-                                        Connections {
-                                            target: imageItem
-                                            function onTlrChanged() { imageMask.refresh(); }
-                                            function onTrrChanged() { imageMask.refresh(); }
-                                            function onBlrChanged() { imageMask.refresh(); }
-                                            function onBrrChanged() { imageMask.refresh(); }
-                                        }
-                                        onWidthChanged: refresh()
-                                        onHeightChanged: refresh()
                                     }
 
                                     Item {
@@ -947,46 +939,34 @@ Item {
                                         Rectangle {
                                             anchors.fill: parent
                                             color: Theme.primary
-                                            opacity: imageMouseArea.containsMouse ? 0.2 : 0
+                                            opacity: imageMouseArea.containsMouse ? 0.10 : 0
                                             Behavior on opacity { NumberAnimation { duration: 150 } }
                                         }
                                     }
 
                                     // Border and Shadow Canvas
-                                    Canvas {
+                                    Shape {
                                         id: imageBorder
                                         anchors.fill: parent
-                                        antialiasing: true
-                                        property color borderColor: imageMouseArea.containsMouse ? Theme.primary : Qt.rgba(Theme.secondary.r, Theme.secondary.g, Theme.secondary.b, 0.2)
-                                        onPaint: {
-                                            var ctx = getContext("2d");
-                                            ctx.reset();
-                                            ctx.beginPath();
-                                            ctx.moveTo(imageItem.tlr, 0);
-                                            ctx.lineTo(width - imageItem.trr, 0);
-                                            ctx.arcTo(width, 0, width, imageItem.trr, imageItem.trr);
-                                            ctx.lineTo(width, height - imageItem.brr);
-                                            ctx.arcTo(width, height, width - imageItem.brr, height, imageItem.brr);
-                                            ctx.lineTo(imageItem.blr, height);
-                                            ctx.arcTo(0, height, 0, height - imageItem.blr, imageItem.blr);
-                                            ctx.lineTo(0, imageItem.tlr);
-                                            ctx.arcTo(0, 0, imageItem.tlr, 0, imageItem.tlr);
-                                            ctx.closePath();
-                                            ctx.strokeStyle = borderColor;
-                                            ctx.lineWidth = 1.5;
-                                            ctx.stroke();
+                                        property color borderColor: imageMouseArea.containsMouse ? Theme.withAlpha(Theme.primary, 0.40) : Theme.withAlpha(Theme.secondary, 0.15)
+                                        
+                                        ShapePath {
+                                            fillColor: "transparent"
+                                            strokeColor: imageBorder.borderColor
+                                            strokeWidth: 1.5
+
+                                            startX: imageItem.tlr
+                                            startY: 0
+
+                                            PathLine { x: imageBorder.width - imageItem.trr; y: 0 }
+                                            PathArc { x: imageBorder.width; y: imageItem.trr; radiusX: imageItem.trr; radiusY: imageItem.trr; direction: PathArc.Clockwise }
+                                            PathLine { x: imageBorder.width; y: imageBorder.height - imageItem.brr }
+                                            PathArc { x: imageBorder.width - imageItem.brr; y: imageBorder.height; radiusX: imageItem.brr; radiusY: imageItem.brr; direction: PathArc.Clockwise }
+                                            PathLine { x: imageItem.blr; y: imageBorder.height }
+                                            PathArc { x: 0; y: imageBorder.height - imageItem.blr; radiusX: imageItem.blr; radiusY: imageItem.blr; direction: PathArc.Clockwise }
+                                            PathLine { x: 0; y: imageItem.tlr }
+                                            PathArc { x: imageItem.tlr; y: 0; radiusX: imageItem.tlr; radiusY: imageItem.tlr; direction: PathArc.Clockwise }
                                         }
-                                        onBorderColorChanged: requestPaint()
-                                        function refresh() { requestPaint(); }
-                                        Connections {
-                                            target: imageItem
-                                            function onTlrChanged() { imageBorder.refresh(); }
-                                            function onTrrChanged() { imageBorder.refresh(); }
-                                            function onBlrChanged() { imageBorder.refresh(); }
-                                            function onBrrChanged() { imageBorder.refresh(); }
-                                        }
-                                        onWidthChanged: refresh()
-                                        onHeightChanged: refresh()
                                     }
 
                                     DankRipple { id: imageRipple; anchors.fill: parent; cornerRadius: imageItem.tlr; rippleColor: Theme.primary }
@@ -1239,7 +1219,11 @@ Item {
                                 tooltipText: iconName === "pause" ? I18n.tr("Pause", "Media pause tooltip") : I18n.tr("Play", "Media play tooltip")
                                 onClicked: {
                                     if (root.pluginRoot.phoneMprisPlayer) {
-                                        root.pluginRoot.phoneMprisPlayer.playPause();
+                                        if (root.pluginRoot.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) {
+                                            root.pluginRoot.phoneMprisPlayer.pause();
+                                        } else {
+                                            root.pluginRoot.phoneMprisPlayer.play();
+                                        }
                                     } else {
                                         PhoneConnectService.mprisAction(root.activeDeviceId, "PlayPause", function() {});
                                     }
@@ -1292,6 +1276,7 @@ Item {
 
                                     Loader {
                                         anchors.fill: parent
+                                        asynchronous: true
                                         visible: root.pluginRoot.phoneMprisPlayer && stableLength > 0
                                         sourceComponent: SettingsData.waveProgressEnabled ? waveComponent : flatComponent
                                         

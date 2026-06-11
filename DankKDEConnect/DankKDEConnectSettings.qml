@@ -402,7 +402,7 @@ PluginSettings {
                             spacing: Theme.spacingM
                             DankIcon { name: "image"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
                             Column {
-                                width: parent.width - 22 - Theme.spacingM
+                                width: Math.max(0, parent.width - 22 - Theme.spacingM)
                                 spacing: Theme.spacingXXS
                                 StyledText { text: "Custom Image"; font.weight: Font.Medium; color: Theme.surfaceText }
                                 StyledText { text: "Custom image to display for this device model in Control Center & Widget Pop-Up."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
@@ -497,7 +497,7 @@ PluginSettings {
                             spacing: Theme.spacingM
                             DankIcon { name: "folder"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
                             Column {
-                                width: parent.width - 22 - Theme.spacingM
+                                width: Math.max(0, parent.width - 22 - Theme.spacingM)
                                 spacing: Theme.spacingXXS
                                 StyledText { text: "Recent Images Path"; font.weight: Font.Medium; color: Theme.surfaceText }
                                 StyledText { text: "Directory to monitor for quick media sharing."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
@@ -557,7 +557,7 @@ PluginSettings {
                             spacing: Theme.spacingM
                             DankIcon { name: "devices"; size: 22; anchors.verticalCenter: parent.verticalCenter; opacity: 0.8 }
                             Column {
-                                width: parent.width - 22 - Theme.spacingM
+                                width: Math.max(0, parent.width - 22 - Theme.spacingM)
                                 spacing: Theme.spacingXXS
                                 StyledText { text: "Override Device Type"; font.weight: Font.Medium; color: Theme.surfaceText }
                                 StyledText { text: "Select the type of device to override standard framing, icon, and layouts."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap }
