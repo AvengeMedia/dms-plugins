@@ -8,8 +8,44 @@ Item {
     property string backgroundImage: ""
     property bool isReachable: true
     property string deviceType: "phone"
+    property string deviceName: ""
     readonly property string backgroundImageSource: resolveBackgroundImage(backgroundImage)
     readonly property bool hasBackgroundImage: backgroundImageSource !== ""
+    readonly property string phoneStyle: phoneStyleFor(deviceName)
+
+    function phoneStyleFor(name) {
+        const n = (name || "").toLowerCase();
+        switch (true) {
+        case /iphone|ipad|apple|\bios\b/.test(n):
+            return "ios";
+        case /pixel/.test(n):
+            return "pixel";
+        case /galaxy|samsung|\bsm-/.test(n):
+            return "samsung";
+        case /oneplus|one plus/.test(n):
+            return "oneplus";
+        case /nothing/.test(n):
+            return "nothing";
+        case /xiaomi|redmi|poco/.test(n):
+            return "xiaomi";
+        case /motorola|moto\b/.test(n):
+            return "motorola";
+        case /huawei/.test(n):
+            return "huawei";
+        case /honor/.test(n):
+            return "honor";
+        case /\boppo/.test(n):
+            return "oppo";
+        case /\bvivo/.test(n):
+            return "vivo";
+        case /realme/.test(n):
+            return "realme";
+        case /asus|zenfone|\brog\b/.test(n):
+            return "asus";
+        default:
+            return "android";
+        }
+    }
 
     function resolveBackgroundImage(path) {
         if (typeof path !== "string")
@@ -30,7 +66,8 @@ Item {
 
     height: 235
     width: {
-        if (hasBackgroundImage) return 115;
+        if (hasBackgroundImage)
+            return 115;
         switch (deviceType) {
         case "desktop":
         case "computer":
@@ -58,7 +95,10 @@ Item {
         clip: true
 
         Behavior on scale {
-            NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+            NumberAnimation {
+                duration: 100
+                easing.type: Easing.OutCubic
+            }
         }
 
         MouseArea {
@@ -67,13 +107,13 @@ Item {
             hoverEnabled: true
 
             onEntered: customImageContainer.scale = 1.02
-            onExited:  customImageContainer.scale = 1.0
-            onPressed: function(m) {
+            onExited: customImageContainer.scale = 1.0
+            onPressed: function (m) {
                 customImageContainer.scale = 0.99;
                 customRipple.trigger(m.x, m.y);
             }
             onReleased: customImageContainer.scale = containsMouse ? 1.02 : 1.0
-            onClicked: root.clicked();
+            onClicked: root.clicked()
         }
 
         DankRipple {
@@ -97,7 +137,7 @@ Item {
             opacity: root.isReachable ? 0 : 0.6
             visible: !root.isReachable
             radius: parent.radius
-            
+
             DankIcon {
                 name: "phonelink_off"
                 size: 32
@@ -105,7 +145,11 @@ Item {
                 anchors.centerIn: parent
             }
 
-            Behavior on opacity { NumberAnimation { duration: 300 } }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 300
+                }
+            }
         }
     }
 
@@ -116,7 +160,10 @@ Item {
         visible: !root.hasBackgroundImage
 
         Behavior on scale {
-            NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+            NumberAnimation {
+                duration: 100
+                easing.type: Easing.OutCubic
+            }
         }
 
         MouseArea {
@@ -125,8 +172,8 @@ Item {
             hoverEnabled: true
 
             onEntered: container.scale = 1.02
-            onExited:  container.scale = 1.0
-            onPressed: function(m) {
+            onExited: container.scale = 1.0
+            onPressed: function (m) {
                 container.scale = 0.99;
                 genericRipple.trigger(m.x, m.y);
             }
@@ -138,9 +185,12 @@ Item {
             id: genericRipple
             anchors.fill: parent
             cornerRadius: {
-                if (deviceType === "tv") return 4;
-                if (deviceType === "desktop" || deviceType === "computer" || deviceType === "laptop") return 8;
-                if (deviceType === "tablet") return 12;
+                if (deviceType === "tv")
+                    return 4;
+                if (deviceType === "desktop" || deviceType === "computer" || deviceType === "laptop")
+                    return 8;
+                if (deviceType === "tablet")
+                    return 12;
                 return Theme.cornerRadius;
             }
             rippleColor: Theme.primary
@@ -154,6 +204,7 @@ Item {
             GenericPhoneImage {
                 anchors.fill: parent
                 backgroundImage: ""
+                style: root.phoneStyle
                 onClicked: root.clicked()
             }
         }
@@ -180,9 +231,18 @@ Item {
                         anchors.fill: parent
                         radius: tabletScreen.radius
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#1a2a6c" }
-                            GradientStop { position: 0.5; color: "#b21f1f" }
-                            GradientStop { position: 1.0; color: "#fdbb2d" }
+                            GradientStop {
+                                position: 0.0
+                                color: "#1a2a6c"
+                            }
+                            GradientStop {
+                                position: 0.5
+                                color: "#b21f1f"
+                            }
+                            GradientStop {
+                                position: 1.0
+                                color: "#fdbb2d"
+                            }
                         }
                     }
                 }
@@ -238,9 +298,18 @@ Item {
                         anchors.fill: parent
                         radius: laptopInnerScreen.radius
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#1a2a6c" }
-                            GradientStop { position: 0.5; color: "#b21f1f" }
-                            GradientStop { position: 1.0; color: "#fdbb2d" }
+                            GradientStop {
+                                position: 0.0
+                                color: "#1a2a6c"
+                            }
+                            GradientStop {
+                                position: 0.5
+                                color: "#b21f1f"
+                            }
+                            GradientStop {
+                                position: 1.0
+                                color: "#fdbb2d"
+                            }
                         }
                     }
                 }
@@ -304,9 +373,18 @@ Item {
                         anchors.fill: parent
                         radius: desktopInnerScreen.radius
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#1a2a6c" }
-                            GradientStop { position: 0.5; color: "#b21f1f" }
-                            GradientStop { position: 1.0; color: "#fdbb2d" }
+                            GradientStop {
+                                position: 0.0
+                                color: "#1a2a6c"
+                            }
+                            GradientStop {
+                                position: 0.5
+                                color: "#b21f1f"
+                            }
+                            GradientStop {
+                                position: 1.0
+                                color: "#fdbb2d"
+                            }
                         }
                     }
                 }
@@ -369,9 +447,18 @@ Item {
                         anchors.fill: parent
                         radius: tvInnerScreen.radius
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#1a2a6c" }
-                            GradientStop { position: 0.5; color: "#b21f1f" }
-                            GradientStop { position: 1.0; color: "#fdbb2d" }
+                            GradientStop {
+                                position: 0.0
+                                color: "#1a2a6c"
+                            }
+                            GradientStop {
+                                position: 0.5
+                                color: "#b21f1f"
+                            }
+                            GradientStop {
+                                position: 1.0
+                                color: "#fdbb2d"
+                            }
                         }
                     }
                 }
@@ -385,9 +472,12 @@ Item {
             opacity: root.isReachable ? 0 : 0.6
             visible: !root.isReachable
             radius: {
-                if (deviceType === "tv") return 4;
-                if (deviceType === "desktop" || deviceType === "computer" || deviceType === "laptop") return 8;
-                if (deviceType === "tablet") return 12;
+                if (deviceType === "tv")
+                    return 4;
+                if (deviceType === "desktop" || deviceType === "computer" || deviceType === "laptop")
+                    return 8;
+                if (deviceType === "tablet")
+                    return 12;
                 return Theme.cornerRadius;
             }
             clip: true
@@ -399,7 +489,11 @@ Item {
                 anchors.centerIn: parent
             }
 
-            Behavior on opacity { NumberAnimation { duration: 300 } }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 300
+                }
+            }
         }
     }
 }

@@ -1,0 +1,3 @@
+singleton KDEConnectService 1.0 ../services/KDEConnectService.qml
+singleton ValentService 1.0 ../services/ValentService.qml
+singleton PhoneConnectService 1.0 ../services/PhoneConnectService.qml
