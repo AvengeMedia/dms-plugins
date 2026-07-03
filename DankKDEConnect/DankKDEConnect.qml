@@ -194,7 +194,7 @@ PluginComponent {
                 DankIcon {
                     id: phoneIcon
                     name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
-                    size: Theme.barIconSize(root.barThickness, -4)
+                    size: root.iconSizeLarge
                     color: {
                         if (!PhoneConnectService.available)
                             return Theme.widgetIconColor;
@@ -246,7 +246,7 @@ PluginComponent {
                 DankIcon {
                     id: phoneIconV
                     name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
-                    size: Theme.barIconSize(root.barThickness)
+                    size: root.iconSizeLarge
                     color: {
                         if (!PhoneConnectService.available)
                             return Theme.widgetIconColor;
