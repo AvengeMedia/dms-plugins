@@ -286,7 +286,7 @@ PluginSettings {
 
                                 Column {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 2
+                                    spacing: Theme.spacingXXS
 
                                     StyledText {
                                         text: device?.name || modelData
@@ -308,7 +308,7 @@ PluginSettings {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 anchors.rightMargin: Theme.spacingS
-                                spacing: 4
+                                spacing: Theme.spacingXS
 
                                 DankIcon {
                                     name: PhoneConnectService.getBatteryIcon(device)
@@ -610,8 +610,8 @@ PluginSettings {
                     DankToggle {
                         id: chargingAnimToggle
                         width: parent.width
-                        text: "Show Charging Animation"
-                        description: "Display a wavy green/yellow animation on the panel pill when the device is charging."
+                        text: "Show Charging Fill"
+                        description: "Display a subtle battery-level fill on the panel pill when the device is charging."
                         Component.onCompleted: {
                             checked = mainSettingsCol.loadValue("enableChargingAnimation", true);
                         }

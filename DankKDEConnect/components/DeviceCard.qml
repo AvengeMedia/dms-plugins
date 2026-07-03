@@ -78,7 +78,7 @@ StyledRect {
             }
 
             Column {
-                spacing: 2
+                spacing: Theme.spacingXXS
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.max(0, parent.width - Theme.iconSize - Theme.spacingM * 2 - statusRow.width - 8)
 
@@ -106,7 +106,7 @@ StyledRect {
 
                 Row {
                     visible: root.device && root.device.batteryCharge >= 0
-                    spacing: 4
+                    spacing: Theme.spacingXS
 
                     DankIcon {
                         name: PhoneConnectService.getBatteryIcon(root.device)

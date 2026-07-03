@@ -583,7 +583,7 @@ Item {
 
                     // Top Group: Device Name & Actions (Centered)
                     ColumnLayout {
-                        spacing: 2
+                        spacing: Theme.spacingXXS
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignHCenter
 
@@ -878,7 +878,7 @@ Item {
                 Flow {
                     id: imagesGrid
                     width: parent.width
-                    spacing: 4
+                    spacing: Theme.spacingXS
                     property int columns: (() => {
                             let count = root.recentImages.length;
                             if (count <= 0)
@@ -1448,7 +1448,7 @@ Item {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 2
+                        spacing: Theme.spacingXXS
                         visible: root.pluginRoot.phoneMprisPlayer !== null && root.pluginRoot.phoneMprisPlayer.length > 0
 
                         Item {

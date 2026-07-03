@@ -732,73 +732,25 @@ PluginComponent {
                     layer.enabled: true
                 }
 
-                Shape {
-                    id: hWaveShape
-                    anchors.fill: parent
-
-                    property real value: (root.selectedDevice?.batteryCharge ?? 0) / 100.0
-                    property real phase: 0
-                    property real amp: 3
-                    property color fillColor: {
+                Rectangle {
+                    id: hChargeFill
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: parent.width * ((root.selectedDevice?.batteryCharge ?? 0) / 100.0)
+                    color: {
                         const charge = root.selectedDevice?.batteryCharge ?? 0;
                         if (charge <= 20)
-                            return Theme.withAlpha(Theme.error, 0.3);
+                            return Theme.withAlpha(Theme.error, 0.15);
                         if (charge <= 50)
-                            return Theme.withAlpha(Theme.warning, 0.3);
-                        return Theme.withAlpha(Theme.success, 0.3);
+                            return Theme.withAlpha(Theme.warning, 0.15);
+                        return Theme.withAlpha(Theme.success, 0.15);
                     }
 
-                    FrameAnimation {
-                        running: hWaveContainer.visible
-                        onTriggered: hWaveShape.phase += 0.08 * frameTime * 60
-                    }
-
-                    ShapePath {
-                        fillColor: hWaveShape.fillColor
-                        strokeColor: "transparent"
-
-                        PathMove {
-                            x: 0
-                            y: 0
-                        }
-                        PathLine {
-                            x: {
-                                let targetX = hWaveShape.width * hWaveShape.value;
-                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase);
-                            }
-                            y: 0
-                        }
-                        PathLine {
-                            x: {
-                                let targetX = hWaveShape.width * hWaveShape.value;
-                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 1.5);
-                            }
-                            y: hWaveShape.height * 0.25
-                        }
-                        PathLine {
-                            x: {
-                                let targetX = hWaveShape.width * hWaveShape.value;
-                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 3.0);
-                            }
-                            y: hWaveShape.height * 0.5
-                        }
-                        PathLine {
-                            x: {
-                                let targetX = hWaveShape.width * hWaveShape.value;
-                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 4.5);
-                            }
-                            y: hWaveShape.height * 0.75
-                        }
-                        PathLine {
-                            x: {
-                                let targetX = hWaveShape.width * hWaveShape.value;
-                                return targetX + hWaveShape.amp * Math.sin(hWaveShape.phase + 6.0);
-                            }
-                            y: hWaveShape.height
-                        }
-                        PathLine {
-                            x: 0
-                            y: hWaveShape.height
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: Theme.mediumDuration
+                            easing.type: Theme.standardEasing
                         }
                     }
                 }
@@ -892,73 +844,25 @@ PluginComponent {
                     layer.enabled: true
                 }
 
-                Shape {
-                    id: vWaveShape
-                    anchors.fill: parent
-
-                    property real value: (root.selectedDevice?.batteryCharge ?? 0) / 100.0
-                    property real phase: 0
-                    property real amp: 3
-                    property color fillColor: {
+                Rectangle {
+                    id: vChargeFill
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: parent.height * ((root.selectedDevice?.batteryCharge ?? 0) / 100.0)
+                    color: {
                         const charge = root.selectedDevice?.batteryCharge ?? 0;
                         if (charge <= 20)
-                            return Theme.withAlpha(Theme.error, 0.3);
+                            return Theme.withAlpha(Theme.error, 0.15);
                         if (charge <= 50)
-                            return Theme.withAlpha(Theme.warning, 0.3);
-                        return Theme.withAlpha(Theme.success, 0.3);
+                            return Theme.withAlpha(Theme.warning, 0.15);
+                        return Theme.withAlpha(Theme.success, 0.15);
                     }
 
-                    FrameAnimation {
-                        running: vWaveContainer.visible
-                        onTriggered: vWaveShape.phase += 0.08 * frameTime * 60
-                    }
-
-                    ShapePath {
-                        fillColor: vWaveShape.fillColor
-                        strokeColor: "transparent"
-
-                        PathMove {
-                            x: 0
-                            y: vWaveShape.height
-                        }
-                        PathLine {
-                            x: 0
-                            y: {
-                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
-                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase);
-                            }
-                        }
-                        PathLine {
-                            x: vWaveShape.width * 0.25
-                            y: {
-                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
-                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 1.5);
-                            }
-                        }
-                        PathLine {
-                            x: vWaveShape.width * 0.5
-                            y: {
-                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
-                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 3.0);
-                            }
-                        }
-                        PathLine {
-                            x: vWaveShape.width * 0.75
-                            y: {
-                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
-                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 4.5);
-                            }
-                        }
-                        PathLine {
-                            x: vWaveShape.width
-                            y: {
-                                let targetY = vWaveShape.height * (1.0 - vWaveShape.value);
-                                return targetY + vWaveShape.amp * Math.sin(vWaveShape.phase + 6.0);
-                            }
-                        }
-                        PathLine {
-                            x: vWaveShape.width
-                            y: vWaveShape.height
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: Theme.mediumDuration
+                            easing.type: Theme.standardEasing
                         }
                     }
                 }
@@ -1163,7 +1067,7 @@ PluginComponent {
                         // Grouped Actions Container (for Switch & Refresh buttons)
                         Row {
                             Layout.alignment: Qt.AlignVCenter
-                            spacing: 2 // Gap between switch & refresh buttons
+                            spacing: Theme.spacingXXS // Gap between switch & refresh buttons
                             visible: true
 
                             // Switch Device button (only when multiple devices available)
@@ -1529,7 +1433,7 @@ PluginComponent {
 
                                     // Top Group: Device Name & Actions (Centered)
                                     ColumnLayout {
-                                        spacing: 2
+                                        spacing: Theme.spacingXXS
                                         Layout.fillWidth: true
                                         Layout.alignment: Qt.AlignHCenter
 
@@ -1992,7 +1896,7 @@ PluginComponent {
 
                                     ColumnLayout {
                                         Layout.fillWidth: true
-                                        spacing: 2
+                                        spacing: Theme.spacingXXS
                                         visible: root.phoneMprisPlayer !== null && root.phoneMprisPlayer.length > 0
 
                                         Item {
@@ -2224,7 +2128,7 @@ PluginComponent {
                                     id: skeletonGrid
                                     visible: root.loadingImages && root.recentImages.length === 0
                                     width: parent.width
-                                    spacing: 4
+                                    spacing: Theme.spacingXS
 
                                     property int columns: (() => {
                                             let count = root.maxRecentImages;
@@ -2304,7 +2208,7 @@ PluginComponent {
                                     id: imagesGrid
                                     visible: root.recentImages.length > 0
                                     width: parent.width
-                                    spacing: 4
+                                    spacing: Theme.spacingXS
                                     property int columns: (() => {
                                             let count = root.recentImages.length;
                                             if (count <= 0)
