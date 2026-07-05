@@ -1011,13 +1011,13 @@ PluginComponent {
 
             Column {
                 width: parent.width
-                spacing: Theme.spacingM
+                spacing: Theme.spacingXS
 
                 // Header card
                 StyledRect {
                     width: parent.width
                     anchors.horizontalCenter: parent.horizontalCenter
-                    height: 72
+                    height: 60
                     radius: Theme.cornerRadius
                     color: root.cardColor
                     border.width: 1
@@ -1025,7 +1025,7 @@ PluginComponent {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: Theme.spacingM
+                        anchors.margins: Theme.spacingS
                         spacing: Theme.spacingM
 
                         Rectangle {
@@ -1384,7 +1384,7 @@ PluginComponent {
                                 if (type === "desktop" || type === "computer" || type === "laptop" || type === "tablet" || type === "tv") {
                                     return Math.max(mainInfoColumn.implicitHeight + Theme.spacingM * 2, 160);
                                 }
-                                return 255;
+                                return 245;
                             }
                             spacing: Theme.spacingM
                             visible: root.hasDevice
@@ -1402,7 +1402,7 @@ PluginComponent {
                                 PhoneDisplay {
                                     id: mainPhoneDisplay
                                     anchors.centerIn: parent
-                                    height: parent.height - 20
+                                    height: parent.height - 10
                                     backgroundImage: root.activeCustomPhoneImage
                                     isReachable: root.activeDevice?.isReachable ?? false
                                     deviceType: root.activeDevice?.type ?? "phone"
