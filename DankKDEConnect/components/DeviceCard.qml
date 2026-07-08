@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import qs.Common
 import qs.Widgets
 import "../services"
@@ -11,22 +12,50 @@ StyledRect {
     property bool selectable: false
     property bool isSelected: false
 
+    property bool isFirst: false
+    property bool isLast: false
+
     signal clicked
     signal action(string actionName)
 
     height: contentColumn.implicitHeight + Theme.spacingM * 2
-    radius: Theme.cornerRadius
-    color: cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.08) : Theme.withAlpha(Theme.surfaceContainerHighest, Theme.popupTransparency)
-    border.width: 0
-    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.12)
+    radius: 0
+    topLeftRadius: isSelected ? root.height / 2 : (isFirst ? Theme.cornerRadius : 4)
+    topRightRadius: isSelected ? root.height / 2 : (isFirst ? Theme.cornerRadius : 4)
+    bottomLeftRadius: isSelected ? root.height / 2 : (isLast ? Theme.cornerRadius : 4)
+    bottomRightRadius: isSelected ? root.height / 2 : (isLast ? Theme.cornerRadius : 4)
+
+    Behavior on topLeftRadius { NumberAnimation { duration: 200 } }
+    Behavior on topRightRadius { NumberAnimation { duration: 200 } }
+    Behavior on bottomLeftRadius { NumberAnimation { duration: 200 } }
+    Behavior on bottomRightRadius { NumberAnimation { duration: 200 } }
+
+    color: isSelected ? Theme.withAlpha(Theme.primary, 0.18) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.10) : Theme.withAlpha(Theme.secondary, 0.04))
+    border.width: 1
+    border.color: isSelected ? Theme.withAlpha(Theme.primary, 0.60) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.40) : Theme.withAlpha(Theme.secondary, 0.15))
+
+    Behavior on color { ColorAnimation { duration: 200 } }
+    Behavior on border.color { ColorAnimation { duration: 200 } }
+
+    scale: cardMouseArea.pressed ? 0.98 : 1.0
+    Behavior on scale { NumberAnimation { duration: 100 } }
 
     MouseArea {
         id: cardMouseArea
         anchors.fill: parent
         hoverEnabled: root.selectable
         cursorShape: root.selectable ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onPressed: function(m) { if (root.selectable) cardRipple.trigger(m.x, m.y) }
         onClicked: if (root.selectable)
             root.clicked()
+    }
+
+    DankRipple {
+        id: cardRipple
+        anchors.fill: parent
+        cornerRadius: root.isSelected ? root.height / 2 : (root.isFirst || root.isLast ? Theme.cornerRadius : 4)
+        rippleColor: Theme.primary
+        visible: root.selectable
     }
 
     Column {
@@ -49,9 +78,9 @@ StyledRect {
             }
 
             Column {
-                spacing: 2
+                spacing: Theme.spacingXXS
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - Theme.iconSize - Theme.spacingM * 2 - statusRow.width - 8
+                width: Math.max(0, parent.width - Theme.iconSize - Theme.spacingM * 2 - statusRow.width - 8)
 
                 StyledText {
                     text: root.device?.name || root.deviceId
@@ -77,7 +106,7 @@ StyledRect {
 
                 Row {
                     visible: root.device && root.device.batteryCharge >= 0
-                    spacing: 4
+                    spacing: Theme.spacingXS
 
                     DankIcon {
                         name: PhoneConnectService.getBatteryIcon(root.device)
@@ -105,65 +134,126 @@ StyledRect {
         }
 
         Row {
-            visible: root.device?.isReachable && root.device?.isPaired
+            visible: !root.selectable && root.device?.isReachable && root.device?.isPaired
             spacing: Theme.spacingXS
+            anchors.horizontalCenter: parent.horizontalCenter
 
-            DankActionButton {
-                iconName: "phone_in_talk"
-                iconColor: Theme.primary
-                buttonSize: 36
-                tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
-                tooltipSide: "top"
-                onClicked: root.action("ring")
+            Item {
+                width: 36
+                height: 36
+                enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "findmyphone")
+                DankKDEActionButton {
+                    anchors.fill: parent
+                    enabled: parent.enabled
+                    iconName: "phone_in_talk"
+                    iconColor: Theme.primary
+                    buttonSize: 36
+                    tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
+                    tooltipSide: "top"
+                    onClicked: {
+                        if (!enabled) return;
+                        root.action("ring");
+                    }
+                }
             }
 
-            DankActionButton {
-                iconName: "notifications_active"
-                iconColor: Theme.primary
-                buttonSize: 36
-                tooltipText: I18n.tr("Ping", "KDE Connect ping tooltip")
-                tooltipSide: "top"
-                onClicked: root.action("ping")
+            Item {
+                width: 36
+                height: 36
+                enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "ping")
+                DankKDEActionButton {
+                    anchors.fill: parent
+                    enabled: parent.enabled
+                    iconName: "notifications_active"
+                    iconColor: Theme.primary
+                    buttonSize: 36
+                    tooltipText: I18n.tr("Ping", "KDE Connect ping tooltip")
+                    tooltipSide: "top"
+                    onClicked: {
+                        if (!enabled) return;
+                        root.action("ping");
+                    }
+                }
             }
 
-            DankActionButton {
-                iconName: "content_paste"
-                iconColor: Theme.primary
-                buttonSize: 36
-                tooltipText: I18n.tr("Send Clipboard", "KDE Connect clipboard tooltip")
-                tooltipSide: "top"
-                onClicked: root.action("clipboard")
+            Item {
+                width: 36
+                height: 36
+                visible: typeof SettingsData !== "undefined" ? (SettingsData.pluginSettings["dankKDEConnect"]?.enableClipboardAction ?? true) : true
+                enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "clipboard")
+                DankKDEActionButton {
+                    anchors.fill: parent
+                    enabled: parent.enabled
+                    iconName: "content_paste"
+                    iconColor: Theme.primary
+                    buttonSize: 36
+                    tooltipText: I18n.tr("Send Clipboard", "KDE Connect clipboard tooltip")
+                    tooltipSide: "top"
+                    onClicked: {
+                        if (!enabled) return;
+                        root.action("clipboard");
+                    }
+                }
             }
 
-            DankActionButton {
-                iconName: "share"
-                iconColor: Theme.primary
-                buttonSize: 36
-                tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
-                tooltipSide: "top"
-                onClicked: root.action("share")
+            Item {
+                width: 36
+                height: 36
+                enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "share")
+                DankKDEActionButton {
+                    anchors.fill: parent
+                    enabled: parent.enabled
+                    iconName: "share"
+                    iconColor: Theme.primary
+                    buttonSize: 36
+                    tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
+                    tooltipSide: "top"
+                    onClicked: {
+                        if (!enabled) return;
+                        root.action("share");
+                    }
+                }
             }
 
-            DankActionButton {
-                iconName: "folder"
-                iconColor: Theme.primary
-                buttonSize: 36
-                tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
-                tooltipSide: "top"
-                onClicked: root.action("browse")
+            Item {
+                width: 36
+                height: 36
+                enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "sftp")
+                DankKDEActionButton {
+                    anchors.fill: parent
+                    enabled: parent.enabled
+                    iconName: "folder"
+                    iconColor: Theme.primary
+                    buttonSize: 36
+                    tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
+                    tooltipSide: "top"
+                    onClicked: {
+                        if (!enabled) return;
+                        root.action("browse");
+                    }
+                }
             }
 
-            DankActionButton {
-                visible: PhoneConnectService.supportsSms
-                iconName: "sms"
-                iconColor: Theme.primary
-                buttonSize: 36
-                tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
-                tooltipSide: "top"
-                onClicked: root.action("sms")
+            Item {
+                width: 36
+                height: 36
+                enabled: root.device && root.device.isReachable && PhoneConnectService.hasPlugin(root.deviceId, "sms")
+                DankKDEActionButton {
+                    anchors.fill: parent
+                    enabled: parent.enabled
+                    iconName: "sms"
+                    iconColor: Theme.primary
+                    buttonSize: 36
+                    tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
+                    tooltipSide: "top"
+                    onClicked: {
+                        if (!enabled) return;
+                        root.action("sms");
+                    }
+                }
             }
 
-            DankActionButton {
+            DankKDEActionButton {
                 visible: root.device?.isPaired
                 iconName: "link_off"
                 iconColor: Theme.primary

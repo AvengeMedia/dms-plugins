@@ -52,3 +52,11 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+
+# Local development and utility scripts
+convert.py
+sync.sh
+dms_errors*.txt
+dms_journal*.txt
+UI_Modernization_Guidelines.md
+.gitignore

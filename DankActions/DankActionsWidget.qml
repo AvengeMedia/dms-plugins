@@ -148,13 +148,13 @@ PluginComponent {
         running: false
 
         stdout: SplitParser {
-            onRead: data => {
+            onRead: function(data) {
                 const output = data.trim();
                 root.currentOutput = AnsiParser.parseAnsiToHtml(output);
             }
         }
 
-        onExited: (exitCode, exitStatus) => {
+        onExited: function(exitCode, exitStatus) {
             root.isLoading = false;
             if (exitCode !== 0) {
                 console.warn("CustomActions: Display command failed with code", exitCode);
@@ -167,7 +167,7 @@ PluginComponent {
         command: ["sh", "-c", ""]
         running: false
 
-        onExited: (exitCode, exitStatus) => {
+        onExited: function(exitCode, exitStatus) {
             root.isLoading = false;
             if (exitCode === 0) {
                 if (root.displayCommand) {
@@ -179,7 +179,7 @@ PluginComponent {
         }
     }
 
-    pillClickAction: () => {
+    pillClickAction: function() {
         if (root.clickCommand) {
             root.executeCommand(root.clickCommand);
         }
@@ -193,7 +193,7 @@ PluginComponent {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
 
-            onClicked: mouse => {
+            onClicked: function(mouse) {
                 if (mouse.button === Qt.MiddleButton && root.middleClickCommand) {
                     root.executeCommand(root.middleClickCommand);
                 } else if (mouse.button === Qt.RightButton && root.rightClickCommand) {
@@ -235,7 +235,7 @@ PluginComponent {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
 
-            onClicked: mouse => {
+            onClicked: function(mouse) {
                 if (mouse.button === Qt.MiddleButton && root.middleClickCommand) {
                     root.executeCommand(root.middleClickCommand);
                 } else if (mouse.button === Qt.RightButton && root.rightClickCommand) {
