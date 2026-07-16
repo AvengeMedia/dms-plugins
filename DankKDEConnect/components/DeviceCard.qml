@@ -299,7 +299,7 @@ StyledRect {
         if (root.device.isPairRequestedByPeer)
             return I18n.tr("Pairing requested", "KDE Connect pairing requested status");
         if (root.device.isPairRequested)
-            return I18n.tr("Pairing", "KDE Connect pairing in progress status") + "...";
+            return I18n.tr("Pairing...", "KDE Connect pairing in progress status");
         if (!root.device.isPaired)
             return I18n.tr("Not paired", "KDE Connect not paired status");
         if (!root.device.isReachable)

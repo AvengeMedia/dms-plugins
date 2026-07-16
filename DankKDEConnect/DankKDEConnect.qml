@@ -585,7 +585,7 @@ PluginComponent {
         function onPairingRequestReceived(deviceId, verificationKey) {
             const device = PhoneConnectService.getDevice(deviceId);
             const msg = verificationKey ? (I18n.tr("Verification", "Phone Connect pairing verification key label") + ": " + verificationKey) : "";
-            ToastService.showInfo(I18n.tr("Pairing request from", "Phone Connect pairing request notification") + " " + (device?.name || deviceId), msg);
+            ToastService.showInfo(I18n.tr("Pairing request from %1", "Phone Connect pairing request notification").arg(device?.name || deviceId), msg);
         }
 
         function onShareReceived(deviceId, url) {
@@ -593,7 +593,7 @@ PluginComponent {
             const filename = url.split("/").pop() || url;
             const filePath = url.startsWith("file://") ? url.substring(7) : url;
 
-            Quickshell.execDetached(["dms", "notify", "--app", serviceName, "--icon", "smartphone", "--file", filePath, I18n.tr("File received from", "Phone Connect file share notification") + " " + (device?.name || deviceId), filename]);
+            Quickshell.execDetached(["dms", "notify", "--app", serviceName, "--icon", "smartphone", "--file", filePath, I18n.tr("File received from %1", "Phone Connect file share notification").arg(device?.name || deviceId), filename]);
         }
     }
 
@@ -623,7 +623,7 @@ PluginComponent {
                     ToastService.showError(I18n.tr("Failed to ring device", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Ringing", "Phone Connect ring action") + " " + deviceName + "...");
+                ToastService.showInfo(I18n.tr("Ringing %1...", "Phone Connect ring action").arg(deviceName));
             });
             break;
         case "ping":
@@ -632,7 +632,7 @@ PluginComponent {
                     ToastService.showError(I18n.tr("Failed to send ping", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Ping sent to", "Phone Connect ping action") + " " + deviceName);
+                ToastService.showInfo(I18n.tr("Ping sent to %1", "Phone Connect ping action").arg(deviceName));
             });
             break;
         case "clipboard":
@@ -1641,7 +1641,7 @@ PluginComponent {
                                         return;
                                     }
                                     const filename = path.split("/").pop();
-                                    ToastService.showInfo(I18n.tr("Sending", "Phone Connect file send") + " " + filename + "...");
+                                    ToastService.showInfo(I18n.tr("Sending %1...", "Phone Connect file send").arg(filename));
                                 });
                                 root.showShareDialog = false;
                             }
