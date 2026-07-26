@@ -36,7 +36,7 @@ StyledRect {
         }
 
         StyledText {
-            text: I18n.tr("Start KDE Connect or Valent to use this plugin", "Phone Connect daemon hint")
+            text: I18n.tr("Start DankConnect, KDE Connect, or Valent to use this plugin", "Phone Connect daemon hint")
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.error
             opacity: 0.8

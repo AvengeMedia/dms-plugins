@@ -29,6 +29,32 @@ PluginSettings {
             PluginService.setGlobalVar(root.pluginId, key, val);
         }
 
+        function backendName(backend) {
+            switch (backend) {
+            case PhoneConnectService.Backend.Valent:
+                return "Valent";
+            case PhoneConnectService.Backend.DankConnect:
+                return "DankConnect";
+            default:
+                return "KDE Connect";
+            }
+        }
+
+        function setPreferredBackend(name, persist) {
+            switch (name) {
+            case "Valent":
+                PhoneConnectService.preferredBackend = PhoneConnectService.Backend.Valent;
+                break;
+            case "DankConnect":
+                PhoneConnectService.preferredBackend = PhoneConnectService.Backend.DankConnect;
+                break;
+            default:
+                PhoneConnectService.preferredBackend = PhoneConnectService.Backend.KDEConnect;
+            }
+            if (persist)
+                saveValue("preferredBackend", name);
+        }
+
         readonly property string selectedDeviceId: loadValue("selectedDeviceId", "")
         readonly property string targetDeviceId: selectedDeviceId || (PhoneConnectService.deviceIds.length > 0 ? PhoneConnectService.deviceIds[0] : "")
         readonly property var targetDevice: PhoneConnectService.getDevice(targetDeviceId)
@@ -64,6 +90,7 @@ PluginSettings {
         Component.onCompleted: {
             refreshDeviceTypeMap();
             refreshDeviceImageMap();
+            setPreferredBackend(loadValue("preferredBackend", "KDE Connect"), false);
         }
 
         Connections {
@@ -75,6 +102,8 @@ PluginSettings {
                         mainSettingsCol.refreshDeviceTypeMap();
                     } else if (varName === "deviceImageMap") {
                         mainSettingsCol.refreshDeviceImageMap();
+                    } else if (varName === "preferredBackend") {
+                        mainSettingsCol.setPreferredBackend(mainSettingsCol.loadValue("preferredBackend", "KDE Connect"), false);
                     }
                 }
             }
@@ -82,6 +111,7 @@ PluginSettings {
                 if (pluginId === root.pluginId) {
                     mainSettingsCol.refreshDeviceTypeMap();
                     mainSettingsCol.refreshDeviceImageMap();
+                    mainSettingsCol.setPreferredBackend(mainSettingsCol.loadValue("preferredBackend", "KDE Connect"), false);
                 }
             }
         }
@@ -227,7 +257,7 @@ PluginSettings {
                             color: Theme.surfaceText 
                         }
                         StyledText { 
-                            text: PhoneConnectService.available ? ("Announced as: " + PhoneConnectService.announcedName + " (" + PhoneConnectService.selfId + ")") : "Please start kdeconnectd or Valent"
+                            text: PhoneConnectService.available ? ("Announced as: " + PhoneConnectService.announcedName + " (" + PhoneConnectService.selfId + ")") : "Please start DankConnect, kdeconnectd, or Valent"
                             font.pixelSize: Theme.fontSizeSmall
                             color: Theme.surfaceVariantText 
                             width: parent.width
@@ -240,6 +270,29 @@ PluginSettings {
                         iconName: "refresh"
                         Layout.alignment: Qt.AlignVCenter
                         onClicked: PhoneConnectService.refreshDevices()
+                    }
+                }
+
+                RowLayout {
+                    width: parent.width
+                    spacing: Theme.spacingM
+
+                    StyledText {
+                        text: "Preferred Backend"
+                        color: Theme.surfaceText
+                        Layout.fillWidth: true
+                    }
+
+                    DankDropdown {
+                        compactMode: true
+                        dropdownWidth: 180
+                        currentValue: mainSettingsCol.backendName(PhoneConnectService.preferredBackend)
+                        options: ["KDE Connect", "Valent", "DankConnect"]
+                        optionIcons: ["devices", "devices", "phonelink"]
+                        onValueChanged: function(value) {
+                            if (value !== mainSettingsCol.backendName(PhoneConnectService.preferredBackend))
+                                mainSettingsCol.setPreferredBackend(value, true);
+                        }
                     }
                 }
 

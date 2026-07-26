@@ -5,6 +5,8 @@ import QtQuick
 import Quickshell
 import qs.Services
 import qs.Modules.Plugins
+// qs.Services also exports the native DMS DankConnectService, qualify local services
+import "." as LocalServices
 
 Singleton {
     id: root
@@ -12,10 +14,12 @@ Singleton {
     enum Backend {
         None,
         KDEConnect,
-        Valent
+        Valent,
+        DankConnect
     }
 
     property int preferredBackend: PhoneConnectService.Backend.KDEConnect
+    onPreferredBackendChanged: detectBackend()
     property int activeBackend: PhoneConnectService.Backend.None
 
     readonly property bool available: activeBackend !== PhoneConnectService.Backend.None
@@ -54,6 +58,8 @@ Singleton {
             return "KDE Connect";
         case PhoneConnectService.Backend.Valent:
             return "Valent";
+        case PhoneConnectService.Backend.DankConnect:
+            return "DankConnect";
         default:
             return "None";
         }
@@ -70,6 +76,7 @@ Singleton {
     signal backendChanged
 
     Component.onCompleted: {
+        updatePreferredBackend();
         detectBackend();
         updateDeviceTypeMap();
     }
@@ -138,45 +145,124 @@ Singleton {
         }
     }
 
-    function detectBackend() {
-        if (!DMSService.isConnected)
-            return;
+    Connections {
+        target: LocalServices.DankConnectService
+        enabled: activeBackend === PhoneConnectService.Backend.DankConnect
 
-        DMSService.dbusListNames("session", function(response) {
-            if (response.error)
+        function onDevicesListChanged() {
+            root.devicesListChanged();
+        }
+        function onDeviceUpdated(deviceId) {
+            root.deviceUpdated(deviceId);
+        }
+        function onDeviceAdded(deviceId) {
+            root.deviceAdded(deviceId);
+        }
+        function onDeviceRemoved(deviceId) {
+            root.deviceRemoved(deviceId);
+        }
+        function onPairingRequestReceived(deviceId, verificationKey) {
+            root.pairingRequestReceived(deviceId, verificationKey);
+        }
+        function onShareReceived(deviceId, url) {
+            root.shareReceived(deviceId, url);
+        }
+    }
+
+    Connections {
+        target: LocalServices.DankConnectService
+
+        function onAvailableChanged() {
+            root.detectBackend();
+        }
+    }
+
+    property int _detectionGeneration: 0
+
+    function updatePreferredBackend() {
+        let value = "KDE Connect";
+        const globals = PluginService.globalVars?.["dankKDEConnect"];
+        if (globals?.preferredBackend)
+            value = globals.preferredBackend;
+        else if (SettingsData.pluginSettings["dankKDEConnect"]?.preferredBackend)
+            value = SettingsData.pluginSettings["dankKDEConnect"].preferredBackend;
+
+        switch (value) {
+        case "Valent":
+            preferredBackend = PhoneConnectService.Backend.Valent;
+            break;
+        case "DankConnect":
+            preferredBackend = PhoneConnectService.Backend.DankConnect;
+            break;
+        default:
+            preferredBackend = PhoneConnectService.Backend.KDEConnect;
+        }
+    }
+
+    function activateBackend(newBackend) {
+        if (newBackend === activeBackend)
+            return;
+        activeBackend = newBackend;
+        switch (activeBackend) {
+        case PhoneConnectService.Backend.KDEConnect:
+            _backend = KDEConnectService;
+            break;
+        case PhoneConnectService.Backend.Valent:
+            _backend = ValentService;
+            break;
+        case PhoneConnectService.Backend.DankConnect:
+            _backend = LocalServices.DankConnectService;
+            break;
+        default:
+            _backend = null;
+        }
+        backendChanged();
+        devicesListChanged();
+    }
+
+    function detectBackend() {
+        _detectionGeneration++;
+        const generation = _detectionGeneration;
+        const hasDankConnect = LocalServices.DankConnectService.available;
+
+        if (preferredBackend === PhoneConnectService.Backend.DankConnect && !hasDankConnect)
+            LocalServices.DankConnectService.launch();
+
+        if (preferredBackend === PhoneConnectService.Backend.DankConnect && hasDankConnect) {
+            activateBackend(PhoneConnectService.Backend.DankConnect);
+            return;
+        }
+
+        if (!DMSService.isConnected) {
+            activateBackend(hasDankConnect ? PhoneConnectService.Backend.DankConnect : PhoneConnectService.Backend.None);
+            return;
+        }
+
+        DMSService.dbusListNames("session", function (response) {
+            if (generation !== root._detectionGeneration)
                 return;
 
-            const names = response.result?.names || [];
+            const names = response.error ? [] : (response.result?.names || []);
             const hasKDE = names.includes("org.kde.kdeconnect");
             const hasValent = names.includes("ca.andyholmes.Valent");
-
+            const hasDank = LocalServices.DankConnectService.available;
             let newBackend = PhoneConnectService.Backend.None;
 
             if (preferredBackend === PhoneConnectService.Backend.KDEConnect && hasKDE) {
                 newBackend = PhoneConnectService.Backend.KDEConnect;
             } else if (preferredBackend === PhoneConnectService.Backend.Valent && hasValent) {
                 newBackend = PhoneConnectService.Backend.Valent;
+            } else if (preferredBackend === PhoneConnectService.Backend.DankConnect && hasDank) {
+                newBackend = PhoneConnectService.Backend.DankConnect;
             } else if (hasKDE) {
                 newBackend = PhoneConnectService.Backend.KDEConnect;
             } else if (hasValent) {
                 newBackend = PhoneConnectService.Backend.Valent;
+            } else if (hasDank) {
+                newBackend = PhoneConnectService.Backend.DankConnect;
             }
 
-            if (newBackend !== activeBackend) {
-                activeBackend = newBackend;
-                switch (activeBackend) {
-                case PhoneConnectService.Backend.KDEConnect:
-                    _backend = KDEConnectService;
-                    break;
-                case PhoneConnectService.Backend.Valent:
-                    _backend = ValentService;
-                    break;
-                default:
-                    _backend = null;
-                }
-                backendChanged();
-                devicesListChanged();
-            }
+            root.activateBackend(newBackend);
         });
     }
 
@@ -190,10 +276,10 @@ Singleton {
 
     function hasPlugin(deviceId, pluginName) {
         const dev = getDevice(deviceId);
-        if (!dev || !dev.supportedPlugins) return false;
-        
-        return dev.supportedPlugins.includes(pluginName) || 
-               dev.supportedPlugins.includes("kdeconnect_" + pluginName);
+        if (!dev || !dev.supportedPlugins)
+            return false;
+
+        return dev.supportedPlugins.includes(pluginName) || dev.supportedPlugins.includes("kdeconnect_" + pluginName);
     }
 
     function ringDevice(deviceId, callback) {
@@ -248,7 +334,7 @@ Singleton {
         if (!filePath.startsWith("/"))
             return "";
 
-        const encoded = filePath.split("/").map(function(segment) {
+        const encoded = filePath.split("/").map(function (segment) {
             return encodeURIComponent(segment);
         }).join("/");
 
@@ -436,16 +522,10 @@ Singleton {
     function sendSms(deviceId, addresses, message, attachmentUrls, callback) {
         if (activeBackend === PhoneConnectService.Backend.KDEConnect) {
             const addr = Array.isArray(addresses) ? (addresses[0] || "") : (addresses || "");
-            Quickshell.execDetached([
-                "kdeconnect-cli",
-                "-d",
-                deviceId,
-                "--send-sms",
-                message,
-                "--destination",
-                addr
-            ]);
-            callback?.({ success: true });
+            Quickshell.execDetached(["kdeconnect-cli", "-d", deviceId, "--send-sms", message, "--destination", addr]);
+            callback?.({
+                success: true
+            });
             return;
         }
 
@@ -490,7 +570,7 @@ Singleton {
                 try {
                     newMap = JSON.parse(vars["deviceTypeMap"]);
                     changed = true;
-                } catch(e) {}
+                } catch (e) {}
             }
         }
         if (!changed) {
@@ -500,9 +580,9 @@ Singleton {
                     newMap = JSON.parse(data.deviceTypeMap);
                     changed = true;
                 }
-            } catch(e) {}
+            } catch (e) {}
         }
-        
+
         if (JSON.stringify(deviceTypeMap) !== JSON.stringify(newMap)) {
             deviceTypeMap = newMap;
             root.devicesListChanged();
@@ -513,31 +593,42 @@ Singleton {
         target: PluginService
         ignoreUnknownSignals: true
         function onGlobalVarChanged(pluginId, varName) {
-            if (pluginId === "dankKDEConnect" && varName === "deviceTypeMap") {
+            if (pluginId !== "dankKDEConnect")
+                return;
+            if (varName === "deviceTypeMap")
                 root.updateDeviceTypeMap();
-            }
+            else if (varName === "preferredBackend")
+                root.updatePreferredBackend();
         }
         function onPluginDataChanged(pluginId) {
             if (pluginId === "dankKDEConnect") {
                 root.updateDeviceTypeMap();
+                root.updatePreferredBackend();
             }
         }
     }
 
     function getDeviceIcon(device) {
-        if (!device) return "smartphone";
+        if (!device)
+            return "smartphone";
         const deviceId = device.id;
         if (deviceId && deviceTypeMap[deviceId]) {
             switch (deviceTypeMap[deviceId]) {
-            case "phone": return "smartphone";
-            case "tablet": return "tablet";
-            case "laptop": return "laptop";
-            case "desktop": return "desktop_windows";
-            case "tv": return "tv";
+            case "phone":
+                return "smartphone";
+            case "tablet":
+                return "tablet";
+            case "laptop":
+                return "laptop";
+            case "desktop":
+                return "desktop_windows";
+            case "tv":
+                return "tv";
             }
         }
         let icon = _backend?.getDeviceIcon(device) ?? "smartphone";
-        if (icon === "computer") icon = "desktop_windows";
+        if (icon === "computer")
+            icon = "desktop_windows";
         return icon;
     }
 
@@ -552,10 +643,10 @@ Singleton {
     function getNetworkTypeLabel(device) {
         if (!device || !device.networkType)
             return "N/A";
-        
+
         const rawType = device.networkType.toString().trim();
         const type = rawType.toUpperCase();
-        
+
         // Map common network types to friendly, standard representations
         switch (type) {
         case "NR":
@@ -597,10 +688,14 @@ Singleton {
         if (!device || device.networkStrength === undefined || device.networkStrength < 0)
             return "Unknown";
         const strength = device.networkStrength;
-        if (strength >= 4) return "Excellent";
-        if (strength === 3) return "Good";
-        if (strength === 2) return "Fair";
-        if (strength === 1) return "Weak";
+        if (strength >= 4)
+            return "Excellent";
+        if (strength === 3)
+            return "Good";
+        if (strength === 2)
+            return "Fair";
+        if (strength === 1)
+            return "Weak";
         return "No Signal";
     }
 
