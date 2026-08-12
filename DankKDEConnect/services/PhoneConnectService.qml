@@ -66,6 +66,9 @@ Singleton {
     }
 
     property var _backend: null
+    property bool _nameWatchSubscribed: false
+
+    readonly property var _backendBusNames: ["org.kde.kdeconnect", "ca.andyholmes.Valent"]
 
     signal devicesListChanged
     signal deviceUpdated(string deviceId)
@@ -76,6 +79,7 @@ Singleton {
     signal backendChanged
 
     Component.onCompleted: {
+        watchBusNames();
         updatePreferredBackend();
         detectBackend();
         updateDeviceTypeMap();
@@ -84,9 +88,42 @@ Singleton {
     Connections {
         target: DMSService
         function onConnectionStateChanged() {
-            if (DMSService.isConnected)
-                detectBackend();
+            if (!DMSService.isConnected) {
+                root._nameWatchSubscribed = false;
+                return;
+            }
+            root.watchBusNames();
+            root.detectBackend();
         }
+
+        function onDbusSignalReceived(subId, data) {
+            if (data.member !== "NameOwnerChanged")
+                return;
+            const name = data.body?.[0];
+            if (!root._backendBusNames.includes(name))
+                return;
+            switch (name) {
+            case "org.kde.kdeconnect":
+                KDEConnectService.checkAvailability();
+                break;
+            case "ca.andyholmes.Valent":
+                ValentService.checkAvailability();
+                break;
+            }
+            root.detectBackend();
+        }
+    }
+
+    function watchBusNames() {
+        if (_nameWatchSubscribed || !DMSService.isConnected)
+            return;
+        _nameWatchSubscribed = true;
+        DMSService.dbusSubscribe("session", "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameOwnerChanged", function(response) {
+            if (response.error) {
+                console.warn("[PhoneConnect] NameOwnerChanged subscription failed:", response.error);
+                root._nameWatchSubscribed = false;
+            }
+        });
     }
 
     Connections {
