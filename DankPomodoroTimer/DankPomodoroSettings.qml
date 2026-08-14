@@ -109,6 +109,13 @@ PluginSettings {
                 description: "Automatically enable Do Not Disturb mode during work sessions"
                 defaultValue: false
             }
+
+            ToggleSetting {
+                settingKey: "playCompletionSound"
+                label: "Play Completion Sound"
+                description: "Play a sound when a work session or break ends"
+                defaultValue: true
+            }
         }
     }
 

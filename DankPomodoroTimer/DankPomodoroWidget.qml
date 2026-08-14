@@ -15,6 +15,7 @@ PluginComponent {
     property bool autoStartBreaks: pluginData.autoStartBreaks ?? false
     property bool autoStartPomodoros: pluginData.autoStartPomodoros ?? false
     property bool autoSetDND: pluginData.autoSetDND ?? false
+    property bool playCompletionSound: pluginData.playCompletionSound ?? true
     property var last7DaysData: []
     property string currentDateKey: ""
 
@@ -190,17 +191,23 @@ PluginComponent {
             }
             const isLongBreak = globalCompletedPomodoros.value % 4 === 0;
 
-            Quickshell.execDetached(["sh", "-c", "notify-send 'Pomodoro Complete' 'Time for a " + (isLongBreak ? "long" : "short") + " break!' -u normal"]);
-
+            // Stop DND before playing the completion sound so an automatically
+            // enabled work-session DND mode does not suppress the alert.
             if (root.autoSetDND) {
                 SessionData.setDoNotDisturb(false);
             }
+            if (root.playCompletionSound && SettingsData.soundsEnabled)
+                AudioService.playNormalNotificationSound();
+            Quickshell.execDetached(["sh", "-c", "notify-send 'Pomodoro Complete' 'Time for a " + (isLongBreak ? "long" : "short") + " break!' -u normal"]);
+
             if (isLongBreak) {
                 root.startLongBreak(root.autoStartBreaks);
             } else {
                 root.startShortBreak(root.autoStartBreaks);
             }
         } else {
+            if (root.playCompletionSound && SettingsData.soundsEnabled)
+                AudioService.playNormalNotificationSound();
             Quickshell.execDetached(["sh", "-c", "notify-send 'Break Complete' 'Ready for another pomodoro?' -u normal"]);
             root.startWork(root.autoStartPomodoros);
         }
