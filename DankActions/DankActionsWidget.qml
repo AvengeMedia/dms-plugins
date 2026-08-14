@@ -217,7 +217,7 @@ PluginComponent {
                     text: root.currentOutput || ""
                     textFormat: Text.RichText
                     wrapMode: Text.NoWrap
-                    font.pixelSize: Theme.fontSizeSmall
+                    font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale, root.barConfig?.maximizeWidgetText)
                     font.weight: Font.Medium
                     color: Theme.surfaceText
                     anchors.verticalCenter: parent.verticalCenter
@@ -259,7 +259,7 @@ PluginComponent {
                     text: root.currentOutput || ""
                     textFormat: Text.RichText
                     wrapMode: Text.NoWrap
-                    font.pixelSize: Theme.fontSizeSmall
+                    font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale, root.barConfig?.maximizeWidgetText)
                     font.weight: Font.Medium
                     color: Theme.surfaceText
                     anchors.horizontalCenter: parent.horizontalCenter
