@@ -605,6 +605,10 @@ PluginComponent {
             root.autoSelectBestDevice();
         }
 
+        function onDeviceUpdated(deviceId) {
+            root.autoSelectBestDevice();
+        }
+
         function onPairingRequestReceived(deviceId, verificationKey) {
             const device = PhoneConnectService.getDevice(deviceId);
             const msg = verificationKey ? (I18n.tr("Verification", "Phone Connect pairing verification key label") + ": " + verificationKey) : "";
