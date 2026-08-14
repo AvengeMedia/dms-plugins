@@ -125,6 +125,13 @@ PluginSettings {
                 description: "Show the remaining time next to the timer icon"
                 defaultValue: true
             }
+
+            ToggleSetting {
+                settingKey: "playCompletionSound"
+                label: "Play Completion Sound"
+                description: "Play a sound when a work session or break ends"
+                defaultValue: true
+            }
         }
     }
 
