@@ -91,6 +91,7 @@ PluginComponent {
     onPopoutOpenChanged: {
         if (popoutOpen) {
             PhoneConnectService.refreshDevices();
+            root.autoSelectBestDevice();
         }
     }
 
@@ -571,15 +572,37 @@ PluginComponent {
         }
     }
 
+    function autoSelectBestDevice() {
+        const ids = PhoneConnectService.deviceIds;
+        if (ids.length === 0) {
+            selectDevice("");
+            return;
+        }
+
+        if (selectedDeviceId && ids.includes(selectedDeviceId)) {
+            const currentDev = PhoneConnectService.getDevice(selectedDeviceId);
+            if (currentDev && currentDev.isReachable) {
+                return;
+            }
+        }
+
+        for (let i = 0; i < ids.length; i++) {
+            const dev = PhoneConnectService.getDevice(ids[i]);
+            if (dev && dev.isReachable) {
+                selectDevice(ids[i]);
+                return;
+            }
+        }
+
+        if (!selectedDeviceId || !ids.includes(selectedDeviceId)) {
+            selectDevice(ids[0]);
+        }
+    }
+
     Connections {
         target: PhoneConnectService
         function onDevicesListChanged() {
-            const ids = PhoneConnectService.deviceIds;
-            if (ids.length === 0) {
-                selectDevice("");
-            } else if (!selectedDeviceId || !ids.includes(selectedDeviceId)) {
-                selectDevice(ids[0]);
-            }
+            root.autoSelectBestDevice();
         }
 
         function onPairingRequestReceived(deviceId, verificationKey) {
