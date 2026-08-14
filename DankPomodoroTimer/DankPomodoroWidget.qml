@@ -15,6 +15,7 @@ PluginComponent {
     property bool autoStartBreaks: pluginData.autoStartBreaks ?? false
     property bool autoStartPomodoros: pluginData.autoStartPomodoros ?? false
     property bool autoSetDND: pluginData.autoSetDND ?? false
+    property bool showBarText: pluginData.showBarText ?? true
     property var last7DaysData: []
     property string currentDateKey: ""
 
@@ -344,6 +345,7 @@ PluginComponent {
                 font.weight: Font.Medium
                 color: Theme.surfaceVariantText
                 anchors.verticalCenter: parent.verticalCenter
+                visible: root.showBarText
             }
         }
     }
@@ -365,6 +367,7 @@ PluginComponent {
                 font.weight: Font.Medium
                 color: Theme.surfaceVariantText
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: root.showBarText
             }
         }
     }

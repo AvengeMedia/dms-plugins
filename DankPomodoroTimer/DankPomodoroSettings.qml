@@ -109,6 +109,13 @@ PluginSettings {
                 description: "Automatically enable Do Not Disturb mode during work sessions"
                 defaultValue: false
             }
+
+            ToggleSetting {
+                settingKey: "showBarText"
+                label: "Show Timer Text in Bar"
+                description: "Show the remaining time next to the timer icon"
+                defaultValue: true
+            }
         }
     }
 
