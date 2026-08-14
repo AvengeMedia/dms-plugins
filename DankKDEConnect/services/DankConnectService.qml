@@ -132,6 +132,8 @@ Singleton {
             add("mprisremote");
         if (outgoing.includes("kdeconnect.connectivity_report"))
             add("connectivity_report");
+        if (supported.includes("kdeconnect.sftp.request") || outgoing.includes("kdeconnect.sftp"))
+            add("sftp");
         return result;
     }
 
@@ -383,13 +385,20 @@ Singleton {
         _unsupported(callback);
     }
     function unmountSftp(deviceId, callback) {
-        _unsupported(callback);
+        ipc.request("device.browseStop", {
+            "deviceId": deviceId
+        }, callback);
     }
     function mountAndWait(deviceId, callback) {
-        callback?.(false);
+        ipc.request("device.browse", {
+            "deviceId": deviceId
+        }, response => callback?.(!response.error && !!response.result?.path));
     }
     function startBrowsing(deviceId, callback) {
-        _unsupported(callback);
+        ipc.request("device.browse", {
+            "deviceId": deviceId,
+            "open": true
+        }, callback);
     }
     function browseDevice(deviceId, callback) {
         callback?.(false, "");

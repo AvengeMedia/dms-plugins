@@ -798,7 +798,7 @@ PluginComponent {
                 }
 
                 StyledText {
-                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
+                    visible: root.hasDevice && (root.selectedDevice?.batteryCharge ?? -1) >= 0
                     text: (root.selectedDevice?.batteryCharge ?? 0) + "%"
                     font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
                     color: Theme.widgetTextColor
@@ -910,7 +910,7 @@ PluginComponent {
                 }
 
                 StyledText {
-                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
+                    visible: root.hasDevice && (root.selectedDevice?.batteryCharge ?? -1) >= 0
                     text: (root.selectedDevice?.batteryCharge ?? 0).toString()
                     font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
                     color: Theme.widgetTextColor

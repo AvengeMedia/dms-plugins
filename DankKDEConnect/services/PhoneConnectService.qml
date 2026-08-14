@@ -282,25 +282,46 @@ Singleton {
             const names = response.error ? [] : (response.result?.names || []);
             const hasKDE = names.includes("org.kde.kdeconnect");
             const hasValent = names.includes("ca.andyholmes.Valent");
-            const hasDank = LocalServices.DankConnectService.available;
-            let newBackend = PhoneConnectService.Backend.None;
-
-            if (preferredBackend === PhoneConnectService.Backend.KDEConnect && hasKDE) {
-                newBackend = PhoneConnectService.Backend.KDEConnect;
-            } else if (preferredBackend === PhoneConnectService.Backend.Valent && hasValent) {
-                newBackend = PhoneConnectService.Backend.Valent;
-            } else if (preferredBackend === PhoneConnectService.Backend.DankConnect && hasDank) {
-                newBackend = PhoneConnectService.Backend.DankConnect;
-            } else if (hasKDE) {
-                newBackend = PhoneConnectService.Backend.KDEConnect;
-            } else if (hasValent) {
-                newBackend = PhoneConnectService.Backend.Valent;
-            } else if (hasDank) {
-                newBackend = PhoneConnectService.Backend.DankConnect;
+            if (!hasKDE || !names.includes("org.dankconnect")) {
+                root._selectDetected(hasKDE, hasValent);
+                return;
             }
-
-            root.activateBackend(newBackend);
+            // org.kde.kdeconnect may be dankconnect's compatibility facade;
+            // matching bus-name owners means the same daemon, and the native
+            // socket backend is the richer surface for it.
+            DMSService.dbusCall("session", "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetNameOwner", ["org.kde.kdeconnect"], function (kdeOwner) {
+                if (generation !== root._detectionGeneration)
+                    return;
+                DMSService.dbusCall("session", "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetNameOwner", ["org.dankconnect"], function (dankOwner) {
+                    if (generation !== root._detectionGeneration)
+                        return;
+                    const kde = kdeOwner.result?.values?.[0] || "";
+                    const dank = dankOwner.result?.values?.[0] || "";
+                    root._selectDetected(!kde || kde !== dank, hasValent);
+                });
+            });
         });
+    }
+
+    function _selectDetected(hasKDE, hasValent) {
+        const hasDank = LocalServices.DankConnectService.available;
+        let newBackend = PhoneConnectService.Backend.None;
+
+        if (preferredBackend === PhoneConnectService.Backend.KDEConnect && hasKDE) {
+            newBackend = PhoneConnectService.Backend.KDEConnect;
+        } else if (preferredBackend === PhoneConnectService.Backend.Valent && hasValent) {
+            newBackend = PhoneConnectService.Backend.Valent;
+        } else if (preferredBackend === PhoneConnectService.Backend.DankConnect && hasDank) {
+            newBackend = PhoneConnectService.Backend.DankConnect;
+        } else if (hasKDE) {
+            newBackend = PhoneConnectService.Backend.KDEConnect;
+        } else if (hasValent) {
+            newBackend = PhoneConnectService.Backend.Valent;
+        } else if (hasDank) {
+            newBackend = PhoneConnectService.Backend.DankConnect;
+        }
+
+        activateBackend(newBackend);
     }
 
     function refreshDevices() {
