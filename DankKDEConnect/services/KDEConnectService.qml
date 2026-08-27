@@ -235,6 +235,7 @@ Singleton {
                 const id = extractDeviceIdFromPath(data.path);
                 if (!id)
                     break;
+                _notificationsExported[id] = true;
                 fetchNotificationsCount(id);
                 break;
             }
@@ -261,6 +262,7 @@ Singleton {
                     fetchConnectivityInfo(id);
                     break;
                 case notificationsInterface:
+                    _notificationsExported[id] = true;
                     fetchNotificationsCount(id);
                     break;
                 case deviceInterface:
@@ -384,7 +386,7 @@ Singleton {
                 if (currentDev.isPaired && currentDev.isReachable) {
                     fetchBatteryInfo(deviceId);
                     fetchConnectivityInfo(deviceId);
-                    fetchNotificationsCount(deviceId);
+                    _probeNotificationsPath(deviceId);
                 }
             }
         });
@@ -448,9 +450,29 @@ Singleton {
         });
     }
 
+    property var _notificationsExported: ({})
+
+    function _probeNotificationsPath(deviceId) {
+        const dev = devices[deviceId];
+        if (!hasPlugin(dev, "notifications"))
+            return;
+        const path = daemonPath + "/devices/" + deviceId;
+        DMSService.dbusCall("session", service, path, "org.freedesktop.DBus.Introspectable", "Introspect", [], function(response) {
+            if (response.error)
+                return;
+            const xml = response.result?.values?.[0] ?? "";
+            _notificationsExported[deviceId] = xml.includes('name="notifications"');
+            if (_notificationsExported[deviceId])
+                fetchNotificationsCount(deviceId);
+        });
+    }
+
     function fetchNotificationsCount(deviceId) {
         const dev = devices[deviceId];
         if (!hasPlugin(dev, "notifications"))
+            return;
+        // locally disabled plugins stay in supportedPlugins but export no object path (#3173)
+        if (_notificationsExported[deviceId] !== true)
             return;
         const path = daemonPath + "/devices/" + deviceId + "/notifications";
 
