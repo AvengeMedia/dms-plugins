@@ -492,12 +492,21 @@ PluginComponent {
         }
     }
 
+    // True once we've authoritatively confirmed the persisted selection via
+    // pluginService (which loads from disk on the backend side). Before this,
+    // `selectedDeviceId` may still read "" simply because SettingsData hasn't
+    // finished loading yet, not because nothing was ever selected - so device
+    // list events arriving before this is true must not be treated as
+    // "no preference" and must not overwrite/clobber the saved device.
+    property bool settingsLoaded: false
+
     onPluginServiceChanged: {
         if (!pluginService)
             return;
         const savedId = pluginService.loadPluginData("dankKDEConnect", "selectedDeviceId", "");
         if (savedId)
             selectedDeviceId = savedId;
+        settingsLoaded = true;
     }
 
     Timer {
@@ -574,11 +583,32 @@ PluginComponent {
     Connections {
         target: PhoneConnectService
         function onDevicesListChanged() {
+            if (!root.settingsLoaded)
+                return;
             const ids = PhoneConnectService.deviceIds;
-            if (ids.length === 0) {
-                selectDevice("");
-            } else if (!selectedDeviceId || !ids.includes(selectedDeviceId)) {
+            // A momentarily empty list (e.g. a brief D-Bus/kdeconnectd hiccup
+            // right after startup) does NOT mean the saved device preference
+            // should be forgotten - `hasDevice` already goes false on its own
+            // when selectedDeviceId isn't in `ids`, so the UI reacts correctly
+            // without us clearing (and persisting the loss of) the selection.
+            if (ids.length > 0 && !selectedDeviceId) {
+                // Only auto-pick a device when nothing has ever been selected.
+                // Do NOT reassign just because the saved device hasn't shown up
+                // in this particular discovery pass yet (e.g. a phone connects
+                // slower than an always-on LAN device) - it will become active
+                // again on its own once it appears in `ids`.
                 selectDevice(ids[0]);
+            }
+        }
+
+        function onDeviceRemoved(deviceId) {
+            // deviceRemoved is only emitted for genuine registry removals
+            // (unpair/forget), unlike plain absence from a devicesListChanged
+            // snapshot - so it's safe to actually clear the saved selection
+            // here. devicesListChanged fires right after this and will pick
+            // a replacement automatically if one remains.
+            if (deviceId === root.selectedDeviceId) {
+                selectDevice("");
             }
         }
 
