@@ -12,6 +12,10 @@ PluginComponent {
     property int workDuration: pluginData.workDuration || 25
     property int shortBreakDuration: pluginData.shortBreakDuration || 5
     property int longBreakDuration: pluginData.longBreakDuration || 15
+    property int longBreakFrequency: {
+        const configured = parseInt(pluginData.longBreakFrequency, 10)
+        return configured > 0 ? configured : 4
+    }
     property bool autoStartBreaks: pluginData.autoStartBreaks ?? false
     property bool autoStartPomodoros: pluginData.autoStartPomodoros ?? false
     property bool autoSetDND: pluginData.autoSetDND ?? false
@@ -188,7 +192,7 @@ PluginComponent {
                 pluginService.savePluginState("dankPomodoroTimer", "completedPomodoros-" + dateKey, globalCompletedPomodoros.value);
                 loadLast7Days();
             }
-            const isLongBreak = globalCompletedPomodoros.value % 4 === 0;
+            const isLongBreak = globalCompletedPomodoros.value % root.longBreakFrequency === 0;
 
             Quickshell.execDetached(["sh", "-c", "notify-send 'Pomodoro Complete' 'Time for a " + (isLongBreak ? "long" : "short") + " break!' -u normal"]);
 
@@ -581,7 +585,7 @@ PluginComponent {
                         }
 
                         StyledText {
-                            text: "Next long break after " + (4 - (globalCompletedPomodoros.value % 4)) + " more"
+                            text: "Next long break after " + (root.longBreakFrequency - (globalCompletedPomodoros.value % root.longBreakFrequency)) + " more"
                             font.pixelSize: Theme.fontSizeSmall
                             color: Theme.surfaceVariantText
                             leftPadding: Theme.iconSize + Theme.spacingM
