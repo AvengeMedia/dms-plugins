@@ -709,6 +709,41 @@ PluginComponent {
             id: horizWrapper
             implicitWidth: horizRow.implicitWidth
             implicitHeight: horizRow.implicitHeight
+            DropArea {
+                id: horizDropArea
+                anchors.fill: parent
+                anchors.margins: -15
+
+                property bool isDragActive: false
+
+                onEntered: drag => {
+                    if (drag.hasUrls && root.hasDevice && root.selectedDevice?.isReachable) {
+                        isDragActive = true;
+                        drag.accept();
+                    } else {
+                        isDragActive = false;
+                        drag.ignore();
+                    }
+                }
+                onExited: {
+                    isDragActive = false;
+                }
+                onDropped: drop => {
+                    isDragActive = false;
+                    if (drop.hasUrls && root.hasDevice && root.selectedDevice?.isReachable) {
+                        for (let i = 0; i < drop.urls.length; ++i) {
+                            PhoneConnectService.shareFile(root.selectedDeviceId, drop.urls[i], function(response) {
+                                if (response && response.error) {
+                                    ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
+                                } else {
+                                    ToastService.showInfo(I18n.tr("Sending file to %1...", "Phone Connect share action").arg(root.selectedDevice?.name || "device"));
+                                }
+                            });
+                        }
+                        drop.accept();
+                    }
+                }
+            }
 
             Item {
                 id: hWaveContainer
@@ -774,19 +809,19 @@ PluginComponent {
 
                     DankIcon {
                         id: phoneIcon
-                        name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
+                        name: horizDropArea.isDragActive ? "share" : (root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off")
                         size: Theme.barIconSize(root.barThickness, -4)
                         color: {
                             if (!PhoneConnectService.available)
                                 return Theme.widgetIconColor;
-                            if (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging)
+                            if (horizDropArea.isDragActive || (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging))
                                 return Theme.primary;
                             return Theme.widgetIconColor;
                         }
                     }
 
                     DankIcon {
-                        visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
+                        visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false) && !horizDropArea.isDragActive
                         name: "bolt"
                         size: phoneIcon.size * 0.45
                         color: Theme.primary
@@ -798,7 +833,7 @@ PluginComponent {
                 }
 
                 StyledText {
-                    visible: root.hasDevice && (root.selectedDevice?.batteryCharge ?? -1) >= 0
+                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
                     text: (root.selectedDevice?.batteryCharge ?? 0) + "%"
                     font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
                     color: Theme.widgetTextColor
@@ -821,6 +856,41 @@ PluginComponent {
             id: vertWrapper
             implicitWidth: vertCol.implicitWidth
             implicitHeight: vertCol.implicitHeight
+            DropArea {
+                id: vertDropArea
+                anchors.fill: parent
+                anchors.margins: -15
+
+                property bool isDragActive: false
+
+                onEntered: drag => {
+                    if (drag.hasUrls && root.hasDevice && root.selectedDevice?.isReachable) {
+                        isDragActive = true;
+                        drag.accept();
+                    } else {
+                        isDragActive = false;
+                        drag.ignore();
+                    }
+                }
+                onExited: {
+                    isDragActive = false;
+                }
+                onDropped: drop => {
+                    isDragActive = false;
+                    if (drop.hasUrls && root.hasDevice && root.selectedDevice?.isReachable) {
+                        for (let i = 0; i < drop.urls.length; ++i) {
+                            PhoneConnectService.shareFile(root.selectedDeviceId, drop.urls[i], function(response) {
+                                if (response && response.error) {
+                                    ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
+                                } else {
+                                    ToastService.showInfo(I18n.tr("Sending file to %1...", "Phone Connect share action").arg(root.selectedDevice?.name || "device"));
+                                }
+                            });
+                        }
+                        drop.accept();
+                    }
+                }
+            }
 
             Item {
                 id: vWaveContainer
@@ -886,19 +956,19 @@ PluginComponent {
 
                     DankIcon {
                         id: phoneIconV
-                        name: root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off"
+                        name: vertDropArea.isDragActive ? "share" : (root.hasDevice && root.selectedDevice.isReachable ? "smartphone" : "phonelink_off")
                         size: Theme.barIconSize(root.barThickness)
                         color: {
                             if (!PhoneConnectService.available)
                                 return Theme.widgetIconColor;
-                            if (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging)
+                            if (vertDropArea.isDragActive || (root.hasDevice && root.selectedDevice?.isReachable && root.selectedDevice?.batteryCharging))
                                 return Theme.primary;
                             return Theme.widgetIconColor;
                         }
                     }
 
                     DankIcon {
-                        visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false)
+                        visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharging ?? false) && !vertDropArea.isDragActive
                         name: "bolt"
                         size: phoneIconV.size * 0.45
                         color: Theme.primary
@@ -910,7 +980,7 @@ PluginComponent {
                 }
 
                 StyledText {
-                    visible: root.hasDevice && (root.selectedDevice?.batteryCharge ?? -1) >= 0
+                    visible: root.hasDevice && root.selectedDevice?.isReachable && (root.selectedDevice?.batteryCharge ?? -1) >= 0
                     text: (root.selectedDevice?.batteryCharge ?? 0).toString()
                     font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale)
                     color: Theme.widgetTextColor
