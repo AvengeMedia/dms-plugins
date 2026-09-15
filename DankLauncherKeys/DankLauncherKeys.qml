@@ -151,7 +151,7 @@ QtObject {
         if (actionType === "copy") {
             Quickshell.execDetached(["sh", "-c", "echo -n '" + actionData + "' | dms cl copy"]);
             if (typeof ToastService !== "undefined")
-                ToastService.showInfo(I18n.tr("Copied to clipboard"), actionData);
+                ToastService.showInfo(I18n.trFor("dankLauncherKeys", "Copied to clipboard"), actionData);
         }
     }
 
@@ -162,12 +162,12 @@ QtObject {
         return [
             {
                 icon: pinned ? "keep_off" : "push_pin",
-                text: pinned ? I18n.tr("Unpin") : I18n.tr("Pin"),
+                text: pinned ? I18n.trFor("dankLauncherKeys", "Unpin") : I18n.trFor("dankLauncherKeys", "Pin"),
                 action: () => togglePin(item._keybindId)
             },
             {
                 icon: "content_copy",
-                text: I18n.tr("Copy"),
+                text: I18n.trFor("dankLauncherKeys", "Copy"),
                 action: () => executeItem(item)
             }
         ];

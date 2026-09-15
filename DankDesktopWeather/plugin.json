@@ -11,7 +11,7 @@
     "capabilities": ["desktop-widget", "weather"],
     "component": "./DankDesktopWeather.qml",
     "settings": "./DankDesktopWeatherSettings.qml",
-    "requires_dms": ">=1.2.0",
+    "requires_dms": ">=1.6.0",
     "permissions": [
         "settings_read",
         "settings_write"

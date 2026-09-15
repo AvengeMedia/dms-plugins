@@ -166,7 +166,7 @@ QtObject {
         return [
             {
                 icon: "close",
-                text: I18n.tr("Close Window"),
+                text: I18n.trFor("dankHyprlandWindows", "Close Window"),
                 action: () => {
                     closeWindow(address);
                 }

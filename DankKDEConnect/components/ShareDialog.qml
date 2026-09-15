@@ -1,17 +1,15 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Effects
 import qs.Common
 import qs.Modals.FileBrowser
 import qs.Widgets
 import qs.Services
 
-
 StyledRect {
     id: root
 
     focus: true
-    Keys.onEscapePressed: (event) => {
+    Keys.onEscapePressed: event => {
         root.close();
         event.accepted = true;
     }
@@ -67,9 +65,17 @@ StyledRect {
         border.color: Theme.withAlpha(Theme.primary, (isEnabled && actionArea.containsMouse) ? 0.3 : 0.15)
         opacity: isEnabled ? 1.0 : 0.4
         activeFocusOnTab: isEnabled
-        
-        Behavior on color { ColorAnimation { duration: 150 } }
-        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
+            }
+        }
+        Behavior on border.color {
+            ColorAnimation {
+                duration: 150
+            }
+        }
 
         Row {
             anchors.centerIn: parent
@@ -81,7 +87,12 @@ StyledRect {
                 color: (actionRoot.isEnabled && actionArea.containsMouse) ? Theme.primary : Theme.surfaceVariantText
                 scale: (actionRoot.isEnabled && actionArea.containsMouse) ? 1.15 : 1.0
                 anchors.verticalCenter: parent.verticalCenter
-                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 300
+                        easing.type: Easing.OutBack
+                    }
+                }
             }
 
             StyledText {
@@ -90,7 +101,11 @@ StyledRect {
                 font.weight: Font.Medium
                 color: (actionRoot.isEnabled && actionArea.containsMouse) ? Theme.primary : Theme.surfaceText
                 anchors.verticalCenter: parent.verticalCenter
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 150
+                    }
+                }
             }
         }
 
@@ -107,7 +122,10 @@ StyledRect {
             anchors.fill: parent
             hoverEnabled: actionRoot.isEnabled
             cursorShape: actionRoot.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onPressed: function(m) { if (actionRoot.isEnabled) actionRipple.trigger(m.x, m.y) }
+            onPressed: function (m) {
+                if (actionRoot.isEnabled)
+                    actionRipple.trigger(m.x, m.y);
+            }
             onClicked: {
                 if (actionRoot.isEnabled)
                     actionRoot.clicked();
@@ -124,7 +142,7 @@ StyledRect {
             visible: parent.activeFocus
         }
 
-        Keys.onPressed: (event) => {
+        Keys.onPressed: event => {
             if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
                 if (actionRoot.isEnabled) {
                     actionRoot.clicked();
@@ -148,7 +166,6 @@ StyledRect {
     color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.4)
     border.width: 1
     border.color: Theme.withAlpha(Theme.primary, 0.15)
-
 
     states: [
         State {
@@ -181,9 +198,14 @@ StyledRect {
 
     transitions: [
         Transition {
-            from: "closed"; to: "open"
+            from: "closed"
+            to: "open"
             ParallelAnimation {
-                PropertyAction { target: root; property: "visible"; value: true }
+                PropertyAction {
+                    target: root
+                    property: "visible"
+                    value: true
+                }
                 NumberAnimation {
                     target: root
                     property: "height"
@@ -199,7 +221,8 @@ StyledRect {
             }
         },
         Transition {
-            from: "open"; to: "closed"
+            from: "open"
+            to: "closed"
             SequentialAnimation {
                 ParallelAnimation {
                     NumberAnimation {
@@ -215,7 +238,11 @@ StyledRect {
                         easing.type: Easing.OutCubic
                     }
                 }
-                PropertyAction { target: root; property: "visible"; value: false }
+                PropertyAction {
+                    target: root
+                    property: "visible"
+                    value: false
+                }
             }
         }
     ]
@@ -234,150 +261,170 @@ StyledRect {
             anchors.margins: Theme.spacingM
             spacing: Theme.spacingS
 
-        RowLayout {
-            width: parent.width
-            spacing: Theme.spacingXS
-            anchors.left: parent.left
-            anchors.leftMargin: 4
-
-            DankIcon {
-                name: "share"
-                size: 14
-                color: Theme.surfaceText
-                Layout.alignment: Qt.AlignVCenter
-            }
-
-            StyledText {
-                text: I18n.tr("Share", "KDE Connect share dialog title")
-                font.pixelSize: Theme.fontSizeSmall
-                font.weight: Font.Bold
-                color: Theme.surfaceText
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignVCenter
-            }
-
-            Rectangle {
-                id: closeBtn
-                width: 32
-                height: 32
-                radius: Theme.cornerRadius
-                Layout.alignment: Qt.AlignVCenter
-                color: closeArea.containsMouse ? Theme.withAlpha(Theme.error, 0.4) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
-                border.width: 1
-                border.color: Theme.withAlpha(Theme.error, closeArea.containsMouse ? 0.4 : 0.15)
-                scale: closeArea.containsMouse ? 1.08 : 1.0
-                activeFocusOnTab: true
-
-                Behavior on color { ColorAnimation { duration: 200 } }
-                Behavior on border.color { ColorAnimation { duration: 200 } }
-                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+            RowLayout {
+                width: parent.width
+                spacing: Theme.spacingXS
+                anchors.left: parent.left
+                anchors.leftMargin: 4
 
                 DankIcon {
-                    anchors.centerIn: parent
-                    name: "close"
-                    size: 16
-                    color: closeArea.containsMouse ? (Theme.isLightMode ? "#000000" : Theme.error) : Theme.surfaceVariantText
-                    rotation: closeArea.containsMouse ? 90 : 0
-
-                    Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                    name: "share"
+                    size: 14
+                    color: Theme.surfaceText
+                    Layout.alignment: Qt.AlignVCenter
                 }
 
-                DankRipple {
-                    id: closeRipple
-                    anchors.fill: parent
-                    cornerRadius: parent.radius
-                    rippleColor: Theme.error
-                }
-
-                MouseArea {
-                    id: closeArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onPressed: function(m) { closeRipple.trigger(m.x, m.y) }
-                    onClicked: root.close()
+                StyledText {
+                    text: I18n.trFor("dankKDEConnect", "Share", "KDE Connect share dialog title")
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Bold
+                    color: Theme.surfaceText
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
                 }
 
                 Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: -1
-                    color: "transparent"
-                    border.color: Theme.primary
-                    border.width: 2
+                    id: closeBtn
+                    width: 32
+                    height: 32
                     radius: Theme.cornerRadius
-                    visible: parent.activeFocus
-                }
+                    Layout.alignment: Qt.AlignVCenter
+                    color: closeArea.containsMouse ? Theme.withAlpha(Theme.error, 0.4) : Theme.withAlpha(Theme.surfaceContainer, 0.4)
+                    border.width: 1
+                    border.color: Theme.withAlpha(Theme.error, closeArea.containsMouse ? 0.4 : 0.15)
+                    scale: closeArea.containsMouse ? 1.08 : 1.0
+                    activeFocusOnTab: true
 
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
-                        root.close();
-                        event.accepted = true;
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 200
+                        }
                     }
-                }
-            }
-        }
+                    Behavior on border.color {
+                        ColorAnimation {
+                            duration: 200
+                        }
+                    }
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 300
+                            easing.type: Easing.OutBack
+                        }
+                    }
 
-        RowLayout {
-            width: parent.width
-            spacing: Theme.spacingS
+                    DankIcon {
+                        anchors.centerIn: parent
+                        name: "close"
+                        size: 16
+                        color: closeArea.containsMouse ? (Theme.isLightMode ? "#000000" : Theme.error) : Theme.surfaceVariantText
+                        rotation: closeArea.containsMouse ? 90 : 0
 
-            DankTextField {
-                id: shareInput
-                Layout.fillWidth: true
-                placeholderText: I18n.tr("Enter URI or text to share", "KDE Connect share input placeholder") + "..."
-                activeFocusOnTab: true
+                        Behavior on rotation {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.OutBack
+                            }
+                        }
+                    }
 
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
-                        if (text.trim().length > 0) {
-                            root.shareInputContent(root.isUri(text));
+                    DankRipple {
+                        id: closeRipple
+                        anchors.fill: parent
+                        cornerRadius: parent.radius
+                        rippleColor: Theme.error
+                    }
+
+                    MouseArea {
+                        id: closeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onPressed: function (m) {
+                            closeRipple.trigger(m.x, m.y);
+                        }
+                        onClicked: root.close()
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -1
+                        color: "transparent"
+                        border.color: Theme.primary
+                        border.width: 2
+                        radius: Theme.cornerRadius
+                        visible: parent.activeFocus
+                    }
+
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                            root.close();
                             event.accepted = true;
                         }
                     }
                 }
             }
+
+            RowLayout {
+                width: parent.width
+                spacing: Theme.spacingS
+
+                DankTextField {
+                    id: shareInput
+                    Layout.fillWidth: true
+                    placeholderText: I18n.trFor("dankKDEConnect", "Enter URI or text to share", "KDE Connect share input placeholder") + "..."
+                    activeFocusOnTab: true
+
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                            if (text.trim().length > 0) {
+                                root.shareInputContent(root.isUri(text));
+                                event.accepted = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: Theme.spacingXXS
+
+                ShareActionButton {
+                    label: I18n.trFor("dankKDEConnect", "URI", "KDE Connect share URI button")
+                    iconName: "link"
+                    isEnabled: root.isUri(shareInput.text)
+                    isFirst: true
+                    onClicked: root.shareInputContent(true)
+                }
+
+                ShareActionButton {
+                    label: I18n.trFor("dankKDEConnect", "Text", "KDE Connect share text button")
+                    iconName: "notes"
+                    isEnabled: shareInput.text.trim().length > 0
+                    onClicked: root.shareInputContent(false)
+                }
+
+                ShareActionButton {
+                    label: I18n.trFor("dankKDEConnect", "File", "KDE Connect send file button")
+                    iconName: "upload_file"
+                    isLast: true
+                    onClicked: fileBrowser.open()
+                }
+            }
         }
-
-        RowLayout {
-            width: parent.width
-            spacing: Theme.spacingXXS
-
-            ShareActionButton {
-                label: I18n.tr("URI", "KDE Connect share URI button")
-                iconName: "link"
-                isEnabled: root.isUri(shareInput.text)
-                isFirst: true
-                onClicked: root.shareInputContent(true)
-            }
-
-            ShareActionButton {
-                label: I18n.tr("Text", "KDE Connect share text button")
-                iconName: "notes"
-                isEnabled: shareInput.text.trim().length > 0
-                onClicked: root.shareInputContent(false)
-            }
-
-            ShareActionButton {
-                label: I18n.tr("File", "KDE Connect send file button")
-                iconName: "upload_file"
-                isLast: true
-                onClicked: fileBrowser.open()
-            }
-        }
-    }
     }
 
     FileBrowserSurfaceModal {
         id: fileBrowser
 
-        browserTitle: I18n.tr("Select File to Send", "KDE Connect file browser title")
+        browserTitle: I18n.trFor("dankKDEConnect", "Select File to Send", "KDE Connect file browser title")
         browserIcon: "upload_file"
         browserType: "generic"
         showHiddenFiles: false
         fileExtensions: ["*"]
         parentPopout: root.parentPopout
 
-        onFileSelected: function(path) {
+        onFileSelected: function (path) {
             root.shareFile(path);
             close();
         }

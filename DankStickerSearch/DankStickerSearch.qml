@@ -98,7 +98,7 @@ QtObject {
         const result = [
             {
                 id: "",
-                name: I18n.tr("All"),
+                name: I18n.trFor("dankStickerSearch", "All"),
                 searchTerm: ""
             }
         ];
@@ -137,9 +137,9 @@ QtObject {
         if (StickerSearchService.loading || StickerSearchService.resultsForQuery !== expectedQuery) {
             return [
                 {
-                    name: I18n.tr("Searching..."),
+                    name: I18n.trFor("dankStickerSearch", "Searching..."),
                     icon: "material:hourglass_empty",
-                    comment: q || I18n.tr("Trending Stickers"),
+                    comment: q || I18n.trFor("dankStickerSearch", "Trending Stickers"),
                     action: "none",
                     categories: ["Sticker Search"]
                 }
@@ -150,9 +150,9 @@ QtObject {
         if (!results || results.length === 0) {
             return [
                 {
-                    name: q ? I18n.tr("No results found") : I18n.tr("Loading trending..."),
+                    name: q ? I18n.trFor("dankStickerSearch", "No results found") : I18n.trFor("dankStickerSearch", "Loading trending..."),
                     icon: "material:sentiment_satisfied",
-                    comment: I18n.tr("Try a different search"),
+                    comment: I18n.trFor("dankStickerSearch", "Try a different search"),
                     action: "none",
                     categories: ["Sticker Search"]
                 }
@@ -173,7 +173,7 @@ QtObject {
             items.push({
                 name: sticker.title || "Sticker",
                 icon: "material:sentiment_satisfied",
-                comment: I18n.tr("Shift+Enter to paste"),
+                comment: I18n.trFor("dankStickerSearch", "Shift+Enter to paste"),
                 action: "copy:" + JSON.stringify(urls),
                 categories: ["Sticker Search"],
                 imageUrl: sticker.previewUrl,
@@ -227,7 +227,7 @@ QtObject {
             Quickshell.execDetached(["dms", "cl", "copy", url]);
         else
             Quickshell.execDetached(["dms", "cl", "copy", "--download", url]);
-        ToastService.showInfo(I18n.tr("Copied to clipboard"));
+        ToastService.showInfo(I18n.trFor("dankStickerSearch", "Copied to clipboard"));
     }
 
     function getContextMenuActions(item) {
@@ -245,7 +245,7 @@ QtObject {
             const copyCmd = pasteUrlOnly ? "dms cl copy '" + preferredUrl + "'" : "dms cl copy --download '" + preferredUrl + "'";
             actions.push({
                 icon: "content_paste",
-                text: I18n.tr("Paste"),
+                text: I18n.trFor("dankStickerSearch", "Paste"),
                 closeLauncher: true,
                 action: () => {
                     Quickshell.execDetached(["sh", "-c", copyCmd + " && sleep 0.3 && wtype -M ctrl -P v -p v -m ctrl"]);
@@ -256,10 +256,10 @@ QtObject {
         if (preferredUrl) {
             actions.push({
                 icon: "download",
-                text: I18n.tr("Copy Content"),
+                text: I18n.trFor("dankStickerSearch", "Copy Content"),
                 action: () => {
                     Quickshell.execDetached(["dms", "cl", "copy", "--download", preferredUrl]);
-                    ToastService.showInfo(I18n.tr("Content copied"));
+                    ToastService.showInfo(I18n.trFor("dankStickerSearch", "Content copied"));
                 }
             });
         }
@@ -270,7 +270,7 @@ QtObject {
                 text: "WebP",
                 action: () => {
                     Quickshell.execDetached(["dms", "cl", "copy", urls.webp]);
-                    ToastService.showInfo(I18n.tr("Copied WebP"));
+                    ToastService.showInfo(I18n.trFor("dankStickerSearch", "Copied WebP"));
                 }
             });
         }
@@ -280,7 +280,7 @@ QtObject {
                 text: "GIF",
                 action: () => {
                     Quickshell.execDetached(["dms", "cl", "copy", urls.gif]);
-                    ToastService.showInfo(I18n.tr("Copied GIF"));
+                    ToastService.showInfo(I18n.trFor("dankStickerSearch", "Copied GIF"));
                 }
             });
         }
@@ -290,7 +290,7 @@ QtObject {
                 text: "MP4",
                 action: () => {
                     Quickshell.execDetached(["dms", "cl", "copy", urls.mp4]);
-                    ToastService.showInfo(I18n.tr("Copied MP4"));
+                    ToastService.showInfo(I18n.trFor("dankStickerSearch", "Copied MP4"));
                 }
             });
         }
@@ -298,7 +298,7 @@ QtObject {
         if (preferredUrl) {
             actions.push({
                 icon: "open_in_new",
-                text: I18n.tr("Open in Browser"),
+                text: I18n.trFor("dankStickerSearch", "Open in Browser"),
                 action: () => {
                     Qt.openUrlExternally(preferredUrl);
                 }

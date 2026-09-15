@@ -11,7 +11,7 @@
     "firstParty": true,
     "component": "./DankLauncherKeys.qml",
     "settings": "./DankLauncherKeysSettings.qml",
-    "requires_dms": ">=1.2.0",
+    "requires_dms": ">=1.6.0",
     "permissions": [
         "settings_read",
         "settings_write"

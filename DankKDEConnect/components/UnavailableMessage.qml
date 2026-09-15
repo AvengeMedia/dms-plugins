@@ -27,7 +27,7 @@ StyledRect {
             }
 
             StyledText {
-                text: I18n.tr("Phone Connect Not Available", "Phone Connect unavailable error title")
+                text: I18n.trFor("dankKDEConnect", "Phone Connect Not Available", "Phone Connect unavailable error title")
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.Medium
                 color: Theme.error
@@ -36,7 +36,7 @@ StyledRect {
         }
 
         StyledText {
-            text: I18n.tr("Start KDE Connect or Valent to use this plugin", "Phone Connect daemon hint")
+            text: I18n.trFor("dankKDEConnect", "Start KDE Connect or Valent to use this plugin", "Phone Connect daemon hint")
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.error
             opacity: 0.8

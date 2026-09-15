@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Shapes
 import qs.Common
 import qs.Widgets
 import "../services"
@@ -25,27 +24,58 @@ StyledRect {
     bottomLeftRadius: isSelected ? root.height / 2 : (isLast ? Theme.cornerRadius : 4)
     bottomRightRadius: isSelected ? root.height / 2 : (isLast ? Theme.cornerRadius : 4)
 
-    Behavior on topLeftRadius { NumberAnimation { duration: 200 } }
-    Behavior on topRightRadius { NumberAnimation { duration: 200 } }
-    Behavior on bottomLeftRadius { NumberAnimation { duration: 200 } }
-    Behavior on bottomRightRadius { NumberAnimation { duration: 200 } }
+    Behavior on topLeftRadius {
+        NumberAnimation {
+            duration: 200
+        }
+    }
+    Behavior on topRightRadius {
+        NumberAnimation {
+            duration: 200
+        }
+    }
+    Behavior on bottomLeftRadius {
+        NumberAnimation {
+            duration: 200
+        }
+    }
+    Behavior on bottomRightRadius {
+        NumberAnimation {
+            duration: 200
+        }
+    }
 
     color: isSelected ? Theme.withAlpha(Theme.primary, 0.18) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.10) : Theme.withAlpha(Theme.secondary, 0.04))
     border.width: 1
     border.color: isSelected ? Theme.withAlpha(Theme.primary, 0.60) : (cardMouseArea.containsMouse && selectable ? Theme.withAlpha(Theme.primary, 0.40) : Theme.withAlpha(Theme.secondary, 0.15))
 
-    Behavior on color { ColorAnimation { duration: 200 } }
-    Behavior on border.color { ColorAnimation { duration: 200 } }
+    Behavior on color {
+        ColorAnimation {
+            duration: 200
+        }
+    }
+    Behavior on border.color {
+        ColorAnimation {
+            duration: 200
+        }
+    }
 
     scale: cardMouseArea.pressed ? 0.98 : 1.0
-    Behavior on scale { NumberAnimation { duration: 100 } }
+    Behavior on scale {
+        NumberAnimation {
+            duration: 100
+        }
+    }
 
     MouseArea {
         id: cardMouseArea
         anchors.fill: parent
         hoverEnabled: root.selectable
         cursorShape: root.selectable ? Qt.PointingHandCursor : Qt.ArrowCursor
-        onPressed: function(m) { if (root.selectable) cardRipple.trigger(m.x, m.y) }
+        onPressed: function (m) {
+            if (root.selectable)
+                cardRipple.trigger(m.x, m.y);
+        }
         onClicked: if (root.selectable)
             root.clicked()
     }
@@ -148,10 +178,11 @@ StyledRect {
                     iconName: "phone_in_talk"
                     iconColor: Theme.primary
                     buttonSize: 36
-                    tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
+                    tooltipText: I18n.trFor("dankKDEConnect", "Ring", "KDE Connect ring tooltip")
                     tooltipSide: "top"
                     onClicked: {
-                        if (!enabled) return;
+                        if (!enabled)
+                            return;
                         root.action("ring");
                     }
                 }
@@ -167,10 +198,11 @@ StyledRect {
                     iconName: "notifications_active"
                     iconColor: Theme.primary
                     buttonSize: 36
-                    tooltipText: I18n.tr("Ping", "KDE Connect ping tooltip")
+                    tooltipText: I18n.trFor("dankKDEConnect", "Ping", "KDE Connect ping tooltip")
                     tooltipSide: "top"
                     onClicked: {
-                        if (!enabled) return;
+                        if (!enabled)
+                            return;
                         root.action("ping");
                     }
                 }
@@ -187,10 +219,11 @@ StyledRect {
                     iconName: "content_paste"
                     iconColor: Theme.primary
                     buttonSize: 36
-                    tooltipText: I18n.tr("Send Clipboard", "KDE Connect clipboard tooltip")
+                    tooltipText: I18n.trFor("dankKDEConnect", "Send Clipboard", "KDE Connect clipboard tooltip")
                     tooltipSide: "top"
                     onClicked: {
-                        if (!enabled) return;
+                        if (!enabled)
+                            return;
                         root.action("clipboard");
                     }
                 }
@@ -206,10 +239,11 @@ StyledRect {
                     iconName: "share"
                     iconColor: Theme.primary
                     buttonSize: 36
-                    tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
+                    tooltipText: I18n.trFor("dankKDEConnect", "Share", "KDE Connect share tooltip")
                     tooltipSide: "top"
                     onClicked: {
-                        if (!enabled) return;
+                        if (!enabled)
+                            return;
                         root.action("share");
                     }
                 }
@@ -225,10 +259,11 @@ StyledRect {
                     iconName: "folder"
                     iconColor: Theme.primary
                     buttonSize: 36
-                    tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
+                    tooltipText: I18n.trFor("dankKDEConnect", "Browse Files", "KDE Connect browse tooltip")
                     tooltipSide: "top"
                     onClicked: {
-                        if (!enabled) return;
+                        if (!enabled)
+                            return;
                         root.action("browse");
                     }
                 }
@@ -244,10 +279,11 @@ StyledRect {
                     iconName: "sms"
                     iconColor: Theme.primary
                     buttonSize: 36
-                    tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
+                    tooltipText: I18n.trFor("dankKDEConnect", "SMS", "KDE Connect SMS tooltip")
                     tooltipSide: "top"
                     onClicked: {
-                        if (!enabled) return;
+                        if (!enabled)
+                            return;
                         root.action("sms");
                     }
                 }
@@ -258,7 +294,7 @@ StyledRect {
                 iconName: "link_off"
                 iconColor: Theme.primary
                 buttonSize: 36
-                tooltipText: I18n.tr("Unpair", "KDE Connect unpair tooltip")
+                tooltipText: I18n.trFor("dankKDEConnect", "Unpair", "KDE Connect unpair tooltip")
                 tooltipSide: "top"
                 onClicked: root.action("unpair")
             }
@@ -269,13 +305,13 @@ StyledRect {
             spacing: Theme.spacingS
 
             DankButton {
-                text: I18n.tr("Accept", "KDE Connect accept pairing button")
+                text: I18n.trFor("dankKDEConnect", "Accept", "KDE Connect accept pairing button")
                 iconName: "check"
                 onClicked: root.action("acceptPair")
             }
 
             DankButton {
-                text: I18n.tr("Reject", "KDE Connect reject pairing button")
+                text: I18n.trFor("dankKDEConnect", "Reject", "KDE Connect reject pairing button")
                 iconName: "close"
                 onClicked: root.action("rejectPair")
             }
@@ -286,7 +322,7 @@ StyledRect {
             spacing: Theme.spacingS
 
             DankButton {
-                text: I18n.tr("Request Pairing", "KDE Connect request pairing button")
+                text: I18n.trFor("dankKDEConnect", "Request Pairing", "KDE Connect request pairing button")
                 iconName: "link"
                 onClicked: root.action("pair")
             }
@@ -295,15 +331,15 @@ StyledRect {
 
     function getStatusText() {
         if (!root.device)
-            return I18n.tr("Unknown", "KDE Connect unknown device status");
+            return I18n.trFor("dankKDEConnect", "Unknown", "KDE Connect unknown device status");
         if (root.device.isPairRequestedByPeer)
-            return I18n.tr("Pairing requested", "KDE Connect pairing requested status");
+            return I18n.trFor("dankKDEConnect", "Pairing requested", "KDE Connect pairing requested status");
         if (root.device.isPairRequested)
-            return I18n.tr("Pairing...", "KDE Connect pairing in progress status");
+            return I18n.trFor("dankKDEConnect", "Pairing...", "KDE Connect pairing in progress status");
         if (!root.device.isPaired)
-            return I18n.tr("Not paired", "KDE Connect not paired status");
+            return I18n.trFor("dankKDEConnect", "Not paired", "KDE Connect not paired status");
         if (!root.device.isReachable)
-            return I18n.tr("Offline", "KDE Connect offline status");
+            return I18n.trFor("dankKDEConnect", "Offline", "KDE Connect offline status");
         return "";
     }
 

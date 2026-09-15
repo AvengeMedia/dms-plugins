@@ -8,23 +8,23 @@ PluginSettings {
 
     SelectionSetting {
         settingKey: "viewMode"
-        label: I18n.tr("View Mode")
-        description: I18n.tr("Choose how the weather widget is displayed")
+        label: I18n.trFor("dankDesktopWeather", "View Mode")
+        description: I18n.trFor("dankDesktopWeather", "Choose how the weather widget is displayed")
         options: [
             {
-                label: I18n.tr("Compact"),
+                label: I18n.trFor("dankDesktopWeather", "Compact"),
                 value: "compact"
             },
             {
-                label: I18n.tr("Standard"),
+                label: I18n.trFor("dankDesktopWeather", "Standard"),
                 value: "standard"
             },
             {
-                label: I18n.tr("Detailed"),
+                label: I18n.trFor("dankDesktopWeather", "Detailed"),
                 value: "detailed"
             },
             {
-                label: I18n.tr("Forecast"),
+                label: I18n.trFor("dankDesktopWeather", "Forecast"),
                 value: "forecast"
             }
         ]
@@ -33,18 +33,18 @@ PluginSettings {
 
     SelectionSetting {
         settingKey: "colorMode"
-        label: I18n.tr("Accent Color")
+        label: I18n.trFor("dankDesktopWeather", "Accent Color")
         options: [
             {
-                label: I18n.tr("Primary"),
+                label: I18n.trFor("dankDesktopWeather", "Primary"),
                 value: "primary"
             },
             {
-                label: I18n.tr("Secondary"),
+                label: I18n.trFor("dankDesktopWeather", "Secondary"),
                 value: "secondary"
             },
             {
-                label: I18n.tr("Custom"),
+                label: I18n.trFor("dankDesktopWeather", "Custom"),
                 value: "custom"
             }
         ]
@@ -53,14 +53,14 @@ PluginSettings {
 
     ColorSetting {
         settingKey: "customColor"
-        label: I18n.tr("Custom Color")
-        description: I18n.tr("Used when accent color is set to Custom")
+        label: I18n.trFor("dankDesktopWeather", "Custom Color")
+        description: I18n.trFor("dankDesktopWeather", "Used when accent color is set to Custom")
         defaultValue: "#4fc3f7"
     }
 
     SliderSetting {
         settingKey: "backgroundOpacity"
-        label: I18n.tr("Background Opacity")
+        label: I18n.trFor("dankDesktopWeather", "Background Opacity")
         defaultValue: 80
         minimum: 0
         maximum: 100
@@ -69,62 +69,62 @@ PluginSettings {
 
     ToggleSetting {
         settingKey: "showLocation"
-        label: I18n.tr("Show Location")
+        label: I18n.trFor("dankDesktopWeather", "Show Location")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showCondition"
-        label: I18n.tr("Show Weather Condition")
+        label: I18n.trFor("dankDesktopWeather", "Show Weather Condition")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showFeelsLike"
-        label: I18n.tr("Show Feels Like Temperature")
+        label: I18n.trFor("dankDesktopWeather", "Show Feels Like Temperature")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showHumidity"
-        label: I18n.tr("Show Humidity")
+        label: I18n.trFor("dankDesktopWeather", "Show Humidity")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showWind"
-        label: I18n.tr("Show Wind Speed")
+        label: I18n.trFor("dankDesktopWeather", "Show Wind Speed")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showPressure"
-        label: I18n.tr("Show Pressure")
+        label: I18n.trFor("dankDesktopWeather", "Show Pressure")
         defaultValue: false
     }
 
     ToggleSetting {
         settingKey: "showPrecipitation"
-        label: I18n.tr("Show Precipitation Probability")
+        label: I18n.trFor("dankDesktopWeather", "Show Precipitation Probability")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showSunTimes"
-        label: I18n.tr("Show Sunrise/Sunset")
+        label: I18n.trFor("dankDesktopWeather", "Show Sunrise/Sunset")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showForecast"
-        label: I18n.tr("Show Forecast")
-        description: I18n.tr("Available in Detailed and Forecast view modes")
+        label: I18n.trFor("dankDesktopWeather", "Show Forecast")
+        description: I18n.trFor("dankDesktopWeather", "Available in Detailed and Forecast view modes")
         defaultValue: true
     }
 
     SliderSetting {
         settingKey: "forecastDays"
-        label: I18n.tr("Forecast Days")
+        label: I18n.trFor("dankDesktopWeather", "Forecast Days")
         defaultValue: 5
         minimum: 1
         maximum: 7
@@ -132,14 +132,14 @@ PluginSettings {
 
     ToggleSetting {
         settingKey: "showHourlyForecast"
-        label: I18n.tr("Show Hourly Forecast")
-        description: I18n.tr("Display hourly weather predictions")
+        label: I18n.trFor("dankDesktopWeather", "Show Hourly Forecast")
+        description: I18n.trFor("dankDesktopWeather", "Display hourly weather predictions")
         defaultValue: false
     }
 
     SliderSetting {
         settingKey: "hourlyCount"
-        label: I18n.tr("Hourly Forecast Count")
+        label: I18n.trFor("dankDesktopWeather", "Hourly Forecast Count")
         defaultValue: 6
         minimum: 3
         maximum: 12

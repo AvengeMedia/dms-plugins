@@ -11,7 +11,7 @@
     "viewModeEnforced": true,
     "component": "./DankStickerSearch.qml",
     "settings": "./DankStickerSearchSettings.qml",
-    "requires_dms": ">=1.4.0",
+    "requires_dms": ">=1.6.0",
     "permissions": [
         "settings_read",
         "settings_write"

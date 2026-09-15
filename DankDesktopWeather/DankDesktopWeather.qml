@@ -163,7 +163,7 @@ DesktopPluginComponent {
             }
 
             StyledText {
-                text: I18n.tr("No Weather Data")
+                text: I18n.trFor("dankDesktopWeather", "No Weather Data")
                 font.pixelSize: Theme.fontSizeSmall
                 color: root.dimColor
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -398,7 +398,7 @@ DesktopPluginComponent {
                     WeatherMetric {
                         visible: root.showFeelsLike
                         icon: "device_thermostat"
-                        label: I18n.tr("Feels")
+                        label: I18n.trFor("dankDesktopWeather", "Feels")
                         value: WeatherService.formatTemp(root.weather.feelsLike, true, true)
                         accentColor: root.accentColor
                         textColor: root.textColor
@@ -410,7 +410,7 @@ DesktopPluginComponent {
                     WeatherMetric {
                         visible: root.showHumidity
                         icon: "humidity_percentage"
-                        label: I18n.tr("Humidity")
+                        label: I18n.trFor("dankDesktopWeather", "Humidity")
                         value: WeatherService.formatPercent(root.weather.humidity)
                         accentColor: root.accentColor
                         textColor: root.textColor
@@ -422,7 +422,7 @@ DesktopPluginComponent {
                     WeatherMetric {
                         visible: root.showWind
                         icon: "air"
-                        label: I18n.tr("Wind")
+                        label: I18n.trFor("dankDesktopWeather", "Wind")
                         value: {
                             SettingsData.windSpeedUnit;
                             SettingsData.useFahrenheit;
@@ -438,7 +438,7 @@ DesktopPluginComponent {
                     WeatherMetric {
                         visible: root.showPrecipitation
                         icon: "rainy"
-                        label: I18n.tr("Precip")
+                        label: I18n.trFor("dankDesktopWeather", "Precip")
                         value: WeatherService.formatPercent(root.weather.precipitationProbability)
                         accentColor: root.accentColor
                         textColor: root.textColor
@@ -450,7 +450,7 @@ DesktopPluginComponent {
                     WeatherMetric {
                         visible: root.showPressure
                         icon: "speed"
-                        label: I18n.tr("Pressure")
+                        label: I18n.trFor("dankDesktopWeather", "Pressure")
                         value: WeatherService.formatPressure(root.weather.pressure)
                         accentColor: root.accentColor
                         textColor: root.textColor

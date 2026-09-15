@@ -9,7 +9,7 @@
     "firstParty": true,
     "component": "./DankKDEConnect.qml",
     "settings": "./DankKDEConnectSettings.qml",
-    "requires_dms": ">=1.5",
+    "requires_dms": ">=1.6.0",
     "permissions": [
         "settings_read",
         "settings_write"

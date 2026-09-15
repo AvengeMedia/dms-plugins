@@ -457,16 +457,16 @@ PluginComponent {
     ccWidgetPrimaryText: serviceName
     ccWidgetSecondaryText: {
         if (!PhoneConnectService.available)
-            return I18n.tr("Unavailable", "Phone Connect unavailable status");
+            return I18n.trFor("dankKDEConnect", "Unavailable", "Phone Connect unavailable status");
         if (!hasDevice)
-            return I18n.tr("No devices", "Phone Connect no devices status");
+            return I18n.trFor("dankKDEConnect", "No devices", "Phone Connect no devices status");
         if (selectedDevice.isReachable) {
             let text = selectedDevice.name;
             if (selectedDevice.batteryCharge >= 0)
                 text += " • " + selectedDevice.batteryCharge + "%";
             return text;
         }
-        return selectedDevice.name + " (" + I18n.tr("Offline", "Phone Connect offline status") + ")";
+        return selectedDevice.name + " (" + I18n.trFor("dankKDEConnect", "Offline", "Phone Connect offline status") + ")";
     }
     ccWidgetIsActive: hasDevice && selectedDevice?.isReachable
     ccDetailHeight: 460
@@ -611,8 +611,8 @@ PluginComponent {
 
         function onPairingRequestReceived(deviceId, verificationKey) {
             const device = PhoneConnectService.getDevice(deviceId);
-            const msg = verificationKey ? (I18n.tr("Verification", "Phone Connect pairing verification key label") + ": " + verificationKey) : "";
-            ToastService.showInfo(I18n.tr("Pairing request from %1", "Phone Connect pairing request notification").arg(device?.name || deviceId), msg);
+            const msg = verificationKey ? (I18n.trFor("dankKDEConnect", "Verification", "Phone Connect pairing verification key label") + ": " + verificationKey) : "";
+            ToastService.showInfo(I18n.trFor("dankKDEConnect", "Pairing request from %1", "Phone Connect pairing request notification").arg(device?.name || deviceId), msg);
         }
 
         function onShareReceived(deviceId, url) {
@@ -620,7 +620,7 @@ PluginComponent {
             const filename = url.split("/").pop() || url;
             const filePath = url.startsWith("file://") ? url.substring(7) : url;
 
-            Quickshell.execDetached(["dms", "notify", "--app", serviceName, "--icon", "smartphone", "--file", filePath, I18n.tr("File received from %1", "Phone Connect file share notification").arg(device?.name || deviceId), filename]);
+            Quickshell.execDetached(["dms", "notify", "--app", serviceName, "--icon", "smartphone", "--file", filePath, I18n.trFor("dankKDEConnect", "File received from %1", "Phone Connect file share notification").arg(device?.name || deviceId), filename]);
         }
     }
 
@@ -633,33 +633,33 @@ PluginComponent {
     function sendClipboardToDevice(deviceId) {
         PhoneConnectService.sendClipboard(deviceId, function (response) {
             if (response.error) {
-                ToastService.showError(I18n.tr("Failed to send clipboard", "Phone Connect error"), response.error);
+                ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to send clipboard", "Phone Connect error"), response.error);
                 return;
             }
-            ToastService.showInfo(I18n.tr("Clipboard sent", "Phone Connect clipboard action"));
+            ToastService.showInfo(I18n.trFor("dankKDEConnect", "Clipboard sent", "Phone Connect clipboard action"));
         });
     }
 
     function handleAction(deviceId, action) {
         const device = PhoneConnectService.getDevice(deviceId);
-        const deviceName = device?.name || I18n.tr("device", "Generic device name fallback");
+        const deviceName = device?.name || I18n.trFor("dankKDEConnect", "device", "Generic device name fallback");
         switch (action) {
         case "ring":
             PhoneConnectService.ringDevice(deviceId, function (response) {
                 if (response.error) {
-                    ToastService.showError(I18n.tr("Failed to ring device", "Phone Connect error"), response.error);
+                    ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to ring device", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Ringing %1...", "Phone Connect ring action").arg(deviceName));
+                ToastService.showInfo(I18n.trFor("dankKDEConnect", "Ringing %1...", "Phone Connect ring action").arg(deviceName));
             });
             break;
         case "ping":
             PhoneConnectService.sendPing(deviceId, "", function (response) {
                 if (response.error) {
-                    ToastService.showError(I18n.tr("Failed to send ping", "Phone Connect error"), response.error);
+                    ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to send ping", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Ping sent to %1", "Phone Connect ping action").arg(deviceName));
+                ToastService.showInfo(I18n.trFor("dankKDEConnect", "Ping sent to %1", "Phone Connect ping action").arg(deviceName));
             });
             break;
         case "clipboard":
@@ -689,43 +689,43 @@ PluginComponent {
             closePopout();
             PhoneConnectService.startBrowsing(deviceId, function (response) {
                 if (response.error) {
-                    ToastService.showError(I18n.tr("Failed to browse device", "Phone Connect error"), response.error);
+                    ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to browse device", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Opening file browser", "Phone Connect browse action") + "...");
+                ToastService.showInfo(I18n.trFor("dankKDEConnect", "Opening file browser", "Phone Connect browse action") + "...");
             });
             break;
         case "pair":
             PhoneConnectService.requestPairing(deviceId, function (response) {
                 if (response.error) {
-                    ToastService.showError(I18n.tr("Pairing failed", "Phone Connect error"), response.error);
+                    ToastService.showError(I18n.trFor("dankKDEConnect", "Pairing failed", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Pairing request sent", "Phone Connect pairing action"));
+                ToastService.showInfo(I18n.trFor("dankKDEConnect", "Pairing request sent", "Phone Connect pairing action"));
             });
             break;
         case "acceptPair":
             PhoneConnectService.acceptPairing(deviceId, function (response) {
                 if (response.error) {
-                    ToastService.showError(I18n.tr("Failed to accept pairing", "Phone Connect error"), response.error);
+                    ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to accept pairing", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Device paired", "Phone Connect pairing action"));
+                ToastService.showInfo(I18n.trFor("dankKDEConnect", "Device paired", "Phone Connect pairing action"));
             });
             break;
         case "rejectPair":
             PhoneConnectService.cancelPairing(deviceId, function (response) {
                 if (response.error)
-                    ToastService.showError(I18n.tr("Failed to reject pairing", "Phone Connect error"), response.error);
+                    ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to reject pairing", "Phone Connect error"), response.error);
             });
             break;
         case "unpair":
             PhoneConnectService.unpair(deviceId, function (response) {
                 if (response.error) {
-                    ToastService.showError(I18n.tr("Unpair failed", "Phone Connect error"), response.error);
+                    ToastService.showError(I18n.trFor("dankKDEConnect", "Unpair failed", "Phone Connect error"), response.error);
                     return;
                 }
-                ToastService.showInfo(I18n.tr("Device unpaired", "Phone Connect unpair action"));
+                ToastService.showInfo(I18n.trFor("dankKDEConnect", "Device unpaired", "Phone Connect unpair action"));
             });
             break;
         }
@@ -1487,7 +1487,7 @@ PluginComponent {
                                                     iconName: "phone_in_talk"
                                                     iconColor: Theme.primary
                                                     buttonSize: 32
-                                                    tooltipText: I18n.tr("Ring", "KDE Connect ring tooltip")
+                                                    tooltipText: I18n.trFor("dankKDEConnect", "Ring", "KDE Connect ring tooltip")
                                                     onClicked: {
                                                         if (!enabled)
                                                             return;
@@ -1507,7 +1507,7 @@ PluginComponent {
                                                     iconName: "notifications_active"
                                                     iconColor: Theme.primary
                                                     buttonSize: 32
-                                                    tooltipText: I18n.tr("Ping", "KDE Connect ping tooltip")
+                                                    tooltipText: I18n.trFor("dankKDEConnect", "Ping", "KDE Connect ping tooltip")
                                                     onClicked: {
                                                         if (!enabled)
                                                             return;
@@ -1526,7 +1526,7 @@ PluginComponent {
                                                     iconName: "folder"
                                                     iconColor: Theme.primary
                                                     buttonSize: 32
-                                                    tooltipText: I18n.tr("Browse Files", "KDE Connect browse tooltip")
+                                                    tooltipText: I18n.trFor("dankKDEConnect", "Browse Files", "KDE Connect browse tooltip")
                                                     onClicked: {
                                                         if (!enabled)
                                                             return;
@@ -1546,7 +1546,7 @@ PluginComponent {
                                                     iconName: "content_paste"
                                                     iconColor: Theme.primary
                                                     buttonSize: 32
-                                                    tooltipText: I18n.tr("Send Clipboard", "KDE Connect send clipboard tooltip")
+                                                    tooltipText: I18n.trFor("dankKDEConnect", "Send Clipboard", "KDE Connect send clipboard tooltip")
                                                     onClicked: {
                                                         if (!enabled)
                                                             return;
@@ -1565,7 +1565,7 @@ PluginComponent {
                                                     iconName: "share"
                                                     iconColor: Theme.primary
                                                     buttonSize: 32
-                                                    tooltipText: I18n.tr("Share", "KDE Connect share tooltip")
+                                                    tooltipText: I18n.trFor("dankKDEConnect", "Share", "KDE Connect share tooltip")
                                                     onClicked: {
                                                         if (!enabled)
                                                             return;
@@ -1584,7 +1584,7 @@ PluginComponent {
                                                     iconName: "sms"
                                                     iconColor: Theme.primary
                                                     buttonSize: 32
-                                                    tooltipText: I18n.tr("SMS", "KDE Connect SMS tooltip")
+                                                    tooltipText: I18n.trFor("dankKDEConnect", "SMS", "KDE Connect SMS tooltip")
                                                     onClicked: {
                                                         if (!enabled)
                                                             return;
@@ -1605,28 +1605,28 @@ PluginComponent {
                                         InfoRow {
                                             visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "battery") && (root.activeDevice?.batteryCharge ?? -1) >= 0
                                             icon: PhoneConnectService.getBatteryIcon(root.activeDevice)
-                                            label: I18n.tr("Battery", "KDE Connect battery label")
-                                            value: (root.activeDevice?.batteryCharge ?? -1) >= 0 ? (root.activeDevice.batteryCharge + "%") : I18n.tr("Unknown", "Status")
+                                            label: I18n.trFor("dankKDEConnect", "Battery", "KDE Connect battery label")
+                                            value: (root.activeDevice?.batteryCharge ?? -1) >= 0 ? (root.activeDevice.batteryCharge + "%") : I18n.trFor("dankKDEConnect", "Unknown", "Status")
                                             valueColor: root.activeDevice?.batteryCharging ? Theme.primary : Theme.surfaceText
                                         }
 
                                         InfoRow {
                                             visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && (root.activeDevice?.networkStrength ?? -1) >= 0
                                             icon: PhoneConnectService.getNetworkIcon(root.activeDevice) || "signal_cellular_null"
-                                            label: I18n.tr("Signal Strength", "KDE Connect signal strength label")
-                                            value: I18n.tr(PhoneConnectService.getNetworkStrengthLabel(root.activeDevice), "Network signal strength status")
+                                            label: I18n.trFor("dankKDEConnect", "Signal Strength", "KDE Connect signal strength label")
+                                            value: PhoneConnectService.getNetworkStrengthLabel(root.activeDevice)
                                         }
 
                                         InfoRow {
                                             visible: root.activeDevice && PhoneConnectService.hasPlugin(root.activeDeviceId, "connectivity_report") && root.activeDevice?.networkType
                                             icon: PhoneConnectService.getNetworkTypeIcon(root.activeDevice)
-                                            label: I18n.tr("Network Type", "KDE Connect network type label")
+                                            label: I18n.trFor("dankKDEConnect", "Network Type", "KDE Connect network type label")
                                             value: PhoneConnectService.getNetworkTypeLabel(root.activeDevice)
                                         }
 
                                         InfoRow {
                                             icon: "sms"
-                                            label: I18n.tr("Notifications", "KDE Connect notifications label")
+                                            label: I18n.trFor("dankKDEConnect", "Notifications", "KDE Connect notifications label")
                                             value: root.activeDevice?.notificationCount ?? 0
                                         }
                                     }
@@ -1645,18 +1645,18 @@ PluginComponent {
                                 if (isUri) {
                                     PhoneConnectService.shareUrl(root.shareDeviceId, content, function (response) {
                                         if (response.error) {
-                                            ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
+                                            ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to share", "Phone Connect error"), response.error);
                                             return;
                                         }
-                                        ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
+                                        ToastService.showInfo(I18n.trFor("dankKDEConnect", "Shared", "Phone Connect share success"));
                                     });
                                 } else {
                                     PhoneConnectService.shareText(root.shareDeviceId, content, function (response) {
                                         if (response.error) {
-                                            ToastService.showError(I18n.tr("Failed to share", "Phone Connect error"), response.error);
+                                            ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to share", "Phone Connect error"), response.error);
                                             return;
                                         }
-                                        ToastService.showInfo(I18n.tr("Shared", "Phone Connect share success"));
+                                        ToastService.showInfo(I18n.trFor("dankKDEConnect", "Shared", "Phone Connect share success"));
                                     });
                                 }
                                 root.showShareDialog = false;
@@ -1664,11 +1664,11 @@ PluginComponent {
                             onShareFile: function (path) {
                                 PhoneConnectService.shareFile(root.shareDeviceId, path, function (response) {
                                     if (response.error) {
-                                        ToastService.showError(I18n.tr("Failed to send file", "Phone Connect error"), response.error);
+                                        ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to send file", "Phone Connect error"), response.error);
                                         return;
                                     }
                                     const filename = path.split("/").pop();
-                                    ToastService.showInfo(I18n.tr("Sending %1...", "Phone Connect file send").arg(filename));
+                                    ToastService.showInfo(I18n.trFor("dankKDEConnect", "Sending %1...", "Phone Connect file send").arg(filename));
                                 });
                                 root.showShareDialog = false;
                             }
@@ -1683,20 +1683,20 @@ PluginComponent {
                             onSendSms: function (phoneNumber, message) {
                                 PhoneConnectService.sendSms(root.shareDeviceId, phoneNumber, message, [], function (response) {
                                     if (response.error) {
-                                        ToastService.showError(I18n.tr("Failed to send SMS", "Phone Connect error"), response.error);
+                                        ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to send SMS", "Phone Connect error"), response.error);
                                         return;
                                     }
-                                    ToastService.showInfo(I18n.tr("SMS sent successfully", "Phone Connect SMS action"));
+                                    ToastService.showInfo(I18n.trFor("dankKDEConnect", "SMS sent successfully", "Phone Connect SMS action"));
                                 });
                                 root.showSmsDialog = false;
                             }
                             onLaunchApp: {
                                 PhoneConnectService.launchSmsApp(root.shareDeviceId, function (response) {
                                     if (response.error) {
-                                        ToastService.showError(I18n.tr("Failed to launch SMS app", "Phone Connect error"), response.error);
+                                        ToastService.showError(I18n.trFor("dankKDEConnect", "Failed to launch SMS app", "Phone Connect error"), response.error);
                                         return;
                                     }
-                                    ToastService.showInfo(I18n.tr("Opening SMS app", "Phone Connect SMS action") + "...");
+                                    ToastService.showInfo(I18n.trFor("dankKDEConnect", "Opening SMS app", "Phone Connect SMS action") + "...");
                                 });
                                 root.showSmsDialog = false;
                             }
@@ -1790,7 +1790,7 @@ PluginComponent {
                                             if (root.phoneMprisPlayer && root.phoneMprisPlayer.identity) {
                                                 return root.phoneMprisPlayer.identity.split(" - ")[0];
                                             }
-                                            return root.activeDevice?.mediaPlayer || I18n.tr("Media Player");
+                                            return root.activeDevice?.mediaPlayer || I18n.trFor("dankKDEConnect", "Media Player");
                                         }
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.weight: Font.DemiBold
@@ -1803,7 +1803,7 @@ PluginComponent {
                                         iconName: "speaker"
                                         iconColor: Theme.surfaceText
                                         buttonSize: 24
-                                        tooltipText: I18n.tr("Audio Output")
+                                        tooltipText: I18n.trFor("dankKDEConnect", "Audio Output")
                                     }
                                 }
 
@@ -1860,13 +1860,13 @@ PluginComponent {
                                                     let album = root.phoneMprisPlayer.trackAlbum || "";
                                                     if (artist && album)
                                                         return artist + " — " + album;
-                                                    return artist || album || I18n.tr("Unknown Artist");
+                                                    return artist || album || I18n.trFor("dankKDEConnect", "Unknown Artist");
                                                 } else {
                                                     let artist = root.activeDevice?.mediaArtist || "";
                                                     let album = root.activeDevice?.mediaAlbum || "";
                                                     if (artist && album)
                                                         return artist + " — " + album;
-                                                    return artist || album || I18n.tr("Unknown Artist");
+                                                    return artist || album || I18n.trFor("dankKDEConnect", "Unknown Artist");
                                                 }
                                             }
                                             font.pixelSize: Theme.fontSizeSmall
@@ -1882,7 +1882,7 @@ PluginComponent {
                                         backgroundColor: Theme.withAlpha(Theme.primary, 0.1)
                                         buttonSize: 48
                                         iconSize: 28
-                                        tooltipText: iconName === "pause" ? I18n.tr("Pause", "Media pause tooltip") : I18n.tr("Play", "Media play tooltip")
+                                        tooltipText: iconName === "pause" ? I18n.trFor("dankKDEConnect", "Pause", "Media pause tooltip") : I18n.trFor("dankKDEConnect", "Play", "Media play tooltip")
                                         onClicked: {
                                             if (root.phoneMprisPlayer) {
                                                 if (root.phoneMprisPlayer.playbackState === MprisPlaybackState.Playing) {
@@ -1905,7 +1905,7 @@ PluginComponent {
                                         iconName: "skip_previous"
                                         iconColor: Theme.surfaceText
                                         buttonSize: 28
-                                        tooltipText: I18n.tr("Previous", "Media previous tooltip")
+                                        tooltipText: I18n.trFor("dankKDEConnect", "Previous", "Media previous tooltip")
                                         onClicked: root.phoneMprisPlayer ? root.phoneMprisPlayer.previous() : PhoneConnectService.mprisAction(root.activeDeviceId, "previous", function () {})
                                     }
 
@@ -1913,7 +1913,7 @@ PluginComponent {
                                         iconName: "replay_10"
                                         iconColor: Theme.surfaceText
                                         buttonSize: 28
-                                        tooltipText: I18n.tr("Rewind 10s", "Media rewind tooltip")
+                                        tooltipText: I18n.trFor("dankKDEConnect", "Rewind 10s", "Media rewind tooltip")
                                         onClicked: {
                                             if (root.phoneMprisPlayer && root.phoneMprisPlayer.canSeek) {
                                                 root.phoneMprisPlayer.position = Math.max(0, (root.phoneMprisPlayer.position || 0) - 10);
@@ -2082,7 +2082,7 @@ PluginComponent {
                                         iconName: "forward_10"
                                         iconColor: Theme.surfaceText
                                         buttonSize: 28
-                                        tooltipText: I18n.tr("Forward 10s", "Media forward tooltip")
+                                        tooltipText: I18n.trFor("dankKDEConnect", "Forward 10s", "Media forward tooltip")
                                         onClicked: {
                                             if (root.phoneMprisPlayer && root.phoneMprisPlayer.canSeek) {
                                                 root.phoneMprisPlayer.position = Math.min(root.phoneMprisPlayer.length, (root.phoneMprisPlayer.position || 0) + 10);
@@ -2094,7 +2094,7 @@ PluginComponent {
                                         iconName: "skip_next"
                                         iconColor: Theme.surfaceText
                                         buttonSize: 28
-                                        tooltipText: I18n.tr("Next", "Media next tooltip")
+                                        tooltipText: I18n.trFor("dankKDEConnect", "Next", "Media next tooltip")
                                         onClicked: root.phoneMprisPlayer ? root.phoneMprisPlayer.next() : PhoneConnectService.mprisAction(root.activeDeviceId, "next", function () {})
                                     }
                                 }
@@ -2142,7 +2142,7 @@ PluginComponent {
                                     }
 
                                     StyledText {
-                                        text: I18n.tr("Recent Images", "Recent Images title")
+                                        text: I18n.trFor("dankKDEConnect", "Recent Images", "Recent Images title")
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.weight: Font.Bold
                                         color: Theme.surfaceText
@@ -2223,7 +2223,7 @@ PluginComponent {
                                     }
 
                                     StyledText {
-                                        text: I18n.tr("No images found", "No recent images found message")
+                                        text: I18n.trFor("dankKDEConnect", "No images found", "No recent images found message")
                                         font.pixelSize: Theme.fontSizeSmall
                                         font.weight: Font.Medium
                                         color: Theme.withAlpha(Theme.surfaceText, 0.6)

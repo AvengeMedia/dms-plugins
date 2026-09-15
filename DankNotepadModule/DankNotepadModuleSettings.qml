@@ -1,6 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
-import QtQuick.Controls
 import qs.Common
 import qs.Services
 import qs.Widgets
@@ -14,35 +12,28 @@ PluginSettings {
     property var availableThemes: []
 
     Component.onCompleted: {
-        loadAvailableThemes()
+        loadAvailableThemes();
     }
 
     function loadAvailableThemes() {
-        const process = Qt.createQmlObject(
-            `import QtQuick; import Quickshell.Io; Process {
+        const process = Qt.createQmlObject(`import QtQuick; import Quickshell.Io; Process {
                 command: ["dms", "chroma", "list-styles"]
                 running: true
                 stdout: StdioCollector { }
-            }`,
-            root,
-            "themeLoader"
-        )
+            }`, root, "themeLoader");
 
         if (!process) {
-            console.warn("Failed to create theme loader process, using fallback themes")
-            availableThemes = ["github-dark", "monokai", "dracula", "github", "nord",
-                              "onedark", "solarized-dark", "solarized-light"]
-            return
+            console.warn("Failed to create theme loader process, using fallback themes");
+            availableThemes = ["github-dark", "monokai", "dracula", "github", "nord", "onedark", "solarized-dark", "solarized-light"];
+            return;
         }
 
         process.stdout.streamFinished.connect(() => {
-            const output = process.stdout.text
-            const themes = output.trim().split('\n').filter(t => t.length > 0)
-            availableThemes = themes.length > 0 ? themes :
-                ["github-dark", "monokai", "dracula", "github", "nord",
-                 "onedark", "solarized-dark", "solarized-light"]
-            process.destroy()
-        })
+            const output = process.stdout.text;
+            const themes = output.trim().split('\n').filter(t => t.length > 0);
+            availableThemes = themes.length > 0 ? themes : ["github-dark", "monokai", "dracula", "github", "nord", "onedark", "solarized-dark", "solarized-light"];
+            process.destroy();
+        });
     }
 
     Column {
@@ -71,14 +62,12 @@ PluginSettings {
 
         SelectionSetting {
             settingKey: "style"
-            label: I18n.tr("Chroma Style")
-            description: availableThemes.length > 0
-                ? I18n.tr("Color theme for syntax highlighting. %1 themes available.").arg(availableThemes.length)
-                : I18n.tr("Color theme for syntax highlighting.")
+            label: I18n.trFor("dankNotepadModule", "Chroma Style")
+            description: availableThemes.length > 0 ? I18n.trFor("dankNotepadModule", "Color theme for syntax highlighting. %1 themes available.").arg(availableThemes.length) : I18n.trFor("dankNotepadModule", "Color theme for syntax highlighting.")
             options: availableThemes.map(theme => ({
-                label: theme,
-                value: theme
-            }))
+                        label: theme,
+                        value: theme
+                    }))
             defaultValue: "github-dark"
         }
 
@@ -132,14 +121,14 @@ PluginSettings {
 
     function saveValue(key, value) {
         if (pluginService) {
-            pluginService.savePluginData(root.pluginId, key, value)
+            pluginService.savePluginData(root.pluginId, key, value);
         }
     }
 
     function loadValue(key, defaultValue) {
         if (pluginService) {
-            return pluginService.loadPluginData(root.pluginId, key, defaultValue)
+            return pluginService.loadPluginData(root.pluginId, key, defaultValue);
         }
-        return defaultValue
+        return defaultValue;
     }
 }
