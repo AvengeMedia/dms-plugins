@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "输入 URI 或文本以分享"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "接受配对失败"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "共享失败"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "文件"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "快进 10 秒"
+  },
+  "Good": {
+    "Good": "良好"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "确保 KDE Connect 或 Valent 正在您的其他设备上运行"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "下一个"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "无设备"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "验证"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "设备"

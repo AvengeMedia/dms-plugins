@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "共有する URI またはテキストを入力"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "ペアリングの承認に失敗しました"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "共有に失敗しました"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "ファイル"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "10秒進む"
+  },
+  "Good": {
+    "Good": "良好"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "他のデバイスで KDE Connect または Valent が実行されていることを確認してください"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "次へ"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "デバイスなし"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "確認"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "デバイス"

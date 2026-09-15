@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "Nhập URI hoặc văn bản để chia sẻ"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "Không thể chấp nhận ghép đôi"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "Chia sẻ thất bại"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "Tệp"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "Tua Nhanh 10 giây"
+  },
+  "Good": {
+    "Good": "Tốt"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "Đảm bảo KDE Connect hoặc Valent đang chạy trên các thiết bị khác của bạn"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "Tiếp theo"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "Không có thiết bị"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "Xác thực"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "thiết bị"

@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "URI oder Text zum Teilen eingeben"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "Kopplung konnte nicht akzeptiert werden"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "Teilen fehlgeschlagen"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "Datei"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "10s vorwärts"
+  },
+  "Good": {
+    "Good": "Gut"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "Stellen Sie sicher, dass KDE Connect oder Valent auf Ihren anderen Geräten läuft"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "Weiter"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "Keine Geräte"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "Verifizierung"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "Gerät"

@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "공유할 URI 또는 텍스트 입력"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "페어링 수락 실패"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "공유 실패"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "파일"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "10초 앞으로"
+  },
+  "Good": {
+    "Good": "좋음"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "다른 기기에서 KDE Connect 또는 Valent가 실행 중인지 확인하세요"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "다음"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "기기 없음"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "확인"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "기기"

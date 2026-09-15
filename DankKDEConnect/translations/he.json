@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "הזן/י URI או טקסט לשיתוף"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "אישור הצימוד נכשל"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "השיתוף נכשל"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "קובץ"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "קדימה 10 שניות"
+  },
+  "Good": {
+    "Good": "טוב"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "ודא/י שKDE Connect או Valent פועל על ההתקנים האחרים שלך"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "הבא"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "אין התקנים"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "אימות"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "התקן"

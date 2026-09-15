@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "Voer URI of tekst in om te delen"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "Accepteren van koppeling mislukt"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "Delen mislukt"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "Bestand"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "10s vooruit"
+  },
+  "Good": {
+    "Good": "Goed"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "Zorg ervoor dat KDE Connect of Valent actief is op je andere apparaten"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "Volgende"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "Geen apparaten"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "Verificatie"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "apparaat"

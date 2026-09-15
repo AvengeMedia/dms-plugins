@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": ""
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "پذیرش جفت‌سازی ناموفق بود"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "اشتراک‌گذاری ناموفق بود"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "فایل"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": ""
+  },
+  "Good": {
+    "Good": "خوب"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "از اجرای KDE Connect یا Valent در دستگاه‌های دیگر خود اطمینان حاصل کنید"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "بعدی"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "بدون دستگاه"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "تأیید"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "دستگاه"

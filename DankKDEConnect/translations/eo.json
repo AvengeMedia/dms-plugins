@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": ""
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "Malsukcesis akcepti parigon"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "Malsukcesis kundividi"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "Dosiero"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": ""
+  },
+  "Good": {
+    "Good": "Bona"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "Certigu, ke KDE Connect aŭ Valent funkcias sur viaj aliaj aparatoj"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "Sekva"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "Neniuj aparatoj"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "Konfirmo"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "aparato"

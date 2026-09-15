@@ -23,6 +23,9 @@
   "Enter URI or text to share": {
     "Enter URI or text to share": "Введіть URI або текст для поширення"
   },
+  "Excellent": {
+    "Excellent": ""
+  },
   "Failed to accept pairing": {
     "Failed to accept pairing": "Не вдалося прийняти сполучення"
   },
@@ -53,6 +56,9 @@
   "Failed to share": {
     "Failed to share": "Не вдалося поширити"
   },
+  "Fair": {
+    "Fair": ""
+  },
   "File": {
     "File": "Файл"
   },
@@ -61,6 +67,9 @@
   },
   "Forward 10s": {
     "Forward 10s": "Перемотати вперед на 10 с."
+  },
+  "Good": {
+    "Good": "Добре"
   },
   "Make sure KDE Connect or Valent is running on your other devices": {
     "Make sure KDE Connect or Valent is running on your other devices": "Переконайтеся, що KDE Connect або Valent запущено на ваших інших пристроях"
@@ -76,6 +85,9 @@
   },
   "Next": {
     "Next": "Далі"
+  },
+  "No Signal": {
+    "No Signal": ""
   },
   "No devices": {
     "No devices": "Пристроїв немає"
@@ -214,6 +226,9 @@
   },
   "Verification": {
     "Verification": "Верифікація"
+  },
+  "Weak": {
+    "Weak": ""
   },
   "device": {
     "device": "пристрій"
