@@ -35,6 +35,8 @@ PluginSettings {
             return ["hyprland"];
         if (CompositorService.isSway)
             return ["sway"];
+        if (CompositorService.isMango)
+            return ["mangowc"];
         return ["niri"];
     }
 
