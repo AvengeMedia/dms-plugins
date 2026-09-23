@@ -24,7 +24,7 @@
     "Enter URI or text to share": "הזן/י URI או טקסט לשיתוף"
   },
   "Excellent": {
-    "Excellent": ""
+    "Excellent": "מצוין"
   },
   "Failed to accept pairing": {
     "Failed to accept pairing": "אישור הצימוד נכשל"
@@ -57,7 +57,7 @@
     "Failed to share": "השיתוף נכשל"
   },
   "Fair": {
-    "Fair": ""
+    "Fair": "סביר"
   },
   "File": {
     "File": "קובץ"
@@ -87,7 +87,7 @@
     "Next": "הבא"
   },
   "No Signal": {
-    "No Signal": ""
+    "No Signal": "אין קליטה"
   },
   "No devices": {
     "No devices": "אין התקנים"
@@ -129,7 +129,7 @@
     "Pairing requested": "התבקש צימוד"
   },
   "Pairing...": {
-    "Pairing...": "מתאים..."
+    "Pairing...": "מתבצע צימוד..."
   },
   "Pause": {
     "Pause": "השהיה"
@@ -159,7 +159,7 @@
     "Reject": "דחה/י"
   },
   "Request Pairing": {
-    "Request Pairing": "בקש/י התאמה"
+    "Request Pairing": "בקש/י צימוד"
   },
   "Rewind 10s": {
     "Rewind 10s": "אחורה 10 שניות"
@@ -228,7 +228,7 @@
     "Verification": "אימות"
   },
   "Weak": {
-    "Weak": ""
+    "Weak": "חלש"
   },
   "device": {
     "device": "התקן"

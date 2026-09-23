@@ -24,7 +24,7 @@
     "Enter URI or text to share": "أدخل الرابط أو النص للمشاركة"
   },
   "Excellent": {
-    "Excellent": ""
+    "Excellent": "ممتاز"
   },
   "Failed to accept pairing": {
     "Failed to accept pairing": "فشل قبول الاقتران"
@@ -57,7 +57,7 @@
     "Failed to share": "فشل في المشاركة"
   },
   "Fair": {
-    "Fair": ""
+    "Fair": "جيد"
   },
   "File": {
     "File": "ملف"
@@ -87,7 +87,7 @@
     "Next": "التالي"
   },
   "No Signal": {
-    "No Signal": ""
+    "No Signal": "لا توجد إشارة"
   },
   "No devices": {
     "No devices": "لا توجد أجهزة"
@@ -228,7 +228,7 @@
     "Verification": "التحقق"
   },
   "Weak": {
-    "Weak": ""
+    "Weak": "ضعيف"
   },
   "device": {
     "device": "جهاز"
